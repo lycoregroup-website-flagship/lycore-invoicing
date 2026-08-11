@@ -33,7 +33,7 @@
       "icon": "build/icon.ico"
     },
     "publish": [
-      { "provider": "github", "owner": "lycoregroup-website-flagship", "repo": "lycore-invoicing", "private": true }
+      { "provider": "github", "owner": "lycoregroup-website-flagship", "repo": "lycore-invoicing", "private": true, "releaseType": "release" }
     ],
     "nsis": {
       "oneClick": false,
