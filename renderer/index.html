@@ -172,7 +172,16 @@
   .kpi .val{font-size:22px;font-weight:800}
   .kpi .val.red{color:var(--red)}
   .kpi .val.green{color:var(--green)}
-  .dash-quick{display:flex;gap:10px;margin:18px 0 26px}
+  .dash-quick{display:flex;gap:10px;margin:18px 0 26px;flex-wrap:wrap}
+  .barchart{display:flex;align-items:flex-end;gap:10px;height:110px;padding:10px 4px 0}
+  .barchart .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:5px}
+  .barchart .bar .fill{width:100%;background:var(--orange);border-radius:5px 5px 2px 2px;min-height:3px}
+  .barchart .bar .lbl{font-size:10px;color:var(--gray)}
+  .breakdown-row{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:12.5px}
+  .breakdown-row .name{width:100px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .breakdown-row .track{flex:1;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+  .breakdown-row .track .fill{height:100%;background:var(--orange);border-radius:99px}
+  .breakdown-row .amt{flex-shrink:0;text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--gray)}
 
   /* ---------- misc field additions ---------- */
   .recoverybox{background:#FAFAFB;border:1px dashed var(--orange);border-radius:10px;padding:16px;text-align:center;margin-bottom:14px}
@@ -271,6 +280,8 @@
   <button id="tab-dashboard" onclick="showTab('dashboard')">Dashboard</button>
   <button id="tab-new" class="active" onclick="showTab('new')">New invoice</button>
   <button id="tab-list" onclick="showTab('list')">Invoices</button>
+  <button id="tab-expenses" onclick="showTab('expenses')">Expenses</button>
+  <button id="tab-reports" onclick="showTab('reports')">Reports</button>
   <button id="tab-clients" onclick="showTab('clients')">Clients</button>
   <button id="tab-archive" onclick="showTab('archive')">Archive</button>
   <button id="tab-settings" onclick="showTab('settings')">Settings</button>
@@ -281,13 +292,44 @@
 
     <!-- ============ DASHBOARD ============ -->
     <div id="pane-dashboard" style="display:none">
-      <h2 class="sec">Overview</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <h2 class="sec" style="margin:0">Overview</h2>
+        <select id="dash-period" onchange="renderDashboard()" style="width:auto;padding:6px 10px;font-size:12px;border:1px solid var(--line);border-radius:7px;font-family:var(--ui-font)">
+          <option value="month">This month</option>
+          <option value="30d">Last 30 days</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
       <div class="kpis" id="kpi-grid"></div>
+
       <div class="dash-quick">
         <button class="btn orange" onclick="startNew(true)">+ New invoice</button>
+        <button class="btn ghost" onclick="startNewExpense()">+ Log expense</button>
         <button class="btn ghost" onclick="showTab('list')">View all invoices</button>
       </div>
-      <h2 class="sec">Recent</h2>
+
+      <h2 class="sec">Revenue, last 6 months</h2>
+      <div id="dash-chart" style="margin-bottom:8px"></div>
+
+      <h2 class="sec">Needs attention</h2>
+      <table class="list">
+        <thead><tr><th>Number</th><th>Client</th><th>Total</th><th>Overdue by</th></tr></thead>
+        <tbody id="dash-overdue"></tbody>
+      </table>
+      <div class="empty" id="dash-overdue-empty" style="display:none;padding:20px">Nothing overdue \u2014 you're clear.</div>
+
+      <div class="row2" style="margin-top:24px;align-items:start">
+        <div>
+          <h2 class="sec" style="margin-top:0">By industry</h2>
+          <div id="dash-industry"></div>
+        </div>
+        <div>
+          <h2 class="sec" style="margin-top:0">By currency</h2>
+          <div id="dash-currency"></div>
+        </div>
+      </div>
+
+      <h2 class="sec">Recent activity</h2>
       <table class="list">
         <thead><tr><th>Number</th><th>Client</th><th>Total</th><th>Status</th></tr></thead>
         <tbody id="dash-recent"></tbody>
@@ -368,6 +410,76 @@
       <div class="empty" id="list-empty" style="display:none">No invoices yet.<br>Your first one starts the sequence.</div>
     </div>
 
+    <!-- ============ EXPENSES ============ -->
+    <div id="pane-expenses" style="display:none">
+      <h2 class="sec">Log an expense</h2>
+      <div class="row2">
+        <div class="field"><label>Date</label><input type="date" id="ex-date"></div>
+        <div class="field"><label>Category</label>
+          <select id="ex-category" onchange="renderExpenseHint()">
+            <option>Software & Subscriptions</option>
+            <option>Meals & Entertainment</option>
+            <option>Travel</option>
+            <option>Contractor / Freelancer</option>
+            <option>Marketing & Advertising</option>
+            <option>Office & Equipment</option>
+            <option>Bank & Processing Fees</option>
+            <option>Owner Draw</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="note" id="ex-hint" style="margin-top:-6px"></div>
+      <div class="field"><label>Vendor / description</label><input id="ex-vendor" placeholder="e.g. Retell AI, client lunch, n8n hosting"></div>
+      <div class="row2">
+        <div class="field"><label>Amount</label><input type="number" min="0" step="0.01" id="ex-amount"></div>
+        <div class="field"><label>Currency</label>
+          <select id="ex-currency"><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="ex-recurring"> Recurring monthly</label>
+      <div class="field"><textarea id="ex-notes" placeholder="Optional notes"></textarea></div>
+      <div class="btnrow">
+        <button class="btn orange" onclick="saveExpense()">Save expense</button>
+        <button class="btn ghost" onclick="startNewExpense()">Clear</button>
+      </div>
+
+      <h2 class="sec">All expenses</h2>
+      <table class="list">
+        <thead><tr><th>Date</th><th>Category</th><th>Vendor</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="expenses-body"></tbody>
+      </table>
+      <div class="empty" id="expenses-empty" style="display:none">No expenses logged yet.</div>
+    </div>
+
+    <!-- ============ REPORTS ============ -->
+    <div id="pane-reports" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <h2 class="sec" style="margin:0">Profit &amp; loss</h2>
+        <select id="rep-period" onchange="renderReports()" style="width:auto;padding:6px 10px;font-size:12px;border:1px solid var(--line);border-radius:7px;font-family:var(--ui-font)">
+          <option value="month">This month</option>
+          <option value="quarter">This quarter</option>
+          <option value="year">This year</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+      <p class="note" style="margin:0 0 16px">Owner draws are tracked separately below \u2014 they're money you've taken out, not a deductible business expense, so they don't reduce the profit figure. This isn't tax advice; confirm treatment with an accountant, especially given the cross-border setup.</p>
+      <div id="rep-pl"></div>
+
+      <h2 class="sec">Recommended reserve</h2>
+      <div class="row2">
+        <div class="field"><label>Reserve percentage of net profit</label><input type="number" min="0" max="100" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()"></div>
+        <div class="field"><label>&nbsp;</label><div id="rep-reserve-amt" style="padding-top:9px;font-weight:700"></div></div>
+      </div>
+      <p class="note" style="margin-top:-6px">A planning figure only \u2014 this app doesn't see your actual bank balance, so it can't confirm the reserve exists, only tell you what it should be based on profit logged here.</p>
+
+      <h2 class="sec">Export</h2>
+      <div class="btnrow" style="margin-top:0">
+        <button class="btn ghost" onclick="exportCSV()">Export CSV for accountant</button>
+      </div>
+      <p class="note">Invoices and expenses for the selected period, one row each, ready to hand off.</p>
+    </div>
+
     <!-- ============ CLIENTS (grouped by industry) ============ -->
     <div id="pane-clients" style="display:none">
       <h2 class="sec">Client directory</h2>
@@ -378,13 +490,20 @@
 
     <!-- ============ ARCHIVE ============ -->
     <div id="pane-archive" style="display:none">
-      <h2 class="sec">Archive</h2>
+      <h2 class="sec">Archived invoices</h2>
       <p class="note" style="margin:0 0 14px">Deleted invoices rest here. Restore them, or remove permanently.</p>
       <table class="list">
         <thead><tr><th>Number</th><th>Client</th><th>Total</th><th></th><th></th></tr></thead>
         <tbody id="archive-body"></tbody>
       </table>
       <div class="empty" id="archive-empty" style="display:none">Nothing archived.</div>
+
+      <h2 class="sec">Archived expenses</h2>
+      <table class="list">
+        <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th></th><th></th></tr></thead>
+        <tbody id="expense-archive-body"></tbody>
+      </table>
+      <div class="empty" id="expense-archive-empty" style="display:none">Nothing archived.</div>
     </div>
 
     <!-- ============ SETTINGS ============ -->
@@ -546,7 +665,7 @@ const DEFAULT_CATALOG=[
 ];
 const INDUSTRIES=['Bail Bonds','Restoration','Auto Detailing','Plumbing'];
 
-let settings={}, invoices=[], archive=[], catalog=null, pinHash=null, recoveryHash=null, draft=null;
+let settings={}, invoices=[], archive=[], expenses=[], expenseArchive=[], catalog=null, pinHash=null, recoveryHash=null, draft=null;
 let items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
 let editingId=null, currentStatus='unpaid', pendingDelete=null, pendingDeleteMode='archive';
 let unlocked=false, saveTimer=null;
@@ -560,6 +679,8 @@ async function loadAll(){
   settings=(await sget('lyc-settings'))||{};
   invoices=(await sget('lyc-invoices'))||[];
   archive=(await sget('lyc-archive'))||[];
+  expenses=(await sget('lyc-expenses'))||[];
+  expenseArchive=(await sget('lyc-expense-archive'))||[];
   catalog=(await sget('lyc-catalog'))||DEFAULT_CATALOG.map(x=>({...x}));
   pinHash=(await sget('lyc-pin'))||null;
   recoveryHash=(await sget('lyc-recovery'))||null;
@@ -598,30 +719,101 @@ function resumeChoice(yes){
 }
 
 /* ================= dashboard ================= */
+function periodStart(period){
+  const now=new Date();
+  if(period==='month') return now.toISOString().slice(0,7)+'-01';
+  if(period==='30d') return new Date(now.getTime()-30*864e5).toISOString().slice(0,10);
+  return '0000-01-01';
+}
+function daysOverdue(due){
+  const today=new Date().toISOString().slice(0,10);
+  const ms=new Date(today)-new Date(due);
+  return Math.max(0,Math.round(ms/864e5));
+}
+function fmtSum(obj){
+  const keys=Object.keys(obj);
+  if(!keys.length) return '\u2014';
+  return keys.map(c=>(SYM[c]||'')+obj[c].toFixed(0)).join(' + ');
+}
 function renderDashboard(){
-  const totals={}, outstanding={}, paidThisMonth={};
+  const period=document.getElementById('dash-period').value;
+  const since=periodStart(period);
   const todayStr=new Date().toISOString().slice(0,10);
-  const ym=todayStr.slice(0,7);
-  invoices.forEach(inv=>{
-    totals[inv.currency]=(totals[inv.currency]||0)+inv.total;
+  const inPeriod=invoices.filter(inv=>(inv.date||'')>=since);
+  const expInPeriod=expenses.filter(e=>(e.date||'')>=since);
+
+  const revenue={}, outstanding={}, paid={}, realExpense={}, ownerDraws={};
+  inPeriod.forEach(inv=>{
+    revenue[inv.currency]=(revenue[inv.currency]||0)+inv.total;
     if(inv.status!=='paid') outstanding[inv.currency]=(outstanding[inv.currency]||0)+inv.total;
-    if(inv.status==='paid' && (inv.date||'').slice(0,7)===ym) paidThisMonth[inv.currency]=(paidThisMonth[inv.currency]||0)+inv.total;
+    else paid[inv.currency]=(paid[inv.currency]||0)+inv.total;
   });
-  const fmtSum=(obj)=>{
-    const keys=Object.keys(obj);
-    if(!keys.length) return '\u2014';
-    return keys.map(c=>(SYM[c]||'')+obj[c].toFixed(0)).join(' + ');
-  };
-  const overdue=invoices.filter(inv=>inv.status!=='paid' && inv.due && inv.due<todayStr);
+  // outstanding should reflect ALL unpaid invoices regardless of period (money still owed to you)
+  const outstandingAll={};
+  invoices.forEach(inv=>{ if(inv.status!=='paid') outstandingAll[inv.currency]=(outstandingAll[inv.currency]||0)+inv.total; });
+  expInPeriod.forEach(e=>{
+    const bucket = e.category==='Owner Draw' ? ownerDraws : realExpense;
+    bucket[e.currency]=(bucket[e.currency]||0)+e.amount;
+  });
+  const netProfit={};
+  Object.keys(revenue).forEach(c=>{ netProfit[c]=(revenue[c]||0)-(realExpense[c]||0); });
+  Object.keys(realExpense).forEach(c=>{ if(netProfit[c]===undefined) netProfit[c]=-(realExpense[c]||0); });
+
+  const overdue=invoices.filter(inv=>inv.status!=='paid' && inv.due && inv.due<todayStr)
+    .sort((a,b)=>daysOverdue(b.due)-daysOverdue(a.due));
+  const activeClients=new Set(inPeriod.map(i=>i.client).filter(Boolean)).size;
+
   document.getElementById('kpi-grid').innerHTML=`
-    <div class="kpi"><div class="lbl">Total invoices</div><div class="val">${invoices.length}</div></div>
-    <div class="kpi"><div class="lbl">Total billed</div><div class="val">${fmtSum(totals)}</div></div>
-    <div class="kpi"><div class="lbl">Outstanding</div><div class="val ${Object.keys(outstanding).length?'red':''}">${fmtSum(outstanding)}</div></div>
-    <div class="kpi"><div class="lbl">Paid this month</div><div class="val green">${fmtSum(paidThisMonth)}</div></div>
-    <div class="kpi"><div class="lbl">Overdue</div><div class="val ${overdue.length?'red':''}">${overdue.length}</div></div>`;
+    <div class="kpi"><div class="lbl">Revenue</div><div class="val">${fmtSum(revenue)}</div></div>
+    <div class="kpi"><div class="lbl">Net profit</div><div class="val ${Object.values(netProfit).some(v=>v<0)?'red':'green'}">${fmtSum(netProfit)}</div></div>
+    <div class="kpi"><div class="lbl">Outstanding</div><div class="val ${Object.keys(outstandingAll).length?'red':''}">${fmtSum(outstandingAll)}</div></div>
+    <div class="kpi"><div class="lbl">Overdue</div><div class="val ${overdue.length?'red':''}">${overdue.length}</div></div>
+    <div class="kpi"><div class="lbl">Active clients</div><div class="val">${activeClients}</div></div>`;
+
+  // revenue trend, always last 6 months regardless of period selector
+  const months=[];
+  for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); months.push(d.toISOString().slice(0,7)); }
+  const monthTotals=months.map(ym=>invoices.filter(inv=>(inv.date||'').slice(0,7)===ym).reduce((s,inv)=>s+inv.total,0));
+  const maxVal=Math.max(1,...monthTotals);
+  document.getElementById('dash-chart').innerHTML=`<div class="barchart">${months.map((ym,i)=>{
+    const h=Math.round((monthTotals[i]/maxVal)*90)+3;
+    const label=new Date(ym+'-01').toLocaleDateString('en-US',{month:'short'});
+    return `<div class="bar"><div class="fill" style="height:${h}px" title="${monthTotals[i].toFixed(0)}"></div><div class="lbl">${label}</div></div>`;
+  }).join('')}</div>`;
+
+  // needs attention
+  const ovBody=document.getElementById('dash-overdue'); ovBody.innerHTML='';
+  document.getElementById('dash-overdue-empty').style.display=overdue.length?'none':'block';
+  overdue.slice(0,8).forEach(inv=>{
+    const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
+    tr.innerHTML=`<td class="mono">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
+      <td class="mono">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
+      <td class="mono" style="color:var(--red)">${daysOverdue(inv.due)}d</td>`;
+    ovBody.appendChild(tr);
+  });
+
+  // by industry
+  const byInd={};
+  invoices.forEach(inv=>{ const k=inv.industry||'Other'; byInd[k]=(byInd[k]||0)+inv.total; });
+  const indMax=Math.max(1,...Object.values(byInd));
+  const indHtml=Object.entries(byInd).sort((a,b)=>b[1]-a[1]).map(([name,val])=>
+    `<div class="breakdown-row"><div class="name">${esc(name)}</div><div class="track"><div class="fill" style="width:${(val/indMax*100).toFixed(0)}%"></div></div><div class="amt">${val.toFixed(0)}</div></div>`
+  ).join('') || '<p class="note">No data yet.</p>';
+  document.getElementById('dash-industry').innerHTML=indHtml;
+
+  // by currency
+  const byCur={};
+  invoices.forEach(inv=>{ byCur[inv.currency]=(byCur[inv.currency]||0)+inv.total; });
+  const curMax=Math.max(1,...Object.values(byCur));
+  const curHtml=Object.entries(byCur).sort((a,b)=>b[1]-a[1]).map(([cur,val])=>
+    `<div class="breakdown-row"><div class="name">${cur}</div><div class="track"><div class="fill" style="width:${(val/curMax*100).toFixed(0)}%"></div></div><div class="amt">${(SYM[cur]||'')}${val.toFixed(0)}</div></div>`
+  ).join('') || '<p class="note">No data yet.</p>';
+  document.getElementById('dash-currency').innerHTML=curHtml;
+
+  // recent activity
   const body=document.getElementById('dash-recent'); body.innerHTML='';
   document.getElementById('dash-empty').style.display=invoices.length?'none':'block';
-  invoices.slice(0,6).forEach(inv=>{
+  invoices.slice(0,8).forEach(inv=>{
     const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
     tr.innerHTML=`<td class="mono">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
       <td class="mono">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
@@ -1026,10 +1218,12 @@ async function toggleStatus(id,ev){
 function askDelete(id,ev,mode){
   ev.stopPropagation();
   pendingDelete=id; pendingDeleteMode=mode;
-  document.getElementById('del-title').textContent=mode==='purge'?'Permanently delete?':'Archive this invoice?';
-  document.getElementById('del-text').innerHTML = mode==='purge'
-    ? 'This removes the invoice <strong>permanently</strong>. Type <strong>delete</strong> to confirm.'
-    : 'Type <strong>delete</strong> to confirm. The invoice moves to the Archive \u2014 nothing is lost.';
+  const isExpense=mode.startsWith('expense');
+  const isPurge=mode.endsWith('purge');
+  document.getElementById('del-title').textContent=isPurge?'Permanently delete?':`Archive this ${isExpense?'expense':'invoice'}?`;
+  document.getElementById('del-text').innerHTML = isPurge
+    ? `This removes the ${isExpense?'expense':'invoice'} <strong>permanently</strong>. Type <strong>delete</strong> to confirm.`
+    : `Type <strong>delete</strong> to confirm. The ${isExpense?'expense':'invoice'} moves to the Archive \u2014 nothing is lost.`;
   document.getElementById('del-input').value='';
   document.getElementById('del-overlay').classList.remove('hidden');
   document.getElementById('del-input').focus();
@@ -1042,11 +1236,19 @@ async function confirmDelete(){
     if(inv){ archive.unshift(inv); invoices=invoices.filter(x=>x.id!==pendingDelete);
       await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
       if(editingId===pendingDelete)startNew(true); toast('Moved to Archive'); }
-  } else {
+  } else if(pendingDeleteMode==='purge'){
     archive=archive.filter(x=>x.id!==pendingDelete);
     await sset('lyc-archive',archive); toast('Permanently deleted');
+  } else if(pendingDeleteMode==='expense-archive'){
+    const ex=expenses.find(x=>x.id===pendingDelete);
+    if(ex){ expenseArchive.unshift(ex); expenses=expenses.filter(x=>x.id!==pendingDelete);
+      await sset('lyc-expenses',expenses); await sset('lyc-expense-archive',expenseArchive);
+      toast('Moved to Archive'); }
+  } else if(pendingDeleteMode==='expense-purge'){
+    expenseArchive=expenseArchive.filter(x=>x.id!==pendingDelete);
+    await sset('lyc-expense-archive',expenseArchive); toast('Permanently deleted');
   }
-  closeDelete(); renderList(); renderArchive(); renderClients();
+  closeDelete(); renderList(); renderArchive(); renderClients(); renderExpenses(); renderDashboard();
 }
 async function restoreInvoice(id,ev){
   ev.stopPropagation();
@@ -1054,6 +1256,129 @@ async function restoreInvoice(id,ev){
   invoices.unshift(inv); archive=archive.filter(x=>x.id!==id);
   await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
   renderList(); renderArchive(); renderClients(); toast('Restored '+inv.number);
+}
+
+/* ================= expenses ================= */
+const EXPENSE_HINTS={
+  'Owner Draw':'Not a business expense \u2014 this is money leaving the business to you personally. Tracked separately from profit.',
+  'Bank & Processing Fees':'Wire fees, Stripe/payment processor cuts, currency conversion charges.'
+};
+function renderExpenseHint(){
+  const cat=document.getElementById('ex-category').value;
+  document.getElementById('ex-hint').textContent=EXPENSE_HINTS[cat]||'';
+}
+function startNewExpense(){
+  document.getElementById('ex-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ex-category').value='Software & Subscriptions';
+  document.getElementById('ex-vendor').value='';
+  document.getElementById('ex-amount').value='';
+  document.getElementById('ex-currency').value='USD';
+  document.getElementById('ex-recurring').checked=false;
+  document.getElementById('ex-notes').value='';
+  renderExpenseHint();
+  showTab('expenses');
+}
+async function saveExpense(){
+  const amount=parseFloat(document.getElementById('ex-amount').value)||0;
+  const vendor=document.getElementById('ex-vendor').value.trim();
+  if(!amount){toast('Enter an amount');return}
+  const ex={
+    id:'exp-'+Date.now(),
+    date:document.getElementById('ex-date').value||new Date().toISOString().slice(0,10),
+    category:document.getElementById('ex-category').value,
+    vendor:vendor,
+    amount:amount,
+    currency:document.getElementById('ex-currency').value,
+    recurring:document.getElementById('ex-recurring').checked,
+    notes:document.getElementById('ex-notes').value
+  };
+  expenses.unshift(ex);
+  await sset('lyc-expenses',expenses);
+  toast('Expense logged');
+  startNewExpense();
+  renderExpenses(); renderDashboard();
+}
+function renderExpenses(){
+  const body=document.getElementById('expenses-body'); if(!body)return;
+  body.innerHTML='';
+  document.getElementById('expenses-empty').style.display=expenses.length?'none':'block';
+  expenses.forEach(ex=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="mono">${esc(ex.date)}</td><td>${esc(ex.category)}${ex.recurring?' <span class="tagpill">monthly</span>':''}</td>
+      <td>${esc(ex.vendor)||'\u2014'}</td><td class="mono">${SYM[ex.currency]||''}${ex.amount.toFixed(2)}</td>
+      <td><button class="pill gray" onclick="askDelete('${ex.id}',event,'expense-archive')">delete</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ================= reports ================= */
+function reportPeriodStart(period){
+  const now=new Date();
+  if(period==='month') return now.toISOString().slice(0,7)+'-01';
+  if(period==='quarter'){ const q=Math.floor(now.getMonth()/3)*3; return new Date(now.getFullYear(),q,1).toISOString().slice(0,10); }
+  if(period==='year') return now.getFullYear()+'-01-01';
+  return '0000-01-01';
+}
+function renderReports(){
+  const el=document.getElementById('rep-pl'); if(!el)return;
+  const period=document.getElementById('rep-period').value;
+  const since=reportPeriodStart(period);
+  const inv=invoices.filter(i=>(i.date||'')>=since);
+  const exp=expenses.filter(e=>(e.date||'')>=since);
+
+  const revenue={}, realExpenseByCat={}, ownerDraws={};
+  inv.forEach(i=>{ revenue[i.currency]=(revenue[i.currency]||0)+i.total; });
+  exp.forEach(e=>{
+    if(e.category==='Owner Draw'){ ownerDraws[e.currency]=(ownerDraws[e.currency]||0)+e.amount; return; }
+    realExpenseByCat[e.category]=realExpenseByCat[e.category]||{};
+    realExpenseByCat[e.category][e.currency]=(realExpenseByCat[e.category][e.currency]||0)+e.amount;
+  });
+  const totalExpense={};
+  Object.values(realExpenseByCat).forEach(byCur=>{ Object.entries(byCur).forEach(([c,v])=>{ totalExpense[c]=(totalExpense[c]||0)+v; }); });
+  const netProfit={};
+  const allCur=new Set([...Object.keys(revenue),...Object.keys(totalExpense)]);
+  allCur.forEach(c=>{ netProfit[c]=(revenue[c]||0)-(totalExpense[c]||0); });
+  const retained={};
+  allCur.forEach(c=>{ retained[c]=(netProfit[c]||0)-(ownerDraws[c]||0); });
+
+  const catRows=Object.entries(realExpenseByCat).map(([cat,byCur])=>
+    `<div class="trow"><span>${esc(cat)}</span><span class="mono">${fmtSum(byCur)}</span></div>`
+  ).join('');
+
+  el.innerHTML=`
+    <div class="totals" style="width:100%;max-width:420px">
+      <div class="trow"><span>Revenue</span><span class="mono">${fmtSum(revenue)}</span></div>
+      ${catRows}
+      <div class="trow" style="font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span>Total expenses</span><span class="mono">${fmtSum(totalExpense)}</span></div>
+      <div class="trow grand"><span>Net profit</span><span class="mono">${fmtSum(netProfit)}</span></div>
+      <div class="trow" style="margin-top:10px"><span>Owner draws taken</span><span class="mono">${fmtSum(ownerDraws)}</span></div>
+      <div class="trow" style="font-weight:700"><span>Retained in business</span><span class="mono">${fmtSum(retained)}</span></div>
+    </div>`;
+
+  const pct=parseFloat(document.getElementById('rep-reserve-pct').value)||0;
+  const reserve={};
+  Object.entries(netProfit).forEach(([c,v])=>{ if(v>0) reserve[c]=v*(pct/100); });
+  document.getElementById('rep-reserve-amt').textContent=Object.keys(reserve).length?fmtSum(reserve):'\u2014';
+}
+function csvEscape(s){ s=String(s??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+function exportCSV(){
+  const period=document.getElementById('rep-period').value;
+  const since=reportPeriodStart(period);
+  const rows=[['Type','Date','Number/Category','Client/Vendor','Currency','Amount','Status/Notes']];
+  invoices.filter(i=>(i.date||'')>=since).forEach(i=>{
+    rows.push(['Invoice', i.date, i.number, i.client, i.currency, i.total.toFixed(2), i.status]);
+  });
+  expenses.filter(e=>(e.date||'')>=since).forEach(e=>{
+    rows.push(['Expense', e.date, e.category, e.vendor, e.currency, e.amount.toFixed(2), e.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(csvEscape).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`LYCORE-${period}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV exported');
 }
 
 /* ================= lists ================= */
@@ -1080,6 +1405,23 @@ function renderArchive(){
       <td><button class="pill gray" style="color:var(--red)" onclick="askDelete('${inv.id}',event,'purge')">purge</button></td>`;
     body.appendChild(tr);
   });
+  const exBody=document.getElementById('expense-archive-body'); exBody.innerHTML='';
+  document.getElementById('expense-archive-empty').style.display=expenseArchive.length?'none':'block';
+  expenseArchive.forEach(ex=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="mono">${esc(ex.date)}</td><td>${esc(ex.category)}</td>
+      <td class="mono">${SYM[ex.currency]||''}${ex.amount.toFixed(2)}</td>
+      <td><button class="pill gray" onclick="restoreExpense('${ex.id}',event)">restore</button></td>
+      <td><button class="pill gray" style="color:var(--red)" onclick="askDelete('${ex.id}',event,'expense-purge')">purge</button></td>`;
+    exBody.appendChild(tr);
+  });
+}
+async function restoreExpense(id,ev){
+  ev.stopPropagation();
+  const ex=expenseArchive.find(x=>x.id===id); if(!ex)return;
+  expenses.unshift(ex); expenseArchive=expenseArchive.filter(x=>x.id!==id);
+  await sset('lyc-expenses',expenses); await sset('lyc-expense-archive',expenseArchive);
+  renderArchive(); renderExpenses(); toast('Restored expense');
 }
 function renderClients(){
   const map={};
@@ -1265,12 +1607,14 @@ function printInvoice(){
 
 /* ================= tabs & toast ================= */
 function showTab(t){
-  ['dashboard','new','list','clients','archive','settings'].forEach(x=>{
+  ['dashboard','new','list','expenses','reports','clients','archive','settings'].forEach(x=>{
     document.getElementById('pane-'+x).style.display=x===t?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active',x===t);
   });
   if(t==='dashboard')renderDashboard();
   if(t==='list')renderList(); if(t==='clients')renderClients(); if(t==='archive')renderArchive();
+  if(t==='expenses'){ if(!document.getElementById('ex-date').value) startNewExpense(); renderExpenses(); }
+  if(t==='reports')renderReports();
 }
 let toastTimer;
 function toast(m){
