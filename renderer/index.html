@@ -50,10 +50,15 @@
   nav.tabs button.active{color:var(--orange);border-bottom-color:var(--orange)}
 
   /* main fills exactly the remaining space below header+nav — never grows past the viewport.
-     Its two children (.panel and .doc-wrap) each scroll independently within that fixed height,
-     so scrolling one never drags the other or the page itself along with it. */
-  main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(360px,470px) 1fr;overflow:hidden}
-  .panel{min-height:0;height:100%;padding:24px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line)}
+     Default is a single full-width page (most tabs — Dashboard, Expenses, Reports, Clients,
+     Archive, Reference, Settings). Only the New Invoice tab switches to split view, since
+     that's the only screen where a live document preview actually makes sense. */
+  main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
+  main.split-view{grid-template-columns:minmax(360px,470px) 1fr}
+  .panel{min-height:0;height:100%;padding:24px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);max-width:900px;margin:0 auto;width:100%}
+  main.split-view .panel{max-width:none;margin:0}
+  .doc-wrap{display:none}
+  main.split-view .doc-wrap{display:flex}
 
   h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin:26px 0 12px;font-weight:700}
   h2.sec:first-child{margin-top:0}
@@ -100,7 +105,7 @@
   .sectionhd .cnt{font-weight:400;color:var(--gray)}
 
   /* ---------- invoice document ---------- */
-  .doc-wrap{min-height:0;height:100%;overflow-y:auto;padding:28px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg)}
+  .doc-wrap{min-height:0;height:100%;overflow-y:auto;padding:28px;justify-content:center;align-items:flex-start;background:var(--bg)}
   .doc{font-family:var(--doc-font);background:#fff;color:var(--ink);width:100%;max-width:780px;padding:52px 58px;min-height:1000px;box-shadow:0 8px 30px rgba(15,23,32,.10);border-radius:4px;font-size:14px;line-height:1.55}
   .doc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   .doc .logo-row{display:flex;align-items:center;gap:14px}
@@ -1663,6 +1668,7 @@ function showTab(t){
     document.getElementById('pane-'+x).style.display=x===t?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active',x===t);
   });
+  document.querySelector('main').classList.toggle('split-view', t==='new');
   if(t==='dashboard')renderDashboard();
   if(t==='list')renderList(); if(t==='clients')renderClients(); if(t==='archive')renderArchive();
   if(t==='expenses'){ if(!document.getElementById('ex-date').value) startNewExpense(); renderExpenses(); }
