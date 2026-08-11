@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('storage', {
 
 contextBridge.exposeInMainWorld('api', {
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
-  info: () => ipcRenderer.invoke('app:info')
+  info: () => ipcRenderer.invoke('app:info'),
+  version: () => ipcRenderer.invoke('app:version')
 });
 
 contextBridge.exposeInMainWorld('updater', {

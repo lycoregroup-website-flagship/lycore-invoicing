@@ -105,6 +105,7 @@ ipcMain.handle('app:info', () => ({
   dbPath: DB_PATH,
   encrypted: safeStorage.isEncryptionAvailable()
 }));
+ipcMain.handle('app:version', () => app.getVersion());
 
 // ---- backup / restore (business data only — never the passcode or recovery hash) ----
 const BACKUP_KEYS = ['lyc-settings', 'lyc-invoices', 'lyc-archive', 'lyc-expenses', 'lyc-expense-archive', 'lyc-catalog'];

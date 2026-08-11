@@ -55,8 +55,8 @@
      that's the only screen where a live document preview actually makes sense. */
   main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
   main.split-view{grid-template-columns:minmax(360px,470px) 1fr}
-  .panel{min-height:0;height:100%;padding:24px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);max-width:900px;margin:0 auto;width:100%}
-  main.split-view .panel{max-width:none;margin:0}
+  .panel{min-height:0;height:100%;padding:28px 36px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);max-width:1180px;margin:0;width:100%}
+  main.split-view .panel{max-width:none;padding:24px}
   .doc-wrap{display:none}
   main.split-view .doc-wrap{display:flex}
 
@@ -138,8 +138,8 @@
   .doc .qrcol{max-width:150px}
   .doc .qrcol #qrbox{width:104px;height:104px;margin-top:6px}
   .doc .partner-note{font-family:var(--ui-font);font-size:11.5px;color:var(--gray);margin-top:20px;line-height:1.6;padding:12px 14px;background:#FAFAFB;border-left:3px solid var(--orange);border-radius:0 6px 6px 0}
-  .doc .stripe-cta{margin-top:22px;font-family:var(--ui-font)}
-  .doc .stripe-cta a{color:var(--orange);text-decoration:underline;font-size:13.5px;font-weight:600}
+  .doc .ways .card-col{background:var(--orange-soft);border-radius:8px;padding:14px}
+  .doc .ways .card-link{display:inline-block;margin-top:6px;color:var(--orange);text-decoration:underline;font-size:13.5px;font-weight:700}
   .doc .foot-notes{margin-top:26px;font-size:13px;white-space:pre-line}
   .doc footer{font-family:var(--ui-font);margin-top:52px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--gray);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
   .doc footer a{color:var(--gray);text-decoration:underline}
@@ -171,10 +171,14 @@
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ---------- dashboard ---------- */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:8px}
-  .kpi{border:1px solid var(--line);border-radius:12px;padding:16px}
-  .kpi .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
-  .kpi .val{font-size:22px;font-weight:800}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:10px}
+  .kpi{position:relative;border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px;background:var(--white);box-shadow:0 1px 2px rgba(15,23,32,.04);overflow:hidden}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--line)}
+  .kpi.accent-orange::before{background:var(--orange)}
+  .kpi.accent-red::before{background:var(--red)}
+  .kpi.accent-green::before{background:var(--green)}
+  .kpi .lbl{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:10px}
+  .kpi .val{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1}
   .kpi .val.red{color:var(--red)}
   .kpi .val.green{color:var(--green)}
   .dash-quick{display:flex;gap:10px;margin:18px 0 26px;flex-wrap:wrap}
@@ -272,7 +276,7 @@
 </div>
 
 <header class="app">
-  <div class="brandmark"><span class="dot" id="hdr-logo">L</span> LYCORE&nbsp;INVOICING</div>
+  <div class="brandmark"><span class="dot" id="hdr-logo">L</span> LYCORE&nbsp;INVOICING <span id="hdr-version" style="font-weight:400;letter-spacing:0;color:var(--gray);font-size:11px;margin-left:6px"></span></div>
   <div class="right">
     <span class="savepill" id="save-indicator"></span>
     <button class="lock" id="update-btn" style="display:none" onclick="updateClicked()">Update available</button>
@@ -821,10 +825,10 @@ function renderDashboard(){
   const activeClients=new Set(inPeriod.map(i=>i.client).filter(Boolean)).size;
 
   document.getElementById('kpi-grid').innerHTML=`
-    <div class="kpi"><div class="lbl">Revenue</div><div class="val">${fmtSum(revenue)}</div></div>
-    <div class="kpi"><div class="lbl">Net profit</div><div class="val ${Object.values(netProfit).some(v=>v<0)?'red':'green'}">${fmtSum(netProfit)}</div></div>
-    <div class="kpi"><div class="lbl">Outstanding</div><div class="val ${Object.keys(outstandingAll).length?'red':''}">${fmtSum(outstandingAll)}</div></div>
-    <div class="kpi"><div class="lbl">Overdue</div><div class="val ${overdue.length?'red':''}">${overdue.length}</div></div>
+    <div class="kpi accent-orange"><div class="lbl">Revenue</div><div class="val">${fmtSum(revenue)}</div></div>
+    <div class="kpi ${Object.values(netProfit).some(v=>v<0)?'accent-red':'accent-green'}"><div class="lbl">Net profit</div><div class="val ${Object.values(netProfit).some(v=>v<0)?'red':'green'}">${fmtSum(netProfit)}</div></div>
+    <div class="kpi ${Object.keys(outstandingAll).length?'accent-red':''}"><div class="lbl">Outstanding</div><div class="val ${Object.keys(outstandingAll).length?'red':''}">${fmtSum(outstandingAll)}</div></div>
+    <div class="kpi ${overdue.length?'accent-red':''}"><div class="lbl">Overdue</div><div class="val ${overdue.length?'red':''}">${overdue.length}</div></div>
     <div class="kpi"><div class="lbl">Active clients</div><div class="val">${activeClients}</div></div>`;
 
   // revenue trend, always last 6 months regardless of period selector
@@ -1582,6 +1586,7 @@ function render(){
     }
   }
   const epc=cur==='EUR'?epcPayload(inv):null;
+  const cardCol=inv.paylink?`<div class="col card-col"><div class="ct">Pay by card</div><div class="cs">Works with any card, any currency \u2014 converts automatically, no calculation needed</div><a class="card-link" href="${esc(inv.paylink)}" target="_blank" rel="noopener">Pay online \u2192</a></div>`:'';
   const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="cs" style="margin-top:8px;margin-bottom:0">${esc(c.proc)}</div>`:''}</div>`).join('')
     +(epc?`<div class="col qrcol"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox"></div></div>`:'');
 
@@ -1625,14 +1630,12 @@ function render(){
       <div class="trow grand"><span>Amount due</span><span class="mono">${sym}${inv.total.toFixed(2)}</span></div>
     </div>
 
-    ${inv.paylink?`<div class="stripe-cta"><a href="${esc(inv.paylink)}" target="_blank" rel="noopener">Pay online \u2192</a></div>`:''}
-
-    ${cols.length?`
+    ${cardCol||cols.length?`
     <div class="ways">
       <div class="hd">Ways to pay</div>
-      <div class="cols">${colsHtml}</div>
+      <div class="cols">${cardCol||''}${colsHtml}</div>
       ${mismatchBen?`<div class="partner-note"><strong>Account holder note.</strong> ${esc(fillTemplate(settings.disclosure||DEFAULT_DISCLOSURE,{legal:legal,platform:platform,provider:provider,providerdesc:providerDesc,holder:mismatchBen,number:inv.number}))}</div>`:''}
-      <div class="partner-note" style="border-left-color:var(--line)">Processing times above are estimates from our banking partners and can vary by bank. If a payment doesn\u2019t reflect within the window shown, reach out and we\u2019ll help track it down.</div>
+      ${cols.length?`<div class="partner-note" style="border-left-color:var(--line)">Processing times above are estimates from our banking partners and can vary by bank. If a payment doesn\u2019t reflect within the window shown, reach out and we\u2019ll help track it down.</div>`:''}
       ${settings.feenote?`<div class="partner-note" style="border-left-color:var(--line)">${esc(settings.feenote)}</div>`:''}
     </div>`:`<div class="partner-note" style="margin-top:40px">Add your ${cur} account details in Settings to print payment instructions here.</div>`}
 
@@ -1716,6 +1719,7 @@ if(window.menuBridge){
   });
 }
 
+if(window.api && window.api.version){ window.api.version().then(v=>{ document.getElementById('hdr-version').textContent='v'+v; }); }
 loadAll();
 </script>
 </body>
