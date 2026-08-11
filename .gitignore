@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+
+# Safety net: no database-shaped file should ever be committed.
+# The real database only ever lives on the user's machine, in
+# %APPDATA%/LYCORE Invoicing/ — never inside this repo.
+*.db.json
+lycore-db.json
+*.sqlite
+.env

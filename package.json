@@ -1,0 +1,45 @@
+{
+  "name": "lycore-invoicing",
+  "version": "1.0.0",
+  "description": "LYCORE GROUP LLC invoicing desktop application",
+  "main": "main.js",
+  "author": "LYCORE GROUP LLC",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "build": {
+    "appId": "com.lycoregroup.invoicing",
+    "productName": "LYCORE Invoicing",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "publish": [
+      { "provider": "github", "owner": "lycoregroup-website-flagship", "repo": "lycore-invoicing", "private": true }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

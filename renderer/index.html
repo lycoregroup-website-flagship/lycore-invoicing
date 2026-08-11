@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LYCORE Invoicing</title>
+<script src="qrcode.min.js"></script>
+<style>
+  :root{
+    --orange:#EA5B0C;
+    --orange-soft:#FDEEE4;
+    --ink:#0F1720;
+    --gray:#5B6672;
+    --line:#E6E9ED;
+    --bg:#F6F7F9;
+    --white:#FFFFFF;
+    --green:#1F8A5B;
+    --red:#C0392B;
+    --ui-font:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    --doc-font:'Times New Roman',Georgia,'Cambria',serif;
+  }
+  body.dark{
+    --ink:#EDEFF2;
+    --gray:#9AA4B0;
+    --line:#2A313A;
+    --bg:#14181D;
+    --white:#1B2027;
+    --orange-soft:#3A2214;
+  }
+  /* the printed/previewed invoice document always stays light, regardless of app theme */
+  body.dark .doc{ background:#fff; color:#0F1720; }
+  body.dark .doc .k,body.dark .doc .hd,body.dark .doc .kk,body.dark .doc .cs,body.dark .doc .ways .hd{ color:#5B6672; }
+  body.dark .doc-wrap{ background:#0d1013; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--ui-font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+
+  header.app{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:1px solid var(--line)}
+  .brandmark{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:14px}
+  .brandmark .dot{width:26px;height:26px;border-radius:7px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+  .brandmark .dot img{width:100%;height:100%;object-fit:cover}
+  header.app .right{display:flex;align-items:center;gap:10px}
+  header.app .savepill{font-size:11px;color:var(--gray)}
+  header.app .lock{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12px;color:var(--gray);cursor:pointer;font-family:inherit}
+  header.app .lock:hover{border-color:var(--gray)}
+
+  nav.tabs{display:flex;gap:4px;padding:10px 24px 0;background:var(--white);border-bottom:1px solid var(--line)}
+  nav.tabs button{background:none;border:none;color:var(--gray);padding:10px 16px 12px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;border-radius:8px 8px 0 0}
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{color:var(--orange);border-bottom-color:var(--orange)}
+
+  main{display:grid;grid-template-columns:minmax(360px,470px) 1fr;min-height:calc(100vh - 110px)}
+  .panel{padding:24px;overflow-y:auto;max-height:calc(100vh - 110px);background:var(--white);border-right:1px solid var(--line)}
+
+  h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin:26px 0 12px;font-weight:700}
+  h2.sec:first-child{margin-top:0}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px}
+  .field input,.field textarea,.field select{width:100%;background:var(--white);border:1px solid var(--line);color:var(--ink);padding:9px 11px;font-size:14px;border-radius:8px;font-family:var(--ui-font)}
+  .field textarea{resize:vertical;min-height:54px}
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-soft)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin-bottom:13px}
+  .check input{width:auto}
+
+  .btn{display:inline-block;background:var(--ink);color:#fff;border:none;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border-radius:9px;font-family:var(--ui-font)}
+  .btn.orange{background:var(--orange)}
+  .btn.ghost{background:var(--white);color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--gray)}
+  .btn.danger{background:var(--white);color:var(--red);border:1px solid #eccfca}
+  .btnrow{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .note{font-size:12px;color:var(--gray);line-height:1.55;margin-top:8px}
+
+  .item-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fbfbfc}
+  .item-card .row-a{display:grid;grid-template-columns:1fr 90px 28px;gap:8px;margin-bottom:8px;align-items:center}
+  .item-card .row-b{display:grid;grid-template-columns:1fr 70px 110px;gap:8px}
+  .item-card .row-c{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11.5px;color:var(--gray)}
+  .item-card .del{background:none;border:1px solid var(--line);color:var(--gray);border-radius:7px;cursor:pointer;font-size:14px}
+  .item-card .del:hover{color:var(--red);border-color:var(--red)}
+  .freqsel{font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid var(--line);font-family:var(--ui-font)}
+
+  table.list{width:100%;border-collapse:collapse}
+  table.list th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  table.list td{padding:11px 10px;border-bottom:1px solid var(--line);font-size:13.5px}
+  table.list tr.rowlink{cursor:pointer}
+  table.list tr.rowlink:hover td{background:#fafafa}
+  .pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:99px;border:none;cursor:pointer;font-family:var(--ui-font)}
+  .pill.unpaid{background:#FBEFE8;color:var(--orange)}
+  .pill.paid{background:#E6F4ED;color:var(--green)}
+  .pill.gray{background:#EEF0F3;color:var(--gray)}
+  .tagpill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px;background:#EEF0F3;color:var(--gray)}
+  .empty{padding:56px 20px;text-align:center;color:var(--gray);font-size:14px;line-height:1.7}
+
+  .sectionhd{font-size:13px;font-weight:700;margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .sectionhd:first-child{margin-top:0}
+  .sectionhd .cnt{font-weight:400;color:var(--gray)}
+
+  /* ---------- invoice document ---------- */
+  .doc-wrap{padding:28px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg)}
+  .doc{font-family:var(--doc-font);background:#fff;color:var(--ink);width:100%;max-width:780px;padding:52px 58px;min-height:1000px;box-shadow:0 8px 30px rgba(15,23,32,.10);border-radius:4px;font-size:14px;line-height:1.55}
+  .doc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  .doc .logo-row{display:flex;align-items:center;gap:14px}
+  .doc .logo-box{width:52px;height:52px;border-radius:12px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;overflow:hidden;flex-shrink:0;font-family:var(--ui-font)}
+  .doc .logo-box img{width:100%;height:100%;object-fit:cover}
+  .doc .word-invoice{font-size:32px;font-weight:700;letter-spacing:0}
+  .doc .top-meta{display:flex;gap:34px;text-align:left;padding-top:8px;font-family:var(--ui-font)}
+  .doc .k{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--gray);margin-bottom:3px;font-family:var(--ui-font)}
+  .doc .parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:42px;padding-top:22px;border-top:1px solid var(--line)}
+  .doc .parties .v{white-space:pre-line}
+  .doc .parties .hd{font-size:12px;font-weight:700;margin-bottom:6px;font-family:var(--ui-font);letter-spacing:.04em;text-transform:uppercase;color:var(--gray)}
+  .doc .headline{font-size:25px;font-weight:700;margin-top:40px}
+  .doc .headline .amt{color:var(--orange)}
+  .doc table.lines{width:100%;border-collapse:collapse;margin-top:26px}
+  .doc table.lines th{font-size:11px;font-weight:700;text-align:left;padding:0 0 9px;border-bottom:1.5px solid var(--ink);font-family:var(--ui-font);letter-spacing:.04em;text-transform:uppercase;color:var(--gray)}
+  .doc table.lines th.r,.doc table.lines td.r{text-align:right}
+  .doc table.lines td{padding:11px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  .doc table.lines td .freq{font-size:11.5px;color:var(--gray);font-family:var(--ui-font)}
+  .doc .totals{margin-top:12px;margin-left:auto;width:300px}
+  .doc .totals .trow{display:flex;justify-content:space-between;padding:5px 0;color:var(--gray);font-size:13px;font-family:var(--ui-font)}
+  .doc .totals .grand{border-top:2px solid var(--ink);margin-top:8px;padding-top:10px;font-size:16.5px;font-weight:700;color:var(--ink);font-family:var(--doc-font)}
+  .doc .ways{margin-top:46px;font-family:var(--ui-font)}
+  .doc .ways .hd{font-size:13px;font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:16px;letter-spacing:.02em}
+  .doc .ways .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:26px}
+  .doc .ways .col .ct{font-size:12.5px;font-weight:700;margin-bottom:2px}
+  .doc .ways .col .cs{font-size:11.5px;color:var(--gray);margin-bottom:10px}
+  .doc .ways .kv{display:grid;grid-template-columns:112px 1fr;gap:2px 10px;font-size:12.5px}
+  .doc .ways .kv .kk{color:var(--gray)}
+  .doc .ways .kv .vv{word-break:break-word}
+  .doc .qrcol{max-width:150px}
+  .doc .qrcol #qrbox{width:104px;height:104px;margin-top:6px}
+  .doc .partner-note{font-family:var(--ui-font);font-size:11.5px;color:var(--gray);margin-top:20px;line-height:1.6;padding:12px 14px;background:#FAFAFB;border-left:3px solid var(--orange);border-radius:0 6px 6px 0}
+  .doc .stripe-cta{margin-top:22px}
+  .doc .stripe-cta a{font-family:var(--ui-font);display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px}
+  .doc .foot-notes{margin-top:26px;font-size:13px;white-space:pre-line}
+  .doc footer{font-family:var(--ui-font);margin-top:52px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--gray);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .doc footer a{color:var(--gray);text-decoration:underline}
+  .paidline{font-family:var(--ui-font);display:inline-block;background:#E6F4ED;color:var(--green);font-size:13px;font-weight:800;letter-spacing:.1em;padding:5px 14px;border-radius:99px;vertical-align:middle;margin-left:12px}
+
+  .overlay{position:fixed;inset:0;background:rgba(15,23,32,.55);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(3px)}
+  .overlay.hidden{display:none}
+  .modal{background:#fff;border-radius:14px;padding:28px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:var(--ui-font)}
+  .modal h3{font-size:16px;margin-bottom:8px}
+  .modal p{font-size:13px;color:var(--gray);line-height:1.55;margin-bottom:14px}
+  .modal input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;font-family:var(--ui-font);margin-bottom:14px}
+  .modal input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-soft)}
+  .modal .mrow{display:flex;gap:10px;justify-content:flex-end}
+  #gate.modal{text-align:center}
+  #gate .dot{width:44px;height:44px;border-radius:12px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;margin:0 auto 14px;overflow:hidden}
+  #gate .dot img{width:100%;height:100%;object-fit:cover}
+  .err{color:var(--red);font-size:12px;margin:-8px 0 10px;display:none}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 22px;border-radius:9px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:200;font-family:var(--ui-font)}
+  .toast.show{opacity:1}
+
+  /* ---------- splash / loading ---------- */
+  #splash{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;transition:opacity .3s ease}
+  #splash.fade{opacity:0;pointer-events:none}
+  #splash .mark{width:64px;height:64px;border-radius:16px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;font-family:var(--ui-font);overflow:hidden;margin-bottom:16px}
+  #splash .mark img{width:100%;height:100%;object-fit:cover}
+  #splash .word{color:#fff;font-family:var(--ui-font);font-weight:700;letter-spacing:.16em;font-size:13px;margin-bottom:18px}
+  #splash .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- dashboard ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:8px}
+  .kpi{border:1px solid var(--line);border-radius:12px;padding:16px}
+  .kpi .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
+  .kpi .val{font-size:22px;font-weight:800}
+  .kpi .val.red{color:var(--red)}
+  .kpi .val.green{color:var(--green)}
+  .dash-quick{display:flex;gap:10px;margin:18px 0 26px}
+
+  /* ---------- misc field additions ---------- */
+  .recoverybox{background:#FAFAFB;border:1px dashed var(--orange);border-radius:10px;padding:16px;text-align:center;margin-bottom:14px}
+  .recoverybox .code{font-family:ui-monospace,monospace;font-size:18px;font-weight:700;letter-spacing:.06em;color:var(--ink);margin:10px 0;word-break:break-all}
+  .linkbtn{background:none;border:none;color:var(--orange);font-size:12.5px;cursor:pointer;font-family:var(--ui-font);text-decoration:underline;padding:0}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="mark" id="splash-logo">L</div>
+  <div class="word">LYCORE&nbsp;INVOICING</div>
+  <div class="spin"></div>
+</div>
+
+<div class="overlay hidden" id="gate-overlay">
+  <div class="modal" id="gate">
+    <div class="dot" id="gate-logo">L</div>
+    <h3>LYCORE Invoicing</h3>
+    <p>Enter your passcode to open the workspace.</p>
+    <input type="password" id="gate-pin" placeholder="Passcode" autocomplete="off">
+    <div class="err" id="gate-err">That passcode is not correct.</div>
+    <button class="btn orange" style="width:100%" onclick="tryUnlock()">Unlock</button>
+    <p style="margin-top:14px"><button class="linkbtn" onclick="openRecoveryPrompt()">Forgot your passcode?</button></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="recover-overlay">
+  <div class="modal">
+    <h3>Recover access</h3>
+    <p>Enter the recovery code you saved when you first set your passcode. This resets your passcode — you'll set a new one right after.</p>
+    <input id="recover-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:ui-monospace,monospace;letter-spacing:.06em">
+    <div class="err" id="recover-err">That recovery code doesn't match.</div>
+    <div class="mrow">
+      <button class="btn ghost" onclick="closeRecoveryPrompt()">Cancel</button>
+      <button class="btn orange" onclick="tryRecover()">Verify</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="recoveryshow-overlay">
+  <div class="modal" style="text-align:center">
+    <h3>Save your recovery code</h3>
+    <p>This is the only way back in if you forget your passcode \u2014 there's no email reset. Write it down or store it somewhere safe. We can't show it to you again.</p>
+    <div class="recoverybox">
+      <div class="code" id="recovery-code-display">\u2014</div>
+    </div>
+    <button class="btn orange" style="width:100%" onclick="closeRecoveryShow()">I've saved it</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="resume-overlay">
+  <div class="modal">
+    <h3>Welcome back</h3>
+    <p id="resume-text">You left off editing an invoice. Pick up where you were, or start fresh?</p>
+    <div class="mrow">
+      <button class="btn ghost" onclick="resumeChoice(false)">Start fresh</button>
+      <button class="btn orange" onclick="resumeChoice(true)">Resume</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="del-overlay">
+  <div class="modal">
+    <h3 id="del-title">Archive this invoice?</h3>
+    <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive — nothing is lost.</p>
+    <input id="del-input" placeholder='Type "delete"' autocomplete="off">
+    <div class="mrow">
+      <button class="btn ghost" onclick="closeDelete()">Cancel</button>
+      <button class="btn danger" onclick="confirmDelete()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<header class="app">
+  <div class="brandmark"><span class="dot" id="hdr-logo">L</span> LYCORE&nbsp;INVOICING</div>
+  <div class="right">
+    <span class="savepill" id="save-indicator"></span>
+    <button class="lock" id="update-btn" style="display:none" onclick="updateClicked()">Update available</button>
+    <button class="lock" onclick="toggleDark()" id="dark-btn">Dark mode</button>
+    <button class="lock" onclick="lockNow()" id="lock-btn" style="display:none">Lock</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button id="tab-dashboard" onclick="showTab('dashboard')">Dashboard</button>
+  <button id="tab-new" class="active" onclick="showTab('new')">New invoice</button>
+  <button id="tab-list" onclick="showTab('list')">Invoices</button>
+  <button id="tab-clients" onclick="showTab('clients')">Clients</button>
+  <button id="tab-archive" onclick="showTab('archive')">Archive</button>
+  <button id="tab-settings" onclick="showTab('settings')">Settings</button>
+</nav>
+
+<main>
+  <div class="panel" id="left">
+
+    <!-- ============ DASHBOARD ============ -->
+    <div id="pane-dashboard" style="display:none">
+      <h2 class="sec">Overview</h2>
+      <div class="kpis" id="kpi-grid"></div>
+      <div class="dash-quick">
+        <button class="btn orange" onclick="startNew(true)">+ New invoice</button>
+        <button class="btn ghost" onclick="showTab('list')">View all invoices</button>
+      </div>
+      <h2 class="sec">Recent</h2>
+      <table class="list">
+        <thead><tr><th>Number</th><th>Client</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="dash-recent"></tbody>
+      </table>
+      <div class="empty" id="dash-empty" style="display:none">No invoices yet \u2014 create your first one.</div>
+    </div>
+
+    <!-- ============ NEW INVOICE ============ -->
+    <div id="pane-new">
+      <h2 class="sec">Invoice</h2>
+      <div class="row2">
+        <div class="field"><label>Invoice number</label><input id="f-number" class="mono" readonly></div>
+        <div class="field"><label>Currency</label>
+          <select id="f-currency" onchange="render()">
+            <option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Issue date</label><input type="date" id="f-date" onchange="dateChanged()"></div>
+        <div class="field"><label>Due date</label><input type="date" id="f-due"></div>
+      </div>
+      <p class="note" style="margin-top:-6px">Number, issue date and due date are set automatically — due date defaults to 30 days out and adjusts if you change the issue date.</p>
+
+      <h2 class="sec">Billed to</h2>
+      <div class="field"><label>Company / agency</label><input id="f-client" placeholder="Freedom First Bail Bonds LLC" list="client-suggest"></div>
+      <datalist id="client-suggest"></datalist>
+      <div class="field"><label>Industry / section</label>
+        <select id="f-industry" onchange="industryChanged()">
+          <option value="Bail Bonds">Bail Bonds</option>
+          <option value="Restoration">Restoration</option>
+          <option value="Auto Detailing">Auto Detailing</option>
+          <option value="Plumbing">Plumbing</option>
+          <option value="__other">Other…</option>
+        </select>
+      </div>
+      <div class="field" id="f-industryother-wrap" style="display:none"><label>Industry name</label><input id="f-industryother"></div>
+      <div class="field"><label>Attention (contact person)</label><input id="f-attn" placeholder="Owner or manager name"></div>
+      <div class="field"><label>Street address</label><input id="f-street" placeholder="Street and number"></div>
+      <div class="row2">
+        <div class="field"><label>State</label><select id="f-state" onchange="stateChanged()"><option value="">— Select —</option></select></div>
+        <div class="field"><label>City</label><select id="f-city" onchange="cityChanged()"><option value="">— Select state first —</option></select></div>
+      </div>
+      <div class="field" id="f-cityother-wrap" style="display:none"><label>City (type it)</label><input id="f-cityother"></div>
+      <div class="row2">
+        <div class="field"><label>ZIP</label><input id="f-zip"></div>
+        <div class="field"><label>Email</label><input id="f-clientemail"></div>
+      </div>
+
+      <h2 class="sec">Services</h2>
+      <div id="items"></div>
+      <button class="btn ghost" onclick="addItem()">+ Add service line</button>
+
+      <h2 class="sec">Payment link</h2>
+      <div class="field"><label>Checkout / Stripe link for this invoice (optional)</label><input id="f-paylink" placeholder="https://checkout.stripe.com/..."></div>
+      <p class="note" style="margin-top:-6px">Create one Stripe Payment Link for this invoice's total (Stripe supports multiple items in one link) and paste it here. A "Pay online" button prints on the invoice. Pre-fills from your default link in Settings — overwrite it per invoice when the total is specific to this bill.</p>
+
+      <h2 class="sec">Notes on invoice</h2>
+      <div class="field"><textarea id="f-notes" placeholder="Service period, thank-you line, terms…"></textarea></div>
+
+      <div class="btnrow">
+        <button class="btn orange" onclick="saveInvoice()">Save invoice</button>
+        <button class="btn" onclick="printInvoice()">Print / PDF</button>
+        <button class="btn ghost" onclick="startNew(true)">Start new</button>
+      </div>
+      <p class="note">Saving updates the client record automatically. Print names the PDF “Client — Date — Number”.</p>
+    </div>
+
+    <!-- ============ INVOICES ============ -->
+    <div id="pane-list" style="display:none">
+      <h2 class="sec">All invoices</h2>
+      <table class="list">
+        <thead><tr><th>Number</th><th>Client</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <tbody id="list-body"></tbody>
+      </table>
+      <div class="empty" id="list-empty" style="display:none">No invoices yet.<br>Your first one starts the sequence.</div>
+    </div>
+
+    <!-- ============ CLIENTS (grouped by industry) ============ -->
+    <div id="pane-clients" style="display:none">
+      <h2 class="sec">Client directory</h2>
+      <p class="note" style="margin:0 0 14px">Grouped by section. Builds automatically from saved invoices.</p>
+      <div id="clients-groups"></div>
+      <div class="empty" id="clients-empty" style="display:none">Save an invoice and the client appears here.</div>
+    </div>
+
+    <!-- ============ ARCHIVE ============ -->
+    <div id="pane-archive" style="display:none">
+      <h2 class="sec">Archive</h2>
+      <p class="note" style="margin:0 0 14px">Deleted invoices rest here. Restore them, or remove permanently.</p>
+      <table class="list">
+        <thead><tr><th>Number</th><th>Client</th><th>Total</th><th></th><th></th></tr></thead>
+        <tbody id="archive-body"></tbody>
+      </table>
+      <div class="empty" id="archive-empty" style="display:none">Nothing archived.</div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div id="pane-settings" style="display:none">
+      <h2 class="sec">Company</h2>
+      <div class="field"><label>Legal name</label><input id="s-name" value="LYCORE GROUP LLC"></div>
+      <div class="field"><label>Street address</label><input id="s-street" placeholder="1209 Mountain Road Pl NE, Ste N"></div>
+      <div class="row3">
+        <div class="field"><label>City</label><input id="s-city" placeholder="Albuquerque"></div>
+        <div class="field"><label>State</label>
+          <select id="s-state"><option value="">— Select —</option></select>
+        </div>
+        <div class="field"><label>ZIP</label><input id="s-zip" placeholder="87110"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Country</label>
+          <select id="s-country"><option value="United States">United States</option><option value="__other">Other…</option></select>
+        </div>
+        <div class="field" id="s-countryother-wrap" style="display:none"><label>Country name</label><input id="s-countryother"></div>
+      </div>
+      <div class="note" style="margin-top:-8px">This block is what prints under “Issued by” — name and address only. Phone, email and website print in the footer instead.</div>
+      <div class="row2" style="margin-top:13px">
+        <div class="field"><label>Phone</label><input id="s-phone"></div>
+        <div class="field"><label>Email</label><input id="s-email" placeholder="billing@lycoregroup.com"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Website</label><input id="s-web" value="lycoregroup.com"></div>
+        <div class="field"><label>Number prefix</label><input id="s-prefix" value="LYC"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="s-numyear"> Include the year in invoice numbers (e.g. LYC-2026-001 instead of LYC-001)</label>
+      <div class="field"><label>Logo (small PNG/JPG)</label><input type="file" id="s-logo" accept="image/*" onchange="logoPicked(event)"></div>
+      <div class="btnrow" style="margin-top:0"><button class="btn ghost" onclick="clearLogo()">Remove logo</button></div>
+
+      <h2 class="sec">Passcode</h2>
+      <div class="row2">
+        <div class="field"><label>New passcode</label><input type="password" id="s-pin1" autocomplete="new-password"></div>
+        <div class="field"><label>Repeat</label><input type="password" id="s-pin2" autocomplete="new-password"></div>
+      </div>
+      <div class="btnrow" style="margin-top:0">
+        <button class="btn ghost" onclick="setPin()">Set / change passcode</button>
+        <button class="btn ghost" onclick="removePin()">Remove passcode</button>
+      </div>
+      <p class="note">Your database file is encrypted at rest using Windows' own credential store (tied to your login). The passcode is an extra screen on top of that. Setting a passcode generates a one-time <strong>recovery code</strong> — save it. It's the only way back in if you forget, since there's no email to send a reset to.</p>
+
+      <h2 class="sec">Service catalog</h2>
+      <div id="catalog-rows"></div>
+      <button class="btn ghost" onclick="addCatalogRow()">+ Add service</button>
+      <p class="note">Billing frequency (one-time / monthly) per service. Default prices are your starting point — always editable per invoice.</p>
+
+      <h2 class="sec">Payment link</h2>
+      <div class="field"><label>Default checkout / Stripe link (optional)</label><input id="s-paylink" placeholder="https://checkout.stripe.com/..."></div>
+      <p class="note">Pre-fills the "Payment link" field on every new invoice. Since Stripe Payment Links are priced per link, this works best as a general "pay us" link, and you paste an invoice-specific link (matching that invoice's exact total, built with Stripe's multi-item checkout) directly on the invoice when the amount is exact — that field always overrides this default.</p>
+
+
+      <h2 class="sec">Payment provider</h2>
+      <div class="field"><label>Platform / infrastructure partner</label><input id="s-platform" placeholder="BorderPay"></div>
+      <div class="field"><label>Regulated bank</label><input id="s-provider" placeholder="Banking Circle S.A."></div>
+      <div class="field"><label>Bank's regulatory description</label><input id="s-providerdesc" placeholder="a payment institution regulated in Luxembourg"></div>
+      <div class="field"><label>Client disclosure note</label><textarea id="s-disclosure" style="min-height:110px"></textarea></div>
+      <p class="note">Prints automatically on any invoice where the account holder differs from LYCORE GROUP LLC — currently every GBP and EUR invoice, since those settle through {platform}/{provider}. Placeholders: <span class="mono">{legal} {platform} {provider} {providerdesc} {holder} {number}</span>. Edit the wording any time — it re-renders live.</p>
+
+      <h2 class="sec">USD account</h2>
+      <div class="field"><label>Account holder</label><input id="s-usd-ben" value="LYCORE GROUP LLC"></div>
+      <div class="field"><label>Bank name &amp; address</label><textarea id="s-usd-bank"></textarea></div>
+      <div class="row2">
+        <div class="field"><label>Account number</label><input id="s-usd-acct"></div>
+        <div class="field"><label>ACH routing</label><input id="s-usd-ach"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Wire routing</label><input id="s-usd-wire"></div>
+        <div class="field"><label>Account type</label><input id="s-usd-type" placeholder="Checking"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="s-usd-fednow"> FedNow instant payments available</label>
+      <p class="note">Parked until Lead Bank issues the account — fill in whenever you have it.</p>
+
+      <h2 class="sec">GBP account</h2>
+      <div class="field"><label>Account holder (exactly as issued)</label><input id="s-gbp-ben" placeholder="Bridge Building S.A."></div>
+      <div class="row2">
+        <div class="field"><label>Bank name</label><input id="s-gbp-bankname" placeholder="Banking Circle S.A."></div>
+        <div class="field"><label>Bank address</label><input id="s-gbp-bankaddr" placeholder="2 Kingdom Street, London W2 6JT"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Sort code</label><input id="s-gbp-sort"></div>
+        <div class="field"><label>Account number</label><input id="s-gbp-acct"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>IBAN</label><input id="s-gbp-iban"></div>
+        <div class="field"><label>Swift/BIC</label><input id="s-gbp-bic"></div>
+      </div>
+      <p class="note">Local column prints "via Faster Payments," international prints "via SWIFT" — automatic, no extra field needed.</p>
+
+      <h2 class="sec">EUR account</h2>
+      <div class="field"><label>Account holder (exactly as issued)</label><input id="s-eur-ben" placeholder="Bridge Building S.A."></div>
+      <div class="row2">
+        <div class="field"><label>Bank name</label><input id="s-eur-bankname" placeholder="Banking Circle S.A."></div>
+        <div class="field"><label>Bank address</label><input id="s-eur-bankaddr" placeholder="2 Kingdom Street, London W2 6JT"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>IBAN</label><input id="s-eur-iban"></div>
+        <div class="field"><label>Swift/BIC</label><input id="s-eur-bic"></div>
+      </div>
+      <p class="note">Prints "via SEPA Credit Transfer" automatically, plus a scannable EPC QR that pre-fills the payment in most European banking apps — no setup needed, it just appears once account holder and IBAN are filled in.</p>
+
+      <div class="btnrow"><button class="btn orange" onclick="saveSettings()">Save settings</button></div>
+    </div>
+  </div>
+
+  <div class="doc-wrap"><div class="doc" id="doc"></div></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= data ================= */
+const SYM={USD:'$',GBP:'\u00A3',EUR:'\u20AC'};
+const STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'};
+const CITIES={
+GA:['Atlanta','Decatur','Marietta','Lawrenceville','Jonesboro','Sandy Springs','Roswell','Alpharetta','Smyrna','Duluth','Kennesaw','College Park','East Point','Forest Park','Riverdale'],
+TX:['Houston','San Antonio','Dallas','Austin','Fort Worth','El Paso','Arlington','Corpus Christi','Plano','Laredo','Lubbock','Garland','Irving','McAllen','Waco'],
+FL:['Jacksonville','Miami','Tampa','Orlando','St. Petersburg','Hialeah','Fort Lauderdale','Tallahassee','Cape Coral','Pembroke Pines','West Palm Beach','Clearwater','Lakeland','Gainesville'],
+AZ:['Phoenix','Tucson','Mesa','Chandler','Scottsdale','Glendale','Gilbert','Tempe','Peoria','Surprise','Yuma','Flagstaff'],
+NV:['Las Vegas','Henderson','Reno','North Las Vegas','Sparks','Carson City','Pahrump','Elko'],
+TN:['Nashville','Memphis','Knoxville','Chattanooga','Clarksville','Murfreesboro','Franklin','Jackson','Johnson City','Hendersonville'],
+AL:['Birmingham','Montgomery','Mobile','Huntsville','Tuscaloosa'],AK:['Anchorage','Fairbanks','Juneau'],AR:['Little Rock','Fort Smith','Fayetteville','Springdale'],
+CA:['Los Angeles','San Diego','San Jose','San Francisco','Fresno','Sacramento','Long Beach','Oakland','Bakersfield','Anaheim'],
+CO:['Denver','Colorado Springs','Aurora','Fort Collins','Lakewood'],CT:['Bridgeport','New Haven','Hartford','Stamford','Waterbury'],
+DE:['Wilmington','Dover','Newark'],DC:['Washington'],HI:['Honolulu','Hilo','Kailua'],ID:['Boise','Meridian','Nampa','Idaho Falls'],
+IL:['Chicago','Aurora','Joliet','Naperville','Rockford','Springfield'],IN:['Indianapolis','Fort Wayne','Evansville','South Bend'],
+IA:['Des Moines','Cedar Rapids','Davenport','Sioux City'],KS:['Wichita','Overland Park','Kansas City','Topeka'],
+KY:['Louisville','Lexington','Bowling Green','Owensboro'],LA:['New Orleans','Baton Rouge','Shreveport','Lafayette'],
+ME:['Portland','Lewiston','Bangor'],MD:['Baltimore','Columbia','Germantown','Silver Spring'],MA:['Boston','Worcester','Springfield','Cambridge'],
+MI:['Detroit','Grand Rapids','Warren','Sterling Heights','Lansing','Flint'],MN:['Minneapolis','St. Paul','Rochester','Duluth'],
+MS:['Jackson','Gulfport','Southaven','Hattiesburg'],MO:['Kansas City','St. Louis','Springfield','Columbia','Independence'],
+MT:['Billings','Missoula','Great Falls','Bozeman'],NE:['Omaha','Lincoln','Bellevue'],NH:['Manchester','Nashua','Concord'],
+NJ:['Newark','Jersey City','Paterson','Elizabeth','Trenton'],NM:['Albuquerque','Las Cruces','Rio Rancho','Santa Fe'],
+NY:['New York','Buffalo','Rochester','Yonkers','Syracuse','Albany'],NC:['Charlotte','Raleigh','Greensboro','Durham','Winston-Salem','Fayetteville'],
+ND:['Fargo','Bismarck','Grand Forks'],OH:['Columbus','Cleveland','Cincinnati','Toledo','Akron','Dayton'],
+OK:['Oklahoma City','Tulsa','Norman','Broken Arrow'],OR:['Portland','Salem','Eugene','Gresham'],
+PA:['Philadelphia','Pittsburgh','Allentown','Erie','Reading'],RI:['Providence','Warwick','Cranston'],
+SC:['Columbia','Charleston','North Charleston','Greenville','Rock Hill'],SD:['Sioux Falls','Rapid City','Aberdeen'],
+UT:['Salt Lake City','West Valley City','Provo','West Jordan'],VT:['Burlington','Rutland','South Burlington'],
+VA:['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandria'],WA:['Seattle','Spokane','Tacoma','Vancouver','Bellevue'],
+WV:['Charleston','Huntington','Morgantown'],WI:['Milwaukee','Madison','Green Bay','Kenosha'],WY:['Cheyenne','Casper','Laramie']};
+
+const DEFAULT_CATALOG=[
+  {name:'Voice Receptionist \u2014 Setup',price:2999,freq:'once'},
+  {name:'Voice Receptionist \u2014 Monthly Service',price:499,freq:'month'},
+  {name:'Voice Receptionist \u2014 Monthly Service + Chatbot',price:699,freq:'month'},
+  {name:'Website Build',price:1799,freq:'once'},
+  {name:'Reputation Management \u2014 Monthly',price:349,freq:'month'},
+  {name:'Missed Call Text Back \u2014 Monthly',price:199,freq:'month'}
+];
+const INDUSTRIES=['Bail Bonds','Restoration','Auto Detailing','Plumbing'];
+
+let settings={}, invoices=[], archive=[], catalog=null, pinHash=null, recoveryHash=null, draft=null;
+let items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
+let editingId=null, currentStatus='unpaid', pendingDelete=null, pendingDeleteMode='archive';
+let unlocked=false, saveTimer=null;
+
+/* ================= storage (backed by Electron preload -> encrypted local db) ================= */
+async function sget(k){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
+async function sset(k,v){ try{await window.storage.set(k,JSON.stringify(v));}catch(e){toast('Could not save \u2014 storage error');} }
+
+async function loadAll(){
+  const startTs=Date.now();
+  settings=(await sget('lyc-settings'))||{};
+  invoices=(await sget('lyc-invoices'))||[];
+  archive=(await sget('lyc-archive'))||[];
+  catalog=(await sget('lyc-catalog'))||DEFAULT_CATALOG.map(x=>({...x}));
+  pinHash=(await sget('lyc-pin'))||null;
+  recoveryHash=(await sget('lyc-recovery'))||null;
+  draft=(await sget('lyc-draft'))||null;
+  const theme=(await sget('lyc-theme'))||'light';
+  if(theme==='dark'){ document.body.classList.add('dark'); document.getElementById('dark-btn').textContent='Light mode'; }
+  buildStateSelects(); fillSettingsForm(); renderCatalogRows(); applyLogo();
+  document.getElementById('lock-btn').style.display=pinHash?'inline-block':'none';
+
+  const minShow=350, elapsed=Date.now()-startTs;
+  setTimeout(()=>{
+    const sp=document.getElementById('splash');
+    sp.classList.add('fade'); setTimeout(()=>sp.remove(),300);
+    if(pinHash){
+      document.getElementById('gate-overlay').classList.remove('hidden');
+      document.getElementById('gate-pin').focus();
+    } else {
+      afterUnlock();
+    }
+  }, Math.max(0,minShow-elapsed));
+}
+function afterUnlock(){
+  unlocked=true;
+  renderList(); renderClients(); renderArchive();
+  if(draft && draft.number){
+    document.getElementById('resume-overlay').classList.remove('hidden');
+  } else {
+    startNew(false);
+    showTab('dashboard');
+  }
+}
+function resumeChoice(yes){
+  document.getElementById('resume-overlay').classList.add('hidden');
+  if(yes && draft){ applyDraftToForm(draft); }
+  else { startNew(true); }
+}
+
+/* ================= dashboard ================= */
+function renderDashboard(){
+  const totals={}, outstanding={}, paidThisMonth={};
+  const todayStr=new Date().toISOString().slice(0,10);
+  const ym=todayStr.slice(0,7);
+  invoices.forEach(inv=>{
+    totals[inv.currency]=(totals[inv.currency]||0)+inv.total;
+    if(inv.status!=='paid') outstanding[inv.currency]=(outstanding[inv.currency]||0)+inv.total;
+    if(inv.status==='paid' && (inv.date||'').slice(0,7)===ym) paidThisMonth[inv.currency]=(paidThisMonth[inv.currency]||0)+inv.total;
+  });
+  const fmtSum=(obj)=>{
+    const keys=Object.keys(obj);
+    if(!keys.length) return '\u2014';
+    return keys.map(c=>(SYM[c]||'')+obj[c].toFixed(0)).join(' + ');
+  };
+  const overdue=invoices.filter(inv=>inv.status!=='paid' && inv.due && inv.due<todayStr);
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi"><div class="lbl">Total invoices</div><div class="val">${invoices.length}</div></div>
+    <div class="kpi"><div class="lbl">Total billed</div><div class="val">${fmtSum(totals)}</div></div>
+    <div class="kpi"><div class="lbl">Outstanding</div><div class="val ${Object.keys(outstanding).length?'red':''}">${fmtSum(outstanding)}</div></div>
+    <div class="kpi"><div class="lbl">Paid this month</div><div class="val green">${fmtSum(paidThisMonth)}</div></div>
+    <div class="kpi"><div class="lbl">Overdue</div><div class="val ${overdue.length?'red':''}">${overdue.length}</div></div>`;
+  const body=document.getElementById('dash-recent'); body.innerHTML='';
+  document.getElementById('dash-empty').style.display=invoices.length?'none':'block';
+  invoices.slice(0,6).forEach(inv=>{
+    const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
+    tr.innerHTML=`<td class="mono">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
+      <td class="mono">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
+      <td><span class="pill ${inv.status==='paid'?'paid':'unpaid'}">${inv.status}</span></td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* ================= dark mode ================= */
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  const isDark=document.body.classList.contains('dark');
+  document.getElementById('dark-btn').textContent=isDark?'Light mode':'Dark mode';
+  sset('lyc-theme',isDark?'dark':'light');
+}
+
+/* ================= passcode ================= */
+async function hash(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('lyc-salt-'+str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function genRecoveryCode(){
+  const alphabet='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid handwriting mix-ups
+  const arr=new Uint32Array(16); crypto.getRandomValues(arr);
+  let raw=''; for(let i=0;i<16;i++) raw+=alphabet[arr[i]%alphabet.length];
+  return raw.match(/.{1,4}/g).join('-');
+}
+async function tryUnlock(){
+  const v=document.getElementById('gate-pin').value;
+  if(await hash(v)===pinHash){
+    document.getElementById('gate-overlay').classList.add('hidden');
+    document.getElementById('gate-pin').value=''; document.getElementById('gate-err').style.display='none';
+    afterUnlock();
+  } else document.getElementById('gate-err').style.display='block';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(!document.getElementById('gate-overlay').classList.contains('hidden')) tryUnlock();
+    else if(!document.getElementById('recover-overlay').classList.contains('hidden')) tryRecover();
+  }
+});
+function lockNow(){ if(pinHash){ unlocked=false; document.getElementById('gate-overlay').classList.remove('hidden'); document.getElementById('gate-pin').focus(); } }
+function openRecoveryPrompt(){
+  document.getElementById('gate-overlay').classList.add('hidden');
+  document.getElementById('recover-input').value=''; document.getElementById('recover-err').style.display='none';
+  document.getElementById('recover-overlay').classList.remove('hidden');
+  document.getElementById('recover-input').focus();
+}
+function closeRecoveryPrompt(){
+  document.getElementById('recover-overlay').classList.add('hidden');
+  document.getElementById('gate-overlay').classList.remove('hidden');
+}
+async function tryRecover(){
+  const v=document.getElementById('recover-input').value.trim().toUpperCase();
+  if(recoveryHash && v && await hash('recovery-'+v)===recoveryHash){
+    document.getElementById('recover-overlay').classList.add('hidden');
+    document.getElementById('gate-overlay').classList.add('hidden');
+    pinHash=null; recoveryHash=null;
+    try{await window.storage.delete('lyc-pin');}catch(e){}
+    try{await window.storage.delete('lyc-recovery');}catch(e){}
+    document.getElementById('lock-btn').style.display='none';
+    afterUnlock();
+    toast('Access recovered \u2014 set a new passcode in Settings when you\u2019re ready');
+    showTab('settings');
+  } else {
+    document.getElementById('recover-err').style.display='block';
+  }
+}
+function closeRecoveryShow(){ document.getElementById('recoveryshow-overlay').classList.add('hidden'); }
+async function setPin(){
+  const a=document.getElementById('s-pin1').value,b=document.getElementById('s-pin2').value;
+  if(!a){toast('Enter a passcode');return}
+  if(a!==b){toast('Passcodes don\u2019t match');return}
+  pinHash=await hash(a); await sset('lyc-pin',pinHash);
+  const code=genRecoveryCode();
+  recoveryHash=await hash('recovery-'+code); await sset('lyc-recovery',recoveryHash);
+  document.getElementById('s-pin1').value='';document.getElementById('s-pin2').value='';
+  document.getElementById('lock-btn').style.display='inline-block';
+  toast('Passcode set');
+  document.getElementById('recovery-code-display').textContent=code;
+  document.getElementById('recoveryshow-overlay').classList.remove('hidden');
+}
+async function removePin(){
+  pinHash=null; recoveryHash=null;
+  try{await window.storage.delete('lyc-pin');}catch(e){}
+  try{await window.storage.delete('lyc-recovery');}catch(e){}
+  document.getElementById('lock-btn').style.display='none'; toast('Passcode removed');
+}
+
+/* ================= settings ================= */
+const DEFAULT_DISCLOSURE = "This account is issued through {platform}, LYCORE GROUP LLC's payment infrastructure partner, via its regulated banking partner {provider}, {providerdesc}. The account holder name shown, {holder}, reflects this banking relationship \u2014 funds received are settled directly to LYCORE GROUP LLC. Please use the account details exactly as shown and reference invoice {number}.";
+const S_IDS=['name','street','city','state','zip','phone','email','web','prefix','platform','provider','providerdesc','disclosure','paylink','usd-ben','usd-bank','usd-acct','usd-ach','usd-wire','usd-type','gbp-ben','gbp-bankname','gbp-bankaddr','gbp-sort','gbp-acct','gbp-iban','gbp-bic','eur-ben','eur-bankname','eur-bankaddr','eur-iban','eur-bic'];
+function buildStateSelects(){
+  const targets=['f-state','s-state'];
+  targets.forEach(id=>{
+    const sel=document.getElementById(id);
+    Object.entries(STATES).forEach(([ab,nm])=>{ const o=document.createElement('option'); o.value=ab; o.textContent=nm+' ('+ab+')'; sel.appendChild(o); });
+  });
+}
+function fillSettingsForm(){
+  S_IDS.forEach(k=>{const el=document.getElementById('s-'+k); if(el&&settings[k]!==undefined) el.value=settings[k];});
+  document.getElementById('s-usd-fednow').checked=!!settings['usd-fednow'];
+  document.getElementById('s-numyear').checked=!!settings['numyear'];
+  if(settings.country && settings.country!=='United States'){
+    document.getElementById('s-country').value='__other';
+    document.getElementById('s-countryother-wrap').style.display='block';
+    document.getElementById('s-countryother').value=settings.country;
+  }
+  if(!settings['gbp-ben']) document.getElementById('s-gbp-ben').value='Bridge Building S.A.';
+  if(!settings['eur-ben']) document.getElementById('s-eur-ben').value='Bridge Building S.A.';
+  if(!settings.platform) document.getElementById('s-platform').value='BorderPay';
+  if(!settings.provider) document.getElementById('s-provider').value='Banking Circle S.A.';
+  if(!settings.providerdesc) document.getElementById('s-providerdesc').value='a payment institution regulated in Luxembourg';
+  if(!settings.disclosure) document.getElementById('s-disclosure').value=DEFAULT_DISCLOSURE;
+}
+document.getElementById('s-country').addEventListener('change',e=>{
+  document.getElementById('s-countryother-wrap').style.display=e.target.value==='__other'?'block':'none';
+});
+async function saveSettings(){
+  S_IDS.forEach(k=>{const el=document.getElementById('s-'+k); if(el)settings[k]=el.value.trim();});
+  settings.country = document.getElementById('s-country').value==='__other'
+    ? document.getElementById('s-countryother').value.trim() : 'United States';
+  settings['usd-fednow']=document.getElementById('s-usd-fednow').checked;
+  settings['numyear']=document.getElementById('s-numyear').checked;
+  catalog=[...document.querySelectorAll('#catalog-rows .cat-row')].map(r=>({
+    name:r.querySelector('.cn').value.trim(),
+    price:parseFloat(r.querySelector('.cp').value)||0,
+    freq:r.querySelector('.cf').value
+  })).filter(x=>x.name);
+  await sset('lyc-settings',settings); await sset('lyc-catalog',catalog);
+  renderItems(); render(); toast('Settings saved');
+}
+function logoPicked(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  if(f.size>400*1024){toast('Use a logo under 400 KB');return}
+  const rd=new FileReader();
+  rd.onload=async()=>{settings.logo=rd.result; await sset('lyc-settings',settings); applyLogo(); render(); toast('Logo saved');};
+  rd.readAsDataURL(f);
+}
+async function clearLogo(){ delete settings.logo; await sset('lyc-settings',settings); applyLogo(); render(); }
+function applyLogo(){
+  ['hdr-logo','gate-logo','splash-logo'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML=settings.logo?`<img src="${settings.logo}" alt="">`:'L';
+  });
+}
+function renderCatalogRows(){
+  const w=document.getElementById('catalog-rows'); w.innerHTML='';
+  (catalog||[]).forEach((c)=>{
+    const d=document.createElement('div'); d.className='cat-row'; d.style.marginBottom='10px'; d.style.border='1px solid var(--line)'; d.style.borderRadius='9px'; d.style.padding='10px';
+    d.innerHTML=`
+      <div class="row2" style="margin-bottom:8px">
+        <input class="cn" value="${esc(c.name)}" placeholder="Service name" style="border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--ui-font)">
+        <input class="cp" type="number" step="0.01" value="${c.price}" placeholder="Default price" style="border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--ui-font)">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="cf freqsel">
+          <option value="once" ${c.freq!=='month'?'selected':''}>One-time</option>
+          <option value="month" ${c.freq==='month'?'selected':''}>Monthly</option>
+        </select>
+        <button class="btn ghost" style="padding:7px 11px;margin-left:auto" onclick="this.closest('.cat-row').remove()">\u00D7</button>
+      </div>`;
+    w.appendChild(d);
+  });
+}
+function addCatalogRow(){ catalog.push({name:'',price:'',freq:'once'}); renderCatalogRows(); }
+
+/* ================= state / city (invoice form) ================= */
+function stateChanged(){
+  const st=document.getElementById('f-state').value;
+  const csel=document.getElementById('f-city'); csel.innerHTML='';
+  document.getElementById('f-cityother-wrap').style.display='none';
+  if(!st){ csel.innerHTML='<option value="">\u2014 Select state first \u2014</option>'; scheduleAutosave(); render(); return; }
+  csel.appendChild(new Option('\u2014 Select \u2014',''));
+  (CITIES[st]||[]).forEach(c=>csel.appendChild(new Option(c,c)));
+  csel.appendChild(new Option('Other\u2026','__other'));
+  scheduleAutosave(); render();
+}
+function cityChanged(){
+  const v=document.getElementById('f-city').value;
+  document.getElementById('f-cityother-wrap').style.display=v==='__other'?'block':'none';
+  scheduleAutosave(); render();
+}
+function cityValue(){
+  const v=document.getElementById('f-city').value;
+  return v==='__other'?document.getElementById('f-cityother').value.trim():v;
+}
+function industryChanged(){
+  const v=document.getElementById('f-industry').value;
+  document.getElementById('f-industryother-wrap').style.display=v==='__other'?'block':'none';
+  scheduleAutosave();
+}
+function industryValue(){
+  const v=document.getElementById('f-industry').value;
+  return v==='__other'?(document.getElementById('f-industryother').value.trim()||'Other'):v;
+}
+function dateChanged(){
+  const d=document.getElementById('f-date').value;
+  if(d){ document.getElementById('f-due').value=new Date(new Date(d).getTime()+30*864e5).toISOString().slice(0,10); }
+  scheduleAutosave(); render();
+}
+
+/* ================= numbering (fully automatic) ================= */
+function nextNumber(){
+  const prefix=(settings.prefix||'LYC').toUpperCase(); const yr=new Date().getFullYear(); const withYear=!!settings.numyear; let max=0;
+  // regex tolerates numbers made under either format, so flipping the toggle never breaks continuity
+  const re=new RegExp('^'+prefix+'-(?:\\d{4}-)?(\\d+)$');
+  [...invoices,...archive].forEach(inv=>{
+    const m=(inv.number||'').match(re);
+    if(m) max=Math.max(max,parseInt(m[1],10));
+  });
+  return withYear ? prefix+'-'+yr+'-'+String(max+1).padStart(3,'0') : prefix+'-'+String(max+1).padStart(3,'0');
+}
+
+/* ================= invoice form ================= */
+function startNew(clearDraft){
+  editingId=null; currentStatus='unpaid';
+  items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
+  document.getElementById('f-number').value=nextNumber();
+  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-due').value=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+  ['f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-cityother','f-industryother'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-paylink').value=settings.paylink||'';
+  document.getElementById('f-state').value=''; stateChanged();
+  document.getElementById('f-industry').value='Bail Bonds'; industryChanged();
+  document.getElementById('f-currency').value='USD';
+  refreshClientSuggest(); renderItems(); render();
+  if(clearDraft){ draft=null; sset('lyc-draft',null); }
+  showTab('new');
+}
+function refreshClientSuggest(){
+  const dl=document.getElementById('client-suggest'); dl.innerHTML='';
+  [...new Set([...invoices,...archive].map(i=>i.client).filter(Boolean))].forEach(n=>{const o=document.createElement('option');o.value=n;dl.appendChild(o);});
+}
+function addItem(){ items.push({svc:'',desc:'',qty:1,rate:'',freq:'once'}); renderItems(); render(); scheduleAutosave(); }
+function removeItem(i){ items.splice(i,1); if(!items.length)items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}]; renderItems(); render(); scheduleAutosave(); }
+function svcPicked(i,val){
+  items[i].svc=val;
+  const c=(catalog||[]).find(x=>x.name===val);
+  if(c){ items[i].desc=c.name; items[i].rate=c.price; items[i].freq=c.freq||'once'; }
+  else if(val==='__custom'){ items[i].desc=''; items[i].rate=''; }
+  renderItems(); render(); scheduleAutosave();
+}
+function renderItems(){
+  const wrap=document.getElementById('items'); wrap.innerHTML='';
+  items.forEach((it,i)=>{
+    const opts=['<option value="">\u2014 Pick a service \u2014</option>']
+      .concat((catalog||[]).map(c=>`<option ${it.svc===c.name?'selected':''} value="${esc(c.name)}">${esc(c.name)}${c.freq==='month'?' (monthly)':''}</option>`))
+      .concat([`<option value="__custom" ${it.svc==='__custom'?'selected':''}>Custom line\u2026</option>`]).join('');
+    const d=document.createElement('div'); d.className='item-card';
+    d.innerHTML=`
+      <div class="row-a">
+        <select onchange="svcPicked(${i},this.value)">${opts}</select>
+        <select class="freqsel" onchange="items[${i}].freq=this.value;render();scheduleAutosave()">
+          <option value="once" ${it.freq!=='month'?'selected':''}>One-time</option>
+          <option value="month" ${it.freq==='month'?'selected':''}>Monthly</option>
+        </select>
+        <button class="del" onclick="removeItem(${i})" title="Remove">\u00D7</button>
+      </div>
+      <div class="row-b">
+        <input placeholder="Description on invoice" value="${esc(it.desc)}" oninput="items[${i}].desc=this.value;render();scheduleAutosave()">
+        <input type="number" min="0" step="1" placeholder="Qty" value="${it.qty}" oninput="items[${i}].qty=this.value;render();scheduleAutosave()">
+        <input type="number" min="0" step="0.01" placeholder="Unit price" value="${it.rate}" oninput="items[${i}].rate=this.value;render();scheduleAutosave()">
+      </div>`;
+    wrap.appendChild(d);
+  });
+}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+['f-number','f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-paylink'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{render();scheduleAutosave();});
+});
+document.getElementById('f-due').addEventListener('input',()=>{render();scheduleAutosave();});
+document.getElementById('f-currency').addEventListener('change',()=>scheduleAutosave());
+
+/* ================= autosave draft (session memory) ================= */
+function scheduleAutosave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    if(!unlocked)return;
+    const d=collect(); if(!d.number)return;
+    draft=d; await sset('lyc-draft',draft);
+    const el=document.getElementById('save-indicator'); el.textContent='Saved just now';
+    setTimeout(()=>{ if(el.textContent==='Saved just now') el.textContent=''; },2000);
+  },600);
+}
+function applyDraftToForm(d){
+  editingId=d.id&&invoices.some(x=>x.id===d.id)?d.id:null;
+  currentStatus=d.status||'unpaid';
+  document.getElementById('f-number').value=d.number;
+  document.getElementById('f-date').value=d.date;
+  document.getElementById('f-due').value=d.due;
+  document.getElementById('f-client').value=d.client;
+  document.getElementById('f-attn').value=d.attn||'';
+  document.getElementById('f-street').value=d.street||'';
+  document.getElementById('f-state').value=d.state||''; stateChanged();
+  if(d.city){
+    const csel=document.getElementById('f-city');
+    if([...csel.options].some(o=>o.value===d.city)) csel.value=d.city;
+    else{csel.value='__other';document.getElementById('f-cityother-wrap').style.display='block';document.getElementById('f-cityother').value=d.city;}
+  }
+  document.getElementById('f-zip').value=d.zip||'';
+  document.getElementById('f-clientemail').value=d.clientEmail||'';
+  document.getElementById('f-currency').value=d.currency||'USD';
+  document.getElementById('f-notes').value=d.notes||'';
+  document.getElementById('f-paylink').value=d.paylink||'';
+  const ind=d.industry||'Bail Bonds';
+  if(INDUSTRIES.includes(ind)){document.getElementById('f-industry').value=ind;}
+  else{document.getElementById('f-industry').value='__other';document.getElementById('f-industryother').value=ind;}
+  industryChanged();
+  items=(d.items&&d.items.length)?d.items.map(x=>({...x})):[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
+  renderItems(); render(); showTab('new');
+}
+
+/* ================= model ================= */
+function collect(){
+  const clean=items.filter(it=>it.desc||it.rate);
+  const total=clean.reduce((s,it)=>s+(parseFloat(it.qty)||0)*(parseFloat(it.rate)||0),0);
+  return {
+    id:editingId||('inv-'+Date.now()),
+    number:document.getElementById('f-number').value.trim(),
+    date:document.getElementById('f-date').value,
+    due:document.getElementById('f-due').value,
+    client:document.getElementById('f-client').value.trim(),
+    industry:industryValue(),
+    attn:document.getElementById('f-attn').value.trim(),
+    street:document.getElementById('f-street').value.trim(),
+    state:document.getElementById('f-state').value,
+    city:cityValue(), zip:document.getElementById('f-zip').value.trim(),
+    clientEmail:document.getElementById('f-clientemail').value.trim(),
+    currency:document.getElementById('f-currency').value,
+    items:clean.map(x=>({...x})), total,
+    notes:document.getElementById('f-notes').value,
+    paylink:document.getElementById('f-paylink').value.trim(),
+    status:currentStatus
+  };
+}
+async function saveInvoice(){
+  const inv=collect();
+  if(!inv.client){toast('Add a client name');return}
+  const idx=invoices.findIndex(x=>x.id===inv.id);
+  if(idx>=0)invoices[idx]=inv; else invoices.unshift(inv);
+  editingId=inv.id;
+  await sset('lyc-invoices',invoices);
+  draft=null; await sset('lyc-draft',null);
+  renderList(); renderClients(); refreshClientSuggest();
+  toast('Saved '+inv.number+' \u2014 client record updated');
+}
+function openInvoice(id,fromArchive){
+  const src=fromArchive?archive:invoices;
+  const inv=src.find(x=>x.id===id); if(!inv)return;
+  applyDraftToForm({...inv,id:fromArchive?null:inv.id});
+}
+async function toggleStatus(id,ev){
+  ev.stopPropagation();
+  const inv=invoices.find(x=>x.id===id); if(!inv)return;
+  inv.status=inv.status==='paid'?'unpaid':'paid';
+  if(editingId===id)currentStatus=inv.status;
+  await sset('lyc-invoices',invoices); renderList(); render();
+}
+
+/* ================= guarded delete + archive ================= */
+function askDelete(id,ev,mode){
+  ev.stopPropagation();
+  pendingDelete=id; pendingDeleteMode=mode;
+  document.getElementById('del-title').textContent=mode==='purge'?'Permanently delete?':'Archive this invoice?';
+  document.getElementById('del-text').innerHTML = mode==='purge'
+    ? 'This removes the invoice <strong>permanently</strong>. Type <strong>delete</strong> to confirm.'
+    : 'Type <strong>delete</strong> to confirm. The invoice moves to the Archive \u2014 nothing is lost.';
+  document.getElementById('del-input').value='';
+  document.getElementById('del-overlay').classList.remove('hidden');
+  document.getElementById('del-input').focus();
+}
+function closeDelete(){ document.getElementById('del-overlay').classList.add('hidden'); pendingDelete=null; }
+async function confirmDelete(){
+  if(document.getElementById('del-input').value.trim().toLowerCase()!=='delete'){toast('Type the word delete to confirm');return}
+  if(pendingDeleteMode==='archive'){
+    const inv=invoices.find(x=>x.id===pendingDelete);
+    if(inv){ archive.unshift(inv); invoices=invoices.filter(x=>x.id!==pendingDelete);
+      await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
+      if(editingId===pendingDelete)startNew(true); toast('Moved to Archive'); }
+  } else {
+    archive=archive.filter(x=>x.id!==pendingDelete);
+    await sset('lyc-archive',archive); toast('Permanently deleted');
+  }
+  closeDelete(); renderList(); renderArchive(); renderClients();
+}
+async function restoreInvoice(id,ev){
+  ev.stopPropagation();
+  const inv=archive.find(x=>x.id===id); if(!inv)return;
+  invoices.unshift(inv); archive=archive.filter(x=>x.id!==id);
+  await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
+  renderList(); renderArchive(); renderClients(); toast('Restored '+inv.number);
+}
+
+/* ================= lists ================= */
+function renderList(){
+  const body=document.getElementById('list-body'); body.innerHTML='';
+  document.getElementById('list-empty').style.display=invoices.length?'none':'block';
+  invoices.forEach(inv=>{
+    const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
+    tr.innerHTML=`<td class="mono">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
+      <td class="mono">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
+      <td><button class="pill ${inv.status==='paid'?'paid':'unpaid'}" onclick="toggleStatus('${inv.id}',event)">${inv.status}</button></td>
+      <td><button class="pill gray" onclick="askDelete('${inv.id}',event,'archive')">delete</button></td>`;
+    body.appendChild(tr);
+  });
+}
+function renderArchive(){
+  const body=document.getElementById('archive-body'); body.innerHTML='';
+  document.getElementById('archive-empty').style.display=archive.length?'none':'block';
+  archive.forEach(inv=>{
+    const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,true);
+    tr.innerHTML=`<td class="mono">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
+      <td class="mono">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
+      <td><button class="pill gray" onclick="restoreInvoice('${inv.id}',event)">restore</button></td>
+      <td><button class="pill gray" style="color:var(--red)" onclick="askDelete('${inv.id}',event,'purge')">purge</button></td>`;
+    body.appendChild(tr);
+  });
+}
+function renderClients(){
+  const map={};
+  invoices.forEach(inv=>{
+    if(!inv.client)return;
+    const k=inv.client.toLowerCase();
+    if(!map[k])map[k]={name:inv.client,attn:'',loc:'',count:0,billed:{},last:'',industry:inv.industry||'Other'};
+    const c=map[k]; c.count++; c.industry=inv.industry||c.industry;
+    if(inv.attn)c.attn=inv.attn;
+    const loc=[inv.city,inv.state].filter(Boolean).join(', '); if(loc)c.loc=loc;
+    c.billed[inv.currency]=(c.billed[inv.currency]||0)+inv.total;
+    if(!c.last||inv.date>c.last)c.last=inv.date;
+  });
+  const rows=Object.values(map);
+  const wrap=document.getElementById('clients-groups'); wrap.innerHTML='';
+  document.getElementById('clients-empty').style.display=rows.length?'none':'block';
+  const groups={};
+  rows.forEach(c=>{ (groups[c.industry]=groups[c.industry]||[]).push(c); });
+  const order=[...INDUSTRIES.filter(i=>groups[i]),...Object.keys(groups).filter(i=>!INDUSTRIES.includes(i))];
+  order.forEach(ind=>{
+    const list=groups[ind].sort((a,b)=>b.last.localeCompare(a.last));
+    const sec=document.createElement('div');
+    const rowsHtml=list.map(c=>{
+      const billed=Object.entries(c.billed).map(([cur,amt])=>SYM[cur]+amt.toFixed(0)).join(' + ');
+      return `<tr><td><strong>${esc(c.name)}</strong></td><td>${esc(c.attn)||'\u2014'}</td><td>${esc(c.loc)||'\u2014'}</td>
+        <td>${c.count}</td><td class="mono">${billed}</td><td>${c.last||'\u2014'}</td></tr>`;
+    }).join('');
+    sec.innerHTML=`<div class="sectionhd">${esc(ind)} <span class="cnt">(${list.length})</span></div>
+      <table class="list"><thead><tr><th>Client</th><th>Contact</th><th>Location</th><th>Invoices</th><th>Billed</th><th>Last</th></tr></thead>
+      <tbody>${rowsHtml}</tbody></table>`;
+    wrap.appendChild(sec);
+  });
+}
+
+/* ================= bank + EPC ================= */
+function epcPayload(inv){
+  const ben=(settings['eur-ben']||'').slice(0,70);
+  const iban=(settings['eur-iban']||'').replace(/\s/g,'');
+  const bic=(settings['eur-bic']||'').replace(/\s/g,'');
+  if(!ben||!iban||!inv.total)return null;
+  return ['BCD','002','1','SCT',bic,ben,iban,'EUR'+inv.total.toFixed(2),'','',('Invoice '+inv.number).slice(0,140)].join('\n');
+}
+function kv(pairs){
+  return '<div class="kv">'+pairs.filter(p=>p[1]).map(p=>`<div class="kk">${p[0]}</div><div class="vv ${p[2]||''}">${esc(p[1])}</div>`).join('')+'</div>';
+}
+function bankBlock(name,addr){ return [name,addr].filter(Boolean).join('\n'); }
+function fillTemplate(tpl,vars){
+  return tpl.replace(/\{(\w+)\}/g,(m,k)=>vars[k]!==undefined?vars[k]:m);
+}
+
+/* ================= render document ================= */
+function fmtDate(d){if(!d)return'\u2014';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});}
+function render(){
+  const inv=collect();
+  const legal=settings.name||'LYCORE GROUP LLC';
+  const platform=settings.platform||'our payment platform';
+  const provider=settings.provider||'our payment institution';
+  const providerDesc=settings.providerdesc||'a licensed payment institution';
+  const sym=SYM[inv.currency];
+  const cur=inv.currency;
+
+  const clientAddr=[inv.street,[inv.city,inv.state].filter(Boolean).join(', ')+(inv.zip?' '+inv.zip:''),'United States'].filter(Boolean);
+  const issuerAddr=[settings.street,[settings.city,settings.state].filter(Boolean).join(', ')+(settings.zip?' '+settings.zip:''),settings.country||'United States'].filter(Boolean);
+
+  const rowsHtml=inv.items.map(it=>{
+    const amt=(parseFloat(it.qty)||0)*(parseFloat(it.rate)||0);
+    const freqTag=it.freq==='month'?'<div class="freq">Billed monthly</div>':'';
+    return `<tr><td>${esc(it.desc)||'&nbsp;'}${freqTag}</td><td class="r mono">${it.qty||''}</td>
+      <td class="r mono">${it.rate?sym+parseFloat(it.rate).toFixed(2)+(it.freq==='month'?'/mo':''):''}</td><td class="r mono">\u2014</td>
+      <td class="r mono">${amt?sym+amt.toFixed(2)+(it.freq==='month'?'/mo':''):''}</td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="color:var(--gray)">Pick a service on the left to add lines</td></tr>';
+
+  let cols=[], mismatchBen=null;
+  if(cur==='USD'){
+    const ben=settings['usd-ben'];
+    if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
+    if(settings['usd-acct']||ben){
+      cols.push({t:'ACH transfer',s:'For payments from US bank accounts',proc:'Typically arrives in 1\u20133 business days.',
+        p:[['Reference',inv.number,'mono'],['Account holder',ben],['Account type',settings['usd-type']],['Account number',settings['usd-acct'],'mono'],['ACH routing',settings['usd-ach'],'mono'],['Bank',settings['usd-bank']]]});
+      cols.push({t:'Wire'+(settings['usd-fednow']?' & FedNow':''),s:settings['usd-fednow']?'Same-day wire or instant FedNow payment':'For same-day wire payments',
+        proc:settings['usd-fednow']?'Wire typically arrives same business day; FedNow settles instantly, 24/7, when the sending bank supports it.':'Typically arrives the same business day when sent before your bank\u2019s cutoff time.',
+        p:[['Reference',inv.number,'mono'],['Account holder',ben],['Account number',settings['usd-acct'],'mono'],['Wire routing',settings['usd-wire']||settings['usd-ach'],'mono'],['Bank',settings['usd-bank']]]});
+    }
+  } else if(cur==='GBP'){
+    const ben=settings['gbp-ben'];
+    const bank=bankBlock(settings['gbp-bankname'],settings['gbp-bankaddr']);
+    if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
+    if(settings['gbp-acct']||settings['gbp-iban']||ben){
+      cols.push({t:'Local bank details',s:'Pay GBP from bank accounts inside the UK \u2014 via Faster Payments',proc:'Typically arrives within a few hours; some banks may take up to 2 business days.',
+        p:[['Reference',inv.number,'mono'],['Account holder',ben],['Sort code',settings['gbp-sort'],'mono'],['Account number',settings['gbp-acct'],'mono'],['IBAN',settings['gbp-iban'],'mono'],['Bank',bank]]});
+      cols.push({t:'International bank details',s:'Pay GBP from bank accounts outside the UK \u2014 via SWIFT',proc:'Typically takes 1\u20135 business days depending on intermediary banks.',
+        p:[['Reference',inv.number,'mono'],['Account holder',ben],['Swift/BIC',settings['gbp-bic'],'mono'],['IBAN',settings['gbp-iban'],'mono'],['Bank',bank]]});
+    }
+  } else {
+    const ben=settings['eur-ben'];
+    const bank=bankBlock(settings['eur-bankname'],settings['eur-bankaddr']);
+    if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
+    if(settings['eur-iban']||ben){
+      cols.push({t:'SEPA transfer',s:'Pay EUR from any European bank account \u2014 via SEPA Credit Transfer',proc:'Typically arrives within 1 business day.',
+        p:[['Reference',inv.number,'mono'],['Account holder',ben],['IBAN',settings['eur-iban'],'mono'],['Swift/BIC',settings['eur-bic'],'mono'],['Bank',bank]]});
+    }
+  }
+  const epc=cur==='EUR'?epcPayload(inv):null;
+  const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="cs" style="margin-top:8px;margin-bottom:0">${esc(c.proc)}</div>`:''}</div>`).join('')
+    +(epc?`<div class="col qrcol"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox"></div></div>`:'');
+
+
+  document.getElementById('doc').innerHTML=`
+    <div class="top">
+      <div class="logo-row">
+        <div class="logo-box">${settings.logo?`<img src="${settings.logo}" alt="">`:'L'}</div>
+        <div class="word-invoice">Invoice</div>
+      </div>
+      <div class="top-meta">
+        <div><div class="k">Invoice number</div><div class="mono">${esc(inv.number)}</div></div>
+        <div><div class="k">Issue date</div><div>${fmtDate(inv.date)}</div></div>
+      </div>
+    </div>
+
+    <div class="parties">
+      <div>
+        <div class="hd">Billed to</div>
+        <div class="v">${esc(inv.client)||'\u2014'}${inv.attn?'\nAttn: '+esc(inv.attn):''}${clientAddr.length?'\n'+clientAddr.map(esc).join('\n'):''}${inv.clientEmail?'\n'+esc(inv.clientEmail):''}</div>
+      </div>
+      <div>
+        <div class="hd">Issued by</div>
+        <div class="v">${esc(legal)}${issuerAddr.length?'\n'+issuerAddr.map(esc).join('\n'):''}</div>
+      </div>
+    </div>
+
+    <div class="headline">${inv.status==='paid'
+      ?`<span class="amt">${sym}${inv.total.toFixed(2)}</span> ${cur}<span class="paidline">Paid</span>`
+      :`<span class="amt">${sym}${inv.total.toFixed(2)}</span> ${cur} due by ${fmtDate(inv.due)}`}</div>
+
+    <table class="lines">
+      <thead><tr><th>Product or service</th><th class="r">Quantity</th><th class="r">Unit price</th><th class="r">Tax</th><th class="r">Total</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="totals">
+      <div class="trow"><span>Total excluding tax</span><span class="mono">${sym}${inv.total.toFixed(2)}</span></div>
+      <div class="trow"><span>Total tax</span><span class="mono">${sym}0.00</span></div>
+      <div class="trow grand"><span>Amount due</span><span class="mono">${sym}${inv.total.toFixed(2)}</span></div>
+    </div>
+
+    ${inv.paylink?`<div class="stripe-cta"><a href="${esc(inv.paylink)}" target="_blank" rel="noopener">Pay online \u2192</a></div>`:''}
+
+    ${cols.length?`
+    <div class="ways">
+      <div class="hd">Ways to pay</div>
+      <div class="cols">${colsHtml}</div>
+      ${mismatchBen?`<div class="partner-note"><strong>Account holder note.</strong> ${esc(fillTemplate(settings.disclosure||DEFAULT_DISCLOSURE,{legal:legal,platform:platform,provider:provider,providerdesc:providerDesc,holder:mismatchBen,number:inv.number}))}</div>`:''}
+      <div class="partner-note" style="border-left-color:var(--line)">Processing times above are estimates from our banking partners and can vary by bank. If a payment doesn\u2019t reflect within the window shown, reach out and we\u2019ll help track it down.</div>
+    </div>`:`<div class="partner-note" style="margin-top:40px">Add your ${cur} account details in Settings to print payment instructions here.</div>`}
+
+    ${inv.notes?`<div class="foot-notes">${esc(inv.notes)}</div>`:''}
+
+    <footer>
+      <span>${esc(legal)}</span>
+      <span>${[settings.phone?esc(settings.phone):'',settings.email?esc(settings.email):'',settings.web?`<a href="#" onclick="openLink('${esc(settings.web)}');return false;">${esc(settings.web)}</a>`:''].filter(Boolean).join(' \u00B7 ')}</span>
+    </footer>`;
+
+  if(epc&&window.QRCode){
+    try{ new QRCode(document.getElementById('qrbox'),{text:epc,width:104,height:104,correctLevel:QRCode.CorrectLevel.M,colorDark:'#0F1720',colorLight:'#FFFFFF'}); }catch(e){}
+  }
+}
+function openLink(url){
+  const full=/^https?:\/\//i.test(url)?url:'https://'+url;
+  if(window.api && window.api.openExternal) window.api.openExternal(full);
+}
+
+/* ================= print ================= */
+function printInvoice(){
+  const inv=collect();
+  const old=document.title;
+  const d=inv.date||new Date().toISOString().slice(0,10);
+  document.title=[inv.client||'Client',d,inv.number].filter(Boolean).join(' \u2014 ');
+  window.print();
+  setTimeout(()=>{document.title=old;},600);
+}
+
+/* ================= tabs & toast ================= */
+function showTab(t){
+  ['dashboard','new','list','clients','archive','settings'].forEach(x=>{
+    document.getElementById('pane-'+x).style.display=x===t?'block':'none';
+    document.getElementById('tab-'+x).classList.toggle('active',x===t);
+  });
+  if(t==='dashboard')renderDashboard();
+  if(t==='list')renderList(); if(t==='clients')renderClients(); if(t==='archive')renderArchive();
+}
+let toastTimer;
+function toast(m){
+  const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+/* ================= updates ================= */
+let updateStage='idle'; // idle -> available -> downloading -> ready
+function updateClicked(){
+  if(updateStage==='available'){
+    updateStage='downloading';
+    document.getElementById('update-btn').textContent='Downloading\u2026';
+    window.updater.download();
+  } else if(updateStage==='ready'){
+    window.updater.install();
+  }
+}
+if(window.updater){
+  window.updater.onAvailable((info)=>{
+    updateStage='available';
+    const b=document.getElementById('update-btn');
+    b.style.display='inline-block';
+    b.textContent='Update available'+(info&&info.version?' (v'+info.version+')':'')+' \u2014 click to download';
+  });
+  window.updater.onReady(()=>{
+    updateStage='ready';
+    const b=document.getElementById('update-btn');
+    b.textContent='Restart to install update';
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>
