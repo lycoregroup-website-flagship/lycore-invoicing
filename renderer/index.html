@@ -133,8 +133,8 @@
   .doc .qrcol{max-width:150px}
   .doc .qrcol #qrbox{width:104px;height:104px;margin-top:6px}
   .doc .partner-note{font-family:var(--ui-font);font-size:11.5px;color:var(--gray);margin-top:20px;line-height:1.6;padding:12px 14px;background:#FAFAFB;border-left:3px solid var(--orange);border-radius:0 6px 6px 0}
-  .doc .stripe-cta{margin-top:22px}
-  .doc .stripe-cta a{font-family:var(--ui-font);display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px}
+  .doc .stripe-cta{margin-top:22px;font-family:var(--ui-font)}
+  .doc .stripe-cta a{color:var(--orange);text-decoration:underline;font-size:13.5px;font-weight:600}
   .doc .foot-notes{margin-top:26px;font-size:13px;white-space:pre-line}
   .doc footer{font-family:var(--ui-font);margin-top:52px;padding-top:14px;border-top:1px solid var(--line);font-size:11px;color:var(--gray);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
   .doc footer a{color:var(--gray);text-decoration:underline}
@@ -284,6 +284,7 @@
   <button id="tab-reports" onclick="showTab('reports')">Reports</button>
   <button id="tab-clients" onclick="showTab('clients')">Clients</button>
   <button id="tab-archive" onclick="showTab('archive')">Archive</button>
+  <button id="tab-reference" onclick="showTab('reference')">Reference</button>
   <button id="tab-settings" onclick="showTab('settings')">Settings</button>
 </nav>
 
@@ -504,6 +505,57 @@
         <tbody id="expense-archive-body"></tbody>
       </table>
       <div class="empty" id="expense-archive-empty" style="display:none">Nothing archived.</div>
+    </div>
+
+    <!-- ============ REFERENCE ============ -->
+    <div id="pane-reference" style="display:none">
+      <h2 class="sec">Reference</h2>
+      <p class="note" style="margin:0 0 18px">The business facts you keep having to remember, in one place. Ask me to add to this any time \u2014 it ships in the next update.</p>
+
+      <div class="sectionhd">Payment timing \u2014 what to tell a client if they ask</div>
+      <p class="note" style="margin-bottom:14px">
+        <b>ACH:</b> 1\u20133 business days.<br>
+        <b>Wire (USD):</b> same business day if sent before the bank's cutoff.<br>
+        <b>FedNow:</b> instant, 24/7, if the sender's bank supports it.<br>
+        <b>Faster Payments (GBP, local UK):</b> a few hours, occasionally up to 2 business days.<br>
+        <b>SWIFT (GBP, international):</b> 1\u20135 business days depending on intermediary banks.<br>
+        <b>SEPA (EUR):</b> within 1 business day.
+      </p>
+
+      <div class="sectionhd">Why the GBP/EUR account holder isn't "LYCORE GROUP LLC"</div>
+      <p class="note" style="margin-bottom:14px">Those accounts are issued through BorderPay, via its regulated banking partner Banking Circle S.A. (Luxembourg). The account holder name on file is Bridge Building S.A. \u2014 that's normal for this kind of payment infrastructure, and money still lands with LYCORE GROUP LLC. The invoice prints an explanation automatically whenever this applies; edit the wording in Settings any time.</p>
+
+      <div class="sectionhd">How Stripe subscriptions actually bill</div>
+      <p class="note" style="margin-bottom:14px">Whatever date a client first pays through a Stripe link becomes their permanent monthly billing date \u2014 charged automatically forever after, no action from you. Card failures get retried automatically by Stripe (turn on Smart Retries in Stripe \u2192 Settings \u2192 Billing to auto-cancel after repeated failures). Wire/bank clients aren't automatic \u2014 check the Dashboard's "Needs attention" list and mark them paid yourself.</p>
+
+      <div class="sectionhd">Owner draws vs. real expenses</div>
+      <p class="note" style="margin-bottom:14px">As a single-member LLC, all profit is taxable to you whether or not you actually withdraw it. A real expense (software, a client lunch, contractor pay) reduces taxable profit. An owner draw does not \u2014 it's just money moving from the business to you. That's why the app tracks them separately in Reports. This isn't tax advice \u2014 confirm treatment with an accountant given the cross-border setup.</p>
+
+      <div class="sectionhd">Reputation Management \u2014 what GoHighLevel actually does</div>
+      <p class="note" style="margin-bottom:14px">Automated review requests and responses only work on <b>Google Business Profile and Facebook</b> \u2014 sent by SMS and email. Reviews from 50+ other sites (Yelp, BBB, TripAdvisor, and more) sync in for visibility but aren't actively requested. Don't promise a client active review-getting on Yelp specifically \u2014 it's monitor-only.</p>
+
+      <div class="sectionhd">Voice Receptionist \u2014 what Bland AI actually does</div>
+      <p class="note" style="margin-bottom:14px">Answers calls 24/7, looks the caller up in your Notion CRM by phone number, logs a summary. It does <b>not</b> natively book appointments (needs a separate calendar tool wired in \u2014 not currently built) and live transfer-to-a-human is gated to Bland's higher paid tier. Don't promise either to a client unless that changes.</p>
+
+      <div class="sectionhd">Brand rules \u2014 anything client-facing</div>
+      <p class="note" style="margin-bottom:14px">
+        LYCORE, always all caps. Never "AI" in client-facing copy \u2014 say "voice receptionist" or "voice agent." No exclamation marks. Avoid: solutions, seamless, cutting-edge, leverage, streamline, revolutionary, game-changing.
+      </p>
+
+      <div class="sectionhd">Your live Stripe products</div>
+      <div class="note" style="margin-bottom:6px">
+        Voice Receptionist: Setup \u2014 $2,999 one-time<br>
+        Voice Receptionist: Monthly Service \u2014 $499/mo<br>
+        Voice Receptionist: Monthly Service + Chatbot \u2014 $699/mo<br>
+        Website Build \u2014 $697 one-time<br>
+        Website Maintenance: Monthly \u2014 $89/mo<br>
+        Reputation Management: Monthly \u2014 $349/mo<br>
+        Missed Call Text Back: Monthly \u2014 $199/mo
+      </div>
+      <p class="note">Prices live in Stripe \u2014 if you change one there, update it here too so this stays accurate. Ask me to keep this in sync going forward.</p>
+
+      <div class="sectionhd">Back up your data</div>
+      <p class="note">File \u2192 Back Up Data saves everything (invoices, clients, expenses, settings) to one file \u2014 keep a copy somewhere off this computer. Nothing here syncs to the cloud yet, so this file is your only safety net if this machine has a problem.</p>
     </div>
 
     <!-- ============ SETTINGS ============ -->
@@ -1607,7 +1659,7 @@ function printInvoice(){
 
 /* ================= tabs & toast ================= */
 function showTab(t){
-  ['dashboard','new','list','expenses','reports','clients','archive','settings'].forEach(x=>{
+  ['dashboard','new','list','expenses','reports','reference','clients','archive','settings'].forEach(x=>{
     document.getElementById('pane-'+x).style.display=x===t?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active',x===t);
   });
@@ -1644,6 +1696,17 @@ if(window.updater){
     updateStage='ready';
     const b=document.getElementById('update-btn');
     b.textContent='Restart to install update';
+  });
+}
+
+if(window.menuBridge){
+  window.menuBridge.onNewInvoice(()=>startNew(true));
+  window.menuBridge.onPrint(()=>printInvoice());
+  window.menuBridge.onToggleDark(()=>toggleDark());
+  window.menuBridge.onToast((msg)=>toast(msg));
+  window.menuBridge.onRestored(async()=>{
+    toast('Backup restored \u2014 reloading\u2026');
+    setTimeout(()=>location.reload(),900);
   });
 }
 

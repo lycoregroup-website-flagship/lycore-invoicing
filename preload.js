@@ -19,3 +19,11 @@ contextBridge.exposeInMainWorld('updater', {
   onAvailable: (cb) => ipcRenderer.on('update:available', (e, info) => cb(info)),
   onReady: (cb) => ipcRenderer.on('update:ready', () => cb())
 });
+
+contextBridge.exposeInMainWorld('menuBridge', {
+  onNewInvoice: (cb) => ipcRenderer.on('menu:new-invoice', () => cb()),
+  onPrint: (cb) => ipcRenderer.on('menu:print', () => cb()),
+  onToggleDark: (cb) => ipcRenderer.on('menu:toggle-dark', () => cb()),
+  onToast: (cb) => ipcRenderer.on('menu:toast', (e, msg) => cb(msg)),
+  onRestored: (cb) => ipcRenderer.on('menu:restored', () => cb())
+});
