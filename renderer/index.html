@@ -31,11 +31,11 @@
   body.dark .doc .k,body.dark .doc .hd,body.dark .doc .kk,body.dark .doc .cs,body.dark .doc .ways .hd{ color:#5B6672; }
   body.dark .doc-wrap{ background:#0d1013; }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{font-family:var(--ui-font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:var(--ui-font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;height:100vh}
   .mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
 
-  header.app{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:1px solid var(--line)}
+  header.app{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--white);border-bottom:1px solid var(--line)}
   .brandmark{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:14px}
   .brandmark .dot{width:26px;height:26px;border-radius:7px;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
   .brandmark .dot img{width:100%;height:100%;object-fit:cover}
@@ -44,13 +44,16 @@
   header.app .lock{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:12px;color:var(--gray);cursor:pointer;font-family:inherit}
   header.app .lock:hover{border-color:var(--gray)}
 
-  nav.tabs{display:flex;gap:4px;padding:10px 24px 0;background:var(--white);border-bottom:1px solid var(--line)}
+  nav.tabs{flex:0 0 auto;display:flex;gap:4px;padding:10px 24px 0;background:var(--white);border-bottom:1px solid var(--line)}
   nav.tabs button{background:none;border:none;color:var(--gray);padding:10px 16px 12px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;border-radius:8px 8px 0 0}
   nav.tabs button:hover{color:var(--ink)}
   nav.tabs button.active{color:var(--orange);border-bottom-color:var(--orange)}
 
-  main{display:grid;grid-template-columns:minmax(360px,470px) 1fr;min-height:calc(100vh - 110px)}
-  .panel{padding:24px;overflow-y:auto;max-height:calc(100vh - 110px);background:var(--white);border-right:1px solid var(--line)}
+  /* main fills exactly the remaining space below header+nav — never grows past the viewport.
+     Its two children (.panel and .doc-wrap) each scroll independently within that fixed height,
+     so scrolling one never drags the other or the page itself along with it. */
+  main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(360px,470px) 1fr;overflow:hidden}
+  .panel{min-height:0;height:100%;padding:24px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line)}
 
   h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin:26px 0 12px;font-weight:700}
   h2.sec:first-child{margin-top:0}
@@ -97,7 +100,7 @@
   .sectionhd .cnt{font-weight:400;color:var(--gray)}
 
   /* ---------- invoice document ---------- */
-  .doc-wrap{padding:28px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg)}
+  .doc-wrap{min-height:0;height:100%;overflow-y:auto;padding:28px;display:flex;justify-content:center;align-items:flex-start;background:var(--bg)}
   .doc{font-family:var(--doc-font);background:#fff;color:var(--ink);width:100%;max-width:780px;padding:52px 58px;min-height:1000px;box-shadow:0 8px 30px rgba(15,23,32,.10);border-radius:4px;font-size:14px;line-height:1.55}
   .doc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
   .doc .logo-row{display:flex;align-items:center;gap:14px}
@@ -175,6 +178,16 @@
   .recoverybox{background:#FAFAFB;border:1px dashed var(--orange);border-radius:10px;padding:16px;text-align:center;margin-bottom:14px}
   .recoverybox .code{font-family:ui-monospace,monospace;font-size:18px;font-weight:700;letter-spacing:.06em;color:var(--ink);margin:10px 0;word-break:break-all}
   .linkbtn{background:none;border:none;color:var(--orange);font-size:12.5px;cursor:pointer;font-family:var(--ui-font);text-decoration:underline;padding:0}
+
+  /* ---------- print: only the invoice document, laid out for real paper pagination ---------- */
+  @media print{
+    html,body{height:auto;overflow:visible}
+    body{display:block}
+    header.app,nav.tabs,.panel,#splash,.overlay,.toast{display:none!important}
+    main{display:block;overflow:visible}
+    .doc-wrap{height:auto;overflow:visible;padding:0;background:#fff;display:block}
+    .doc{box-shadow:none;max-width:none;min-height:0;padding:0;margin:0 auto;border-radius:0}
+  }
 </style>
 </head>
 <body>
@@ -327,6 +340,8 @@
       <h2 class="sec">Services</h2>
       <div id="items"></div>
       <button class="btn ghost" onclick="addItem()">+ Add service line</button>
+      <div class="field" style="margin-top:13px"><label>Tax rate for this invoice (%, optional)</label><input id="f-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
+      <p class="note" style="margin-top:-6px">Leave blank or 0 and no tax line prints at all \u2014 most cross-border service invoices don't need one. Set a rate only if this specific bill is taxable. Pre-fills from your default in Settings.</p>
 
       <h2 class="sec">Payment link</h2>
       <div class="field"><label>Checkout / Stripe link for this invoice (optional)</label><input id="f-paylink" placeholder="https://checkout.stripe.com/..."></div>
@@ -419,10 +434,17 @@
       <button class="btn ghost" onclick="addCatalogRow()">+ Add service</button>
       <p class="note">Billing frequency (one-time / monthly) per service. Default prices are your starting point — always editable per invoice.</p>
 
+      <h2 class="sec">Tax</h2>
+      <div class="field"><label>Default tax rate (%, optional)</label><input id="s-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
+      <p class="note">Pre-fills new invoices. Leave at 0 for none \u2014 no tax line prints unless a rate is actually set.</p>
+
       <h2 class="sec">Payment link</h2>
       <div class="field"><label>Default checkout / Stripe link (optional)</label><input id="s-paylink" placeholder="https://checkout.stripe.com/..."></div>
       <p class="note">Pre-fills the "Payment link" field on every new invoice. Since Stripe Payment Links are priced per link, this works best as a general "pay us" link, and you paste an invoice-specific link (matching that invoice's exact total, built with Stripe's multi-item checkout) directly on the invoice when the amount is exact — that field always overrides this default.</p>
 
+      <h2 class="sec">Bank fee note</h2>
+      <div class="field"><textarea id="s-feenote" placeholder="International wire and SWIFT transfers may incur a receiving-bank fee, typically deducted from the amount received."></textarea></div>
+      <p class="note">Prints once under "Ways to pay" when this is filled in \u2014 the standard reason a client's bank sometimes deducts a small amount before it lands with you. Leave blank to omit.</p>
 
       <h2 class="sec">Payment provider</h2>
       <div class="field"><label>Platform / infrastructure partner</label><input id="s-platform" placeholder="BorderPay"></div>
@@ -691,7 +713,7 @@ async function removePin(){
 
 /* ================= settings ================= */
 const DEFAULT_DISCLOSURE = "This account is issued through {platform}, LYCORE GROUP LLC's payment infrastructure partner, via its regulated banking partner {provider}, {providerdesc}. The account holder name shown, {holder}, reflects this banking relationship \u2014 funds received are settled directly to LYCORE GROUP LLC. Please use the account details exactly as shown and reference invoice {number}.";
-const S_IDS=['name','street','city','state','zip','phone','email','web','prefix','platform','provider','providerdesc','disclosure','paylink','usd-ben','usd-bank','usd-acct','usd-ach','usd-wire','usd-type','gbp-ben','gbp-bankname','gbp-bankaddr','gbp-sort','gbp-acct','gbp-iban','gbp-bic','eur-ben','eur-bankname','eur-bankaddr','eur-iban','eur-bic'];
+const S_IDS=['name','street','city','state','zip','phone','email','web','prefix','platform','provider','providerdesc','disclosure','paylink','taxrate','feenote','usd-ben','usd-bank','usd-acct','usd-ach','usd-wire','usd-type','gbp-ben','gbp-bankname','gbp-bankaddr','gbp-sort','gbp-acct','gbp-iban','gbp-bic','eur-ben','eur-bankname','eur-bankaddr','eur-iban','eur-bic'];
 function buildStateSelects(){
   const targets=['f-state','s-state'];
   targets.forEach(id=>{
@@ -708,16 +730,51 @@ function fillSettingsForm(){
     document.getElementById('s-countryother-wrap').style.display='block';
     document.getElementById('s-countryother').value=settings.country;
   }
-  if(!settings['gbp-ben']) document.getElementById('s-gbp-ben').value='Bridge Building S.A.';
-  if(!settings['eur-ben']) document.getElementById('s-eur-ben').value='Bridge Building S.A.';
-  if(!settings.platform) document.getElementById('s-platform').value='BorderPay';
-  if(!settings.provider) document.getElementById('s-provider').value='Banking Circle S.A.';
-  if(!settings.providerdesc) document.getElementById('s-providerdesc').value='a payment institution regulated in Luxembourg';
-  if(!settings.disclosure) document.getElementById('s-disclosure').value=DEFAULT_DISCLOSURE;
+  // Defaults below are written into BOTH the visible field and the settings object itself,
+  // so the invoice preview is correct immediately \u2014 not only after the field is touched
+  // and Settings is explicitly saved.
+  const defaults={
+    'gbp-ben':'Bridge Building S.A.', 'eur-ben':'Bridge Building S.A.',
+    'platform':'BorderPay', 'provider':'Banking Circle S.A.',
+    'providerdesc':'a payment institution regulated in Luxembourg',
+    'disclosure':DEFAULT_DISCLOSURE
+  };
+  Object.entries(defaults).forEach(([k,v])=>{
+    if(!settings[k]){ settings[k]=v; const el=document.getElementById('s-'+k); if(el) el.value=v; }
+  });
 }
 document.getElementById('s-country').addEventListener('change',e=>{
   document.getElementById('s-countryother-wrap').style.display=e.target.value==='__other'?'block':'none';
 });
+
+/* ================= settings live-apply =================
+   Matches the invoice form's behavior: typing updates the preview immediately and
+   autosaves in the background, instead of requiring an explicit "Save settings" click
+   before changes take effect. */
+let settingsSaveTimer=null;
+function applySettingsFieldLive(key,value){
+  settings[key]=value;
+  render();
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer=setTimeout(()=>{ sset('lyc-settings',settings); },500);
+}
+function wireSettingsLiveApply(){
+  S_IDS.forEach(k=>{
+    const el=document.getElementById('s-'+k); if(!el) return;
+    const evt=(el.tagName==='SELECT')?'change':'input';
+    el.addEventListener(evt,()=>applySettingsFieldLive(k, el.value.trim()));
+  });
+  document.getElementById('s-usd-fednow').addEventListener('change',()=>applySettingsFieldLive('usd-fednow', document.getElementById('s-usd-fednow').checked));
+  document.getElementById('s-numyear').addEventListener('change',()=>applySettingsFieldLive('numyear', document.getElementById('s-numyear').checked));
+  document.getElementById('s-country').addEventListener('change',()=>{
+    const v=document.getElementById('s-country').value;
+    applySettingsFieldLive('country', v==='__other'?document.getElementById('s-countryother').value.trim():'United States');
+  });
+  document.getElementById('s-countryother').addEventListener('input',()=>{
+    if(document.getElementById('s-country').value==='__other') applySettingsFieldLive('country', document.getElementById('s-countryother').value.trim());
+  });
+}
+wireSettingsLiveApply();
 async function saveSettings(){
   S_IDS.forEach(k=>{const el=document.getElementById('s-'+k); if(el)settings[k]=el.value.trim();});
   settings.country = document.getElementById('s-country').value==='__other'
@@ -823,6 +880,7 @@ function startNew(clearDraft){
   document.getElementById('f-due').value=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
   ['f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-cityother','f-industryother'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-paylink').value=settings.paylink||'';
+  document.getElementById('f-taxrate').value=settings.taxrate||'';
   document.getElementById('f-state').value=''; stateChanged();
   document.getElementById('f-industry').value='Bail Bonds'; industryChanged();
   document.getElementById('f-currency').value='USD';
@@ -868,7 +926,7 @@ function renderItems(){
   });
 }
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
-['f-number','f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-paylink'].forEach(id=>{
+['f-number','f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-paylink','f-taxrate'].forEach(id=>{
   document.getElementById(id).addEventListener('input',()=>{render();scheduleAutosave();});
 });
 document.getElementById('f-due').addEventListener('input',()=>{render();scheduleAutosave();});
@@ -905,6 +963,7 @@ function applyDraftToForm(d){
   document.getElementById('f-currency').value=d.currency||'USD';
   document.getElementById('f-notes').value=d.notes||'';
   document.getElementById('f-paylink').value=d.paylink||'';
+  document.getElementById('f-taxrate').value=d.taxrate||'';
   const ind=d.industry||'Bail Bonds';
   if(INDUSTRIES.includes(ind)){document.getElementById('f-industry').value=ind;}
   else{document.getElementById('f-industry').value='__other';document.getElementById('f-industryother').value=ind;}
@@ -916,7 +975,10 @@ function applyDraftToForm(d){
 /* ================= model ================= */
 function collect(){
   const clean=items.filter(it=>it.desc||it.rate);
-  const total=clean.reduce((s,it)=>s+(parseFloat(it.qty)||0)*(parseFloat(it.rate)||0),0);
+  const subtotal=clean.reduce((s,it)=>s+(parseFloat(it.qty)||0)*(parseFloat(it.rate)||0),0);
+  const taxrate=parseFloat(document.getElementById('f-taxrate').value)||0;
+  const taxAmount=subtotal*(taxrate/100);
+  const total=subtotal+taxAmount; // total = actual amount due, used everywhere (dashboard, lists, numbering)
   return {
     id:editingId||('inv-'+Date.now()),
     number:document.getElementById('f-number').value.trim(),
@@ -930,7 +992,7 @@ function collect(){
     city:cityValue(), zip:document.getElementById('f-zip').value.trim(),
     clientEmail:document.getElementById('f-clientemail').value.trim(),
     currency:document.getElementById('f-currency').value,
-    items:clean.map(x=>({...x})), total,
+    items:clean.map(x=>({...x})), subtotal, taxrate, taxAmount, total,
     notes:document.getElementById('f-notes').value,
     paylink:document.getElementById('f-paylink').value.trim(),
     status:currentStatus
@@ -1086,9 +1148,9 @@ function render(){
     const amt=(parseFloat(it.qty)||0)*(parseFloat(it.rate)||0);
     const freqTag=it.freq==='month'?'<div class="freq">Billed monthly</div>':'';
     return `<tr><td>${esc(it.desc)||'&nbsp;'}${freqTag}</td><td class="r mono">${it.qty||''}</td>
-      <td class="r mono">${it.rate?sym+parseFloat(it.rate).toFixed(2)+(it.freq==='month'?'/mo':''):''}</td><td class="r mono">\u2014</td>
+      <td class="r mono">${it.rate?sym+parseFloat(it.rate).toFixed(2)+(it.freq==='month'?'/mo':''):''}</td>
       <td class="r mono">${amt?sym+amt.toFixed(2)+(it.freq==='month'?'/mo':''):''}</td></tr>`;
-  }).join('')||'<tr><td colspan="5" style="color:var(--gray)">Pick a service on the left to add lines</td></tr>';
+  }).join('')||'<tr><td colspan="4" style="color:var(--gray)">Pick a service on the left to add lines</td></tr>';
 
   let cols=[], mismatchBen=null;
   if(cur==='USD'){
@@ -1153,12 +1215,14 @@ function render(){
       :`<span class="amt">${sym}${inv.total.toFixed(2)}</span> ${cur} due by ${fmtDate(inv.due)}`}</div>
 
     <table class="lines">
-      <thead><tr><th>Product or service</th><th class="r">Quantity</th><th class="r">Unit price</th><th class="r">Tax</th><th class="r">Total</th></tr></thead>
+      <thead><tr><th>Product or service</th><th class="r">Quantity</th><th class="r">Unit price</th><th class="r">Total</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>
     <div class="totals">
-      <div class="trow"><span>Total excluding tax</span><span class="mono">${sym}${inv.total.toFixed(2)}</span></div>
-      <div class="trow"><span>Total tax</span><span class="mono">${sym}0.00</span></div>
+      ${inv.taxrate>0?`
+      <div class="trow"><span>Subtotal</span><span class="mono">${sym}${inv.subtotal.toFixed(2)}</span></div>
+      <div class="trow"><span>Tax (${inv.taxrate}%)</span><span class="mono">${sym}${inv.taxAmount.toFixed(2)}</span></div>
+      `:''}
       <div class="trow grand"><span>Amount due</span><span class="mono">${sym}${inv.total.toFixed(2)}</span></div>
     </div>
 
@@ -1170,6 +1234,7 @@ function render(){
       <div class="cols">${colsHtml}</div>
       ${mismatchBen?`<div class="partner-note"><strong>Account holder note.</strong> ${esc(fillTemplate(settings.disclosure||DEFAULT_DISCLOSURE,{legal:legal,platform:platform,provider:provider,providerdesc:providerDesc,holder:mismatchBen,number:inv.number}))}</div>`:''}
       <div class="partner-note" style="border-left-color:var(--line)">Processing times above are estimates from our banking partners and can vary by bank. If a payment doesn\u2019t reflect within the window shown, reach out and we\u2019ll help track it down.</div>
+      ${settings.feenote?`<div class="partner-note" style="border-left-color:var(--line)">${esc(settings.feenote)}</div>`:''}
     </div>`:`<div class="partner-note" style="margin-top:40px">Add your ${cur} account details in Settings to print payment instructions here.</div>`}
 
     ${inv.notes?`<div class="foot-notes">${esc(inv.notes)}</div>`:''}
