@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
   /* ============================================================
-     LYCORE Invoicing \u2014 premium navy/orange design system
+     LYCORE Invoicing — premium navy/orange design system
      Palette: deep navy sidebar, indigo/purple secondary accents,
      orange as the one primary action color, warm off-white ground,
      white floating cards with soft shadows and rounded corners.
@@ -149,16 +149,20 @@
   header.topbar .savepill{font-size:11px;color:var(--text-mute)}
 
   .workbody{flex:1;min-height:0;display:flex;overflow:hidden}
-  section.page{flex:1;min-width:0;overflow-y:auto;padding:26px}
+  section.page{flex:1;min-width:280px;overflow-y:auto;padding:26px}
+  .panel-resizer{flex:0 0 6px;cursor:col-resize;background:transparent;position:relative;display:none;z-index:5}
+  .app-shell.split-view .panel-resizer{display:block}
+  .panel-resizer::after{content:'';position:absolute;top:0;bottom:0;left:2px;width:2px;background:var(--border-soft);transition:background .12s ease}
+  .panel-resizer:hover::after,.panel-resizer.dragging::after{background:var(--color-accent)}
   aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--border-soft);background:#EEF0F8;overflow:auto;padding:22px;display:none}
   .app-shell.split-view aside.docpane{display:block}
   #pane-new{max-width:660px}
 
   /* — invoice document: unchanged formal register, deliberately not navy/orange — */
-  .doc-head-row{display:flex;align-items:center;margin-bottom:12px;position:sticky;top:0;z-index:2}
-  .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft)}
-  .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--text-mute)}
-  .zoom-ctrl{display:flex;align-items:center;gap:5px;margin-left:14px}
+  .doc-head-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:12px;position:sticky;top:0;z-index:2}
+  .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft);flex-shrink:0}
+  .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .zoom-ctrl{display:flex;align-items:center;gap:5px;flex-shrink:0}
   .zoom-ctrl button{width:23px;height:23px;border:1px solid var(--border-soft);background:#fff;border-radius:5px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--text-soft)}
   .zoom-ctrl button:hover{border-color:var(--color-accent);color:var(--color-accent)}
   .zoom-ctrl .zoom-reset{width:auto;padding:0 8px;font-size:10px;font-weight:600}
@@ -301,7 +305,7 @@
   <div class="modal" style="text-align:center">
     <h3>Save your recovery code</h3>
     <p>A backup if you forget your passcode and don't have your authenticator app on hand. Write it down or store it somewhere safe. We can't show it to you again.</p>
-    <div class="recoverybox"><div class="code" id="recovery-code-display">\u2014</div></div>
+    <div class="recoverybox"><div class="code" id="recovery-code-display">—</div></div>
     <button class="btn orange" style="width:100%" onclick="closeRecoveryShow()">I've saved it</button>
   </div>
 </div>
@@ -309,11 +313,11 @@
 <div class="overlay hidden" id="totp-setup-overlay">
   <div class="modal" style="text-align:center;max-width:380px">
     <h3>Set up an authenticator app</h3>
-    <p>Scan this with Google Authenticator, Microsoft Authenticator, or any TOTP app. Fully offline \u2014 nothing sent anywhere.</p>
+    <p>Scan this with Google Authenticator, Microsoft Authenticator, or any TOTP app. Fully offline — nothing sent anywhere.</p>
     <div id="totp-qrbox" style="display:flex;justify-content:center;margin:16px 0"></div>
     <p class="note" style="margin-bottom:10px">Can't scan? Enter this key manually: <span class="mono" id="totp-manual-key" style="word-break:break-all"></span></p>
     <input id="totp-confirm-input" placeholder="Enter the 6-digit code" autocomplete="off" style="text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.1em">
-    <div class="err" id="totp-setup-err">That code didn't match \u2014 try the newest one shown in your app.</div>
+    <div class="err" id="totp-setup-err">That code didn't match — try the newest one shown in your app.</div>
     <div class="mrow">
       <button class="btn" onclick="cancelTotpSetup()">Cancel</button>
       <button class="btn orange" onclick="confirmTotpSetup()">Confirm</button>
@@ -324,7 +328,7 @@
 <div class="overlay hidden" id="del-overlay">
   <div class="modal card">
     <h3 id="del-title">Archive this invoice?</h3>
-    <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive \u2014 nothing is lost.</p>
+    <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive — nothing is lost.</p>
     <input id="del-input" placeholder="delete" autocomplete="off">
     <div class="mrow">
       <button class="btn" onclick="closeDelete()">Cancel</button>
@@ -401,7 +405,7 @@
         <span class="savepill" id="save-indicator"></span>
         <button class="lock" id="update-btn" style="display:none" onclick="updateClicked()">Update available</button>
         <button class="lock" onclick="lockNow()" id="lock-btn" style="display:none">Lock</button>
-        <button class="btn orange" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.85">\u2318N</span></button>
+        <button class="btn orange" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.85">Ctrl+N</span></button>
       </div>
     </header>
 
@@ -412,11 +416,11 @@
           <div style="display:grid;grid-template-columns:minmax(340px,1.05fr) 1fr 1fr;gap:16px;align-items:stretch">
             <div class="card money hoverable anim-in revcard"><i class="corner tl"></i>
               <div class="toprow"><div class="kicker">Revenue collected</div><div class="period" id="dash-period-label">This month</div></div>
-              <div class="big" id="dash-revenue-big">\u2014</div>
+              <div class="big" id="dash-revenue-big">—</div>
               <div class="sub">Cash in the door. Paid invoices only.</div>
               <div class="split">
-                <div><div class="k">Billed</div><div class="v" id="dash-billed-val">\u2014</div></div>
-                <div><div class="k" title="Of everything billed this period, the share that's actually been paid so far">Collection rate</div><div class="v" id="dash-collrate-val">\u2014</div></div>
+                <div><div class="k">Billed</div><div class="v" id="dash-billed-val">—</div></div>
+                <div><div class="k" title="Of everything billed this period, the share that's actually been paid so far">Collection rate</div><div class="v" id="dash-collrate-val">—</div></div>
               </div>
               <div class="trendwrap">
                 <div class="trendlbl">Six-month collected trend</div>
@@ -451,7 +455,7 @@
               <button class="btn ghost" style="font-size:12px;padding:4px 10px" onclick="startNewExpense()">Log expense</button>
             </div>
             <table class="list"><tbody id="dash-recent"></tbody></table>
-            <div class="empty" id="dash-empty" style="display:none">No invoices yet \u2014 create your first one.</div>
+            <div class="empty" id="dash-empty" style="display:none">No invoices yet — create your first one.</div>
           </div>
         </div>
 
@@ -474,9 +478,9 @@
             <div class="row2" style="grid-template-columns:2fr 1.4fr 0.9fr 1fr;margin-top:12px">
               <div class="field"><label>Street</label><input id="f-street"></div>
               <div class="field"><label>City</label>
-                <select id="f-city"><option value="">\u2014 Select state first \u2014</option></select>
+                <select id="f-city"><option value="">— Select state first —</option></select>
               </div>
-              <div class="field"><label>State</label><select id="f-state"><option value="">\u2014 Select \u2014</option></select></div>
+              <div class="field"><label>State</label><select id="f-state"><option value="">— Select —</option></select></div>
               <div class="field"><label>ZIP</label><input id="f-zip"></div>
             </div>
             <div class="field" id="f-cityother-wrap" style="display:none"><label>City (type it)</label><input id="f-cityother"></div>
@@ -486,7 +490,7 @@
                 <select id="f-industry" onchange="industryChanged()">
                   <option value="Bail Bonds">Bail Bonds</option><option value="Restoration">Restoration</option>
                   <option value="Auto Detailing">Auto Detailing</option><option value="Plumbing">Plumbing</option>
-                  <option value="__other">Other\u2026</option>
+                  <option value="__other">Other…</option>
                 </select>
               </div>
               <div class="field"><label>Currency</label>
@@ -508,7 +512,7 @@
           <div class="card anim-in anim-in-3" style="padding:18px 20px;margin-bottom:16px">
             <div class="row2" style="grid-template-columns:120px 1fr">
               <div class="field"><label>Tax rate %</label><input id="f-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
-              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/\u2026"></div>
+              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/…"></div>
             </div>
             <div class="field" style="max-width:none;margin-top:12px"><label>Notes on the invoice</label><textarea id="f-notes"></textarea></div>
           </div>
@@ -532,9 +536,9 @@
           <div class="card money" style="padding:18px 22px;margin-bottom:16px;display:flex;align-items:baseline;gap:14px">
             <div>
               <div class="lbl" style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute)">Monthly recurring</div>
-              <div style="font-weight:800;font-size:28px;color:var(--money);margin-top:3px" id="ex-recurring-total">\u2014</div>
+              <div style="font-weight:800;font-size:28px;color:var(--money);margin-top:3px" id="ex-recurring-total">—</div>
             </div>
-            <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses \u2014 the ongoing cost of running the business, separate from one-off spending.</div>
+            <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses — the ongoing cost of running the business, separate from one-off spending.</div>
           </div>
           <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
             <div class="card" style="padding:18px 20px">
@@ -576,7 +580,7 @@
                   <option value="year">This year</option><option value="all">All time</option>
                 </select>
               </div>
-              <div class="note" style="margin:0 0 16px">Cash basis \u2014 revenue counts when an invoice is marked paid.</div>
+              <div class="note" style="margin:0 0 16px">Cash basis — revenue counts when an invoice is marked paid.</div>
               <div id="rep-pl"></div>
               <div style="display:flex;gap:10px;margin-top:18px;align-items:center">
                 <button class="btn ghost" style="font-size:12.5px" onclick="exportCSV()">Export CSV</button>
@@ -588,12 +592,12 @@
                 <h3 style="font-size:16px;margin-bottom:4px">Tax reserve</h3>
                 <div class="note" style="margin:0 0 14px">Set aside a share of net profit before you draw anything.</div>
                 <div style="display:flex;align-items:center;gap:14px">
-                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" title="A rough guide for taxes and a rainy-day cushion \u2014 not a real reserve account, just a number to plan against" style="flex:1;accent-color:var(--indigo-500)">
+                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" title="A rough guide for taxes and a rainy-day cushion — not a real reserve account, just a number to plan against" style="flex:1;accent-color:var(--indigo-500)">
                   <div style="font-weight:700;font-size:26px;width:62px;text-align:right;color:var(--indigo-700)" id="rep-reserve-pct-label">25%</div>
                 </div>
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:baseline">
                   <span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute)">Set aside</span>
-                  <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">\u2014</span>
+                  <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">—</span>
                 </div>
               </div>
               <div class="card" style="padding:20px 22px">
@@ -641,12 +645,13 @@
         </div>
 
       </section>
+      <div class="panel-resizer" id="panel-resizer" title="Drag to resize"></div>
       <aside class="docpane" id="doc-wrap">
         <div class="doc-head-row">
           <span class="lbl">Printed document</span>
           <span class="cur" id="doc-currency-note"></span>
-          <div class="zoom-ctrl" title="Adjust how large the invoice preview appears \u2014 doesn't affect the printed size">
-            <button onclick="docZoom(-1)" title="Zoom out">\u2212</button>
+          <div class="zoom-ctrl" title="Adjust how large the invoice preview appears — doesn't affect the printed size">
+            <button onclick="docZoom(-1)" title="Zoom out">−</button>
             <span id="doc-zoom-pct" class="mono">100%</span>
             <button onclick="docZoom(1)" title="Zoom in">+</button>
             <button onclick="docZoom(0)" class="zoom-reset" title="Back to 100%">Reset</button>
@@ -742,6 +747,8 @@ async function loadAll(){
   recoveryHash=(await sget('lyc-recovery'))||null;
   draft=(await sget('lyc-draft'))||null;
   docZoomLevel=(await sget('lyc-doc-zoom'))||100;
+  await restorePanelWidth();
+  initPanelResizer();
   buildStateSelects(); fillSettingsForm(); renderCatalogRows(); renderBundleRows(); applyLogo();
   document.getElementById('lock-btn').style.display=pinHash?'inline-block':'none';
 
@@ -1917,6 +1924,45 @@ function render(){
     try{ new QRCode(document.getElementById('qrbox'),{text:epc,width:104,height:104,correctLevel:QRCode.CorrectLevel.M,colorDark:'#0F1720',colorLight:'#FFFFFF'}); }catch(e){}
   }
   applyDocZoom();
+}
+
+/* ================= draggable panel resizer ================= */
+let resizerDragging=false;
+function initPanelResizer(){
+  const handle=document.getElementById('panel-resizer');
+  const panel=document.getElementById('doc-wrap');
+  const workbody=document.querySelector('.workbody');
+  if(!handle || !panel || !workbody || handle.dataset.wired) return;
+  handle.dataset.wired='1';
+  handle.addEventListener('mousedown',(e)=>{
+    e.preventDefault();
+    resizerDragging=true;
+    handle.classList.add('dragging');
+    document.body.style.userSelect='none';
+    document.body.style.cursor='col-resize';
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(!resizerDragging) return;
+    const rect=workbody.getBoundingClientRect();
+    let newWidth=rect.right-e.clientX;
+    const min=360, max=Math.round(rect.width*0.5);
+    newWidth=Math.max(min,Math.min(max,newWidth));
+    panel.style.flexBasis=newWidth+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!resizerDragging) return;
+    resizerDragging=false;
+    handle.classList.remove('dragging');
+    document.body.style.userSelect='';
+    document.body.style.cursor='';
+    const px=parseInt(panel.style.flexBasis,10);
+    if(px) sset('lyc-docpane-width',px);
+  });
+}
+async function restorePanelWidth(){
+  const saved=await sget('lyc-docpane-width');
+  const panel=document.getElementById('doc-wrap');
+  if(saved && panel) panel.style.flexBasis=saved+'px';
 }
 
 /* ================= invoice preview zoom ================= */
