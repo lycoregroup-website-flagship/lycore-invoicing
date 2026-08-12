@@ -6,146 +6,165 @@
 <script src="qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
-  /* ============ Industry design system tokens ============
-     Steel-blue wireframe system, adopted from the Claude Design handoff.
-     LYCORE orange (--money) is deliberately NOT a system token — it is
-     reserved for money figures and alerts only, exactly as scoped in the
-     design decisions. Everything else reads in the steel/neutral palette. */
+  /* ============================================================
+     LYCORE Invoicing \u2014 premium navy/orange design system
+     Palette: deep navy sidebar, indigo/purple secondary accents,
+     orange as the one primary action color, warm off-white ground,
+     white floating cards with soft shadows and rounded corners.
+     ============================================================ */
   :root{
-    --color-bg:#f2f2f3; --color-surface:#e9e9ea; --color-text:#1d1f20;
-    --color-accent:#5980a6; --color-divider:color-mix(in srgb, #1d1f20 16%, transparent);
-    --n100:#f5f5f8; --n200:#e7e7ea; --n300:#d4d4d7; --n400:#b7b7ba; --n500:#98989b;
-    --n600:#7a7a7d; --n700:#5d5d60; --n800:#424244; --n900:#2b2b2d;
-    --a100:#eef6ff; --a200:#d6ebff; --a300:#b5d9fd; --a400:#94bce3; --a500:#749dc4;
-    --a600:#597ea3; --a700:#416180; --a800:#2c455d; --a900:#1d2d3d;
-    --font-heading:"Barlow Condensed",system-ui,sans-serif; --font-body:"Barlow",system-ui,sans-serif;
-    --sp1:3.4px; --sp2:6.8px; --sp3:10.2px; --sp4:13.6px; --sp6:20.4px; --sp8:27.2px;
-    --shadow-sm:0 1px 2px color-mix(in srgb, #2b2b2d 14%, transparent);
-    --shadow-md:0 3px 10px color-mix(in srgb, #2b2b2d 16%, transparent);
-    --shadow-lg:0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
-    --money:#EA5B0C; --money-dark:#c94d0a; --money-tint:#fdf2ea; --money-soft:#fdf4ee;
+    --navy-900:#0F172A; --navy-800:#1A2438; --navy-700:#243149; --navy-600:#334155;
+    --indigo-50:#EEF2FF; --indigo-100:#E0E7FF; --indigo-400:#818CF8; --indigo-500:#3B82F6; --indigo-600:#2563EB; --indigo-700:#1D4ED8;
+    --purple-100:#EDE9FE; --purple-300:#C4B5FD; --purple-400:#A78BFA; --purple-500:#8B7CF6;
+    --orange-50:#FFF4EC; --orange-100:#FFE4CC; --orange-400:#FB923C; --orange-500:#F97316; --orange-600:#EA580C; --orange-700:#C2410C;
+    --bg:#F7F7FB; --card:#FFFFFF; --card-alt:#FBFAFF;
+    --text:#1E2433; --text-soft:#4B5468; --text-mute:#8891A5; --border:#E7E9F2; --border-soft:#EFF1F8;
+    --money:var(--orange-500); --money-dark:var(--orange-600); --money-tint:var(--orange-50);
+    --font:"Inter",system-ui,sans-serif;
+    --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:26px; --r-pill:999px;
+    --shadow-sm:0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+    --shadow-md:0 6px 18px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.05);
+    --shadow-lg:0 16px 40px rgba(15,23,42,.14), 0 4px 12px rgba(15,23,42,.06);
+    --shadow-navy:0 8px 24px rgba(15,23,42,.35);
+    --ease:cubic-bezier(.22,1,.36,1);
   }
   *,*::before,*::after{box-sizing:border-box}
   html,body{height:100%;overflow:hidden;margin:0}
-  body{font-family:var(--font-body);font-size:14px;color:var(--color-text);background:var(--color-bg);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;height:100vh}
-  h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:600;line-height:1.12;letter-spacing:-0.015em;margin:0}
-  a{color:var(--a700);text-underline-offset:3px}
+  body{font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;height:100vh}
+  h1,h2,h3,h4,h5,h6{font-family:var(--font);font-weight:700;line-height:1.15;letter-spacing:-.01em;margin:0}
+  a{color:var(--indigo-600);text-underline-offset:3px;transition:color .15s var(--ease)}
   a:hover{color:var(--money)}
-  .mono{font-variant-numeric:tabular-nums}
+  .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
   ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:#c9c9cc;border:3px solid var(--color-bg)}
-  ::-webkit-scrollbar-thumb:hover{background:#a9a9ad}
+  ::-webkit-scrollbar-thumb{background:#d7dae6;border:3px solid var(--bg);border-radius:8px}
+  ::-webkit-scrollbar-thumb:hover{background:#b9bdd0}
   input,select,textarea,button{font-family:inherit}
   :focus{outline:none}
-  :focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+  :focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px;border-radius:6px}
 
-  /* — blueprint frame: the wireframe card every panel wears — */
-  .bp{position:relative;border:1px solid var(--color-divider);background:#fff;border-radius:12px;border-top:3px solid var(--color-accent);box-shadow:var(--shadow-sm)}
-  .bp.money-card{border-top-color:var(--money)}
-  .bp>.corner{display:none}
-  .bp>.corner{position:absolute;width:11px;height:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)}
-  .bp>.corner::before,.bp>.corner::after{content:"";position:absolute;background:currentColor}
-  .bp>.corner::before{left:5px;top:0;width:1px;height:100%}
-  .bp>.corner::after{top:5px;left:0;width:100%;height:1px}
-  .bp>.corner.tl{top:-6px;left:-6px} .bp>.corner.tr{top:-6px;right:-6px}
-  .bp>.corner.bl{bottom:-6px;left:-6px} .bp>.corner.br{bottom:-6px;right:-6px}
+  /* — motion system — */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-6px) rotate(-2deg)}}
+  @keyframes growBar{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes shimmerGlow{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .anim-in{animation:fadeUp .38s var(--ease) both}
+  .anim-in-1{animation-delay:.03s} .anim-in-2{animation-delay:.07s} .anim-in-3{animation-delay:.11s} .anim-in-4{animation-delay:.15s}
+  .floaty{animation:floaty 5s ease-in-out infinite}
+  .pop-in{animation:popIn .3s var(--ease) both}
 
   /* — buttons — */
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;font-family:var(--font-heading);font-weight:600;font-size:13px;color:var(--color-text);background:transparent;border:1px solid var(--color-divider);padding:8px 14px;border-radius:8px}
-  .btn:hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .btn.orange{background:var(--money);color:#fff;border-color:var(--money)}
-  .btn.orange:hover{background:var(--money-dark)}
-  .btn.ghost{border-color:transparent;color:var(--a700);padding-inline:6px}
-  .btn.ghost:hover{background:color-mix(in srgb, var(--color-accent) 10%, transparent)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;text-decoration:none;font-weight:600;font-size:13.5px;color:var(--text-soft);background:#fff;border:1.5px solid var(--border);padding:9px 16px;border-radius:var(--r-pill);transition:all .18s var(--ease)}
+  .btn:hover{border-color:var(--indigo-400);color:var(--indigo-600);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+  .btn:active{transform:translateY(0)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .btn.orange{background:linear-gradient(135deg,var(--orange-500),var(--orange-600));color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(249,115,22,.32)}
+  .btn.orange:hover{color:#fff;box-shadow:0 6px 20px rgba(249,115,22,.42);transform:translateY(-1.5px)}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--indigo-600);padding-inline:8px;box-shadow:none}
+  .btn.ghost:hover{background:var(--indigo-50);transform:none;box-shadow:none}
 
   /* — inputs — */
-  .field{margin-bottom:11px;max-width:640px}
+  .field{margin-bottom:12px;max-width:640px}
   .row2 .field,.row3 .field{max-width:none}
-  .field label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--n600);margin-bottom:5px}
-  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--color-divider);border-radius:8px;background:#fafafb;font-size:13px;color:var(--color-text)}
-  .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{border-color:var(--color-accent);outline-offset:0}
+  .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--text-mute);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--card-alt);font-size:13.5px;color:var(--text);transition:border-color .15s var(--ease), box-shadow .15s var(--ease)}
+  .field input:hover,.field select:hover,.field textarea:hover{border-color:#d3d7e6}
+  .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{border-color:var(--indigo-500);outline-offset:0;box-shadow:0 0 0 4px var(--indigo-50);background:#fff}
   .field textarea{resize:vertical;min-height:64px}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-  .check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;cursor:pointer}
-  .check input{width:auto;accent-color:var(--color-accent)}
+  .check{display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:12px;cursor:pointer;color:var(--text-soft)}
+  .check input{width:auto;accent-color:var(--indigo-500)}
+
+  /* — floating cards — */
+  .card{position:relative;background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);transition:box-shadow .25s var(--ease), transform .25s var(--ease)}
+  .card.hoverable:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+  .card.money{background:linear-gradient(160deg,#fff 0%,var(--orange-50) 130%)}
+  .card.indigo-tint{background:linear-gradient(160deg,#fff 0%,var(--indigo-50) 130%)}
 
   /* — tables — */
-  table.list{width:100%;border-collapse:collapse;font-size:13px}
-  table.list th{text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--n600);padding:10px 18px;border-bottom:1px solid var(--color-divider)}
-  table.list td{padding:10px 18px;border-bottom:1px solid #eeeef0}
-  table.list tr.rowlink{cursor:pointer}
-  table.list tr.rowlink:hover td,table.list tbody tr:hover td{background:#f4f7fa}
-  .pill{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2.5px 10px;border:1px solid;cursor:pointer;background:none;font-family:var(--font-body);border-radius:20px}
-  .pill.unpaid{border-color:var(--money);color:var(--money);background:var(--money-tint)}
-  .pill.paid{border-color:var(--color-accent);color:var(--a700);background:var(--a100)}
-  .pill.gray{border:1px solid var(--color-divider);color:var(--n600);background:transparent}
-  .pill.gray:hover{color:var(--money);border-color:var(--money);background:var(--money-tint)}
-  .tagpill{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;margin-left:6px;background:var(--n200);color:var(--n700);border-radius:6px}
-  .empty{padding:26px 18px;color:var(--n600);font-size:13px}
+  table.list{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.list th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);padding:12px 20px;border-bottom:1.5px solid var(--border-soft)}
+  table.list td{padding:12px 20px;border-bottom:1px solid var(--border-soft)}
+  table.list tr.rowlink{cursor:pointer;transition:background .15s var(--ease)}
+  table.list tr.rowlink:hover td,table.list tbody tr:hover td{background:var(--indigo-50)}
+  .pill{font-size:11px;font-weight:600;letter-spacing:.02em;padding:4px 13px;border:none;cursor:pointer;font-family:var(--font);border-radius:var(--r-pill);transition:all .15s var(--ease)}
+  .pill.unpaid{background:var(--orange-100);color:var(--orange-700)}
+  .pill.unpaid:hover{background:var(--orange-500);color:#fff}
+  .pill.paid{background:#DCFCE7;color:#15803D}
+  .pill.paid:hover{background:#16A34A;color:#fff}
+  .pill.gray{background:var(--border-soft);color:var(--text-mute)}
+  .pill.gray:hover{background:var(--orange-100);color:var(--orange-700)}
+  .tagpill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.02em;padding:3px 9px;margin-left:6px;background:var(--indigo-100);color:var(--indigo-700);border-radius:var(--r-pill)}
+  .empty{padding:30px 20px;color:var(--text-mute);font-size:13.5px;text-align:center}
 
-  /* — section labels, notes — */
-  .sec{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--n600);margin:20px 0 10px;font-weight:600}
+  /* — labels, notes — */
+  .sec{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--indigo-600);margin:22px 0 11px}
   .sec:first-child{margin-top:0}
-  .note{font-size:12px;color:var(--n600);line-height:1.55;margin-top:6px}
-  .sectionhd{font-size:15px;font-weight:600;margin:0;padding:13px 18px;border-bottom:1px solid var(--color-divider);display:flex;align-items:baseline;gap:10px}
-  .sectionhd .cnt{font-weight:400;color:var(--n600);font-size:11px}
+  .note{font-size:12px;color:var(--text-mute);line-height:1.55;margin-top:6px}
+  .sectionhd{font-size:15px;font-weight:700;margin:0;padding:16px 20px;border-bottom:1.5px solid var(--border-soft);display:flex;align-items:baseline;gap:10px}
+  .sectionhd .cnt{font-weight:500;color:var(--text-mute);font-size:11.5px}
+
+  /* — decorative illustrations (subtle, muted, low-opacity) — */
+  .deco{position:absolute;pointer-events:none;opacity:.9}
+  .deco svg{display:block}
+  .blob{position:absolute;border-radius:50%;filter:blur(0px);opacity:.5;pointer-events:none}
 
   /* — app shell — */
   .app-shell{display:flex;height:100vh;width:100%;overflow:hidden}
-  nav.sidebar{width:210px;flex:0 0 210px;border-right:1px solid var(--color-divider);background:#ededee;display:flex;flex-direction:column;overflow:hidden}
-  nav.sidebar .brand{padding:18px 18px 14px;border-bottom:1px solid var(--color-divider)}
-  nav.sidebar .brand .word{font-family:var(--font-heading);font-weight:700;font-size:24px;letter-spacing:.16em;line-height:1;display:flex;align-items:center;gap:8px}
-  nav.sidebar .brand .word .mark-logo{width:22px;height:22px;flex:0 0 auto;border:1.5px solid var(--color-text);display:flex;align-items:center;justify-content:center;font-size:12px;overflow:hidden}
+  nav.sidebar{width:222px;flex:0 0 222px;background:linear-gradient(180deg,var(--navy-900) 0%,#111a2e 100%);display:flex;flex-direction:column;overflow:hidden;position:relative;box-shadow:var(--shadow-navy)}
+  nav.sidebar .brand{padding:22px 20px 16px;position:relative;z-index:1}
+  nav.sidebar .brand .word{font-weight:800;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;color:#fff}
+  nav.sidebar .brand .word .mark-logo{width:32px;height:32px;flex:0 0 auto;border-radius:10px;background:linear-gradient(135deg,var(--orange-500),var(--orange-600));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;overflow:hidden;color:#fff;box-shadow:0 4px 12px rgba(249,115,22,.4)}
   nav.sidebar .brand .word .mark-logo img{width:100%;height:100%;object-fit:cover}
-  nav.sidebar .brand .sub{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--n600);margin-top:5px}
-  nav.sidebar .brand .ver{font-size:9.5px;color:var(--n500);margin-top:3px;font-variant-numeric:tabular-nums}
-  nav.sidebar .navlist{flex:1;overflow-y:auto;padding:10px 0}
-  nav.sidebar .navbtn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 16px;border:0;background:transparent;cursor:pointer;font-family:var(--font-body);font-size:13.5px;font-weight:400;color:var(--n700);text-align:left}
-  nav.sidebar .navbtn:hover{background:#e2e2e4}
-  nav.sidebar .navbtn.active{background:#e2e6ea;font-weight:600;color:var(--color-text)}
-  nav.sidebar .navbtn .mark{width:3px;align-self:stretch;margin:-9px 0;background:transparent;flex:0 0 3px}
-  nav.sidebar .navbtn.active .mark{background:var(--color-accent)}
-  nav.sidebar .navbtn .badge{margin-left:auto;font-size:11px;color:var(--n500);font-variant-numeric:tabular-nums}
-  nav.sidebar .divider{height:1px;background:var(--color-divider);margin:10px 16px}
-  nav.sidebar .kbd-cheat{padding:11px 16px;border-top:1px solid var(--color-divider);font-size:10.5px;color:var(--n600);line-height:1.7}
-  nav.sidebar .kbd-cheat .row{display:flex;justify-content:space-between}
-  nav.sidebar .kbd-cheat .k{color:var(--n700)}
-  nav.sidebar .footer{padding:10px 18px;border-top:1px solid var(--color-divider);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--n600)}
+  nav.sidebar .brand .sub{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7C8BAE;margin-top:5px;padding-left:42px}
+  nav.sidebar .brand .ver{font-size:9.5px;color:#4E5C7E;margin-top:3px;padding-left:42px;font-variant-numeric:tabular-nums}
+  nav.sidebar .navlist{flex:1;overflow-y:auto;padding:8px 12px}
+  nav.sidebar .navgroup-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#4E5C7E;padding:14px 12px 6px}
+  nav.sidebar .navbtn{position:relative;display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border:0;background:transparent;cursor:pointer;font-family:var(--font);font-size:13.5px;font-weight:500;color:#A9B4CC;text-align:left;border-radius:var(--r-sm);transition:all .18s var(--ease);margin-bottom:2px}
+  nav.sidebar .navbtn:hover{background:rgba(255,255,255,.06);color:#fff}
+  nav.sidebar .navbtn.active{background:linear-gradient(90deg,rgba(249,115,22,.18),rgba(249,115,22,.05));color:#fff;font-weight:600;box-shadow:inset 0 0 0 1px rgba(249,115,22,.25)}
+  nav.sidebar .navbtn.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);width:4px;height:20px;background:var(--orange-500);border-radius:0 4px 4px 0;box-shadow:0 0 12px 1px rgba(249,115,22,.7)}
+  nav.sidebar .navbtn .ic{width:17px;height:17px;flex:0 0 auto;opacity:.85}
+  nav.sidebar .navbtn.active .ic{opacity:1;color:var(--orange-400)}
+  nav.sidebar .navbtn .badge{margin-left:auto;font-size:10.5px;color:#7C8BAE;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.08);padding:1px 7px;border-radius:var(--r-pill)}
+  nav.sidebar .divider{height:1px;background:rgba(255,255,255,.08);margin:10px 12px}
+  nav.sidebar .plant-card{margin:10px 12px;padding:14px;border-radius:var(--r-md);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);text-align:center}
+  nav.sidebar .plant-card .note{color:#8593B3;font-size:10.5px;margin-top:6px;line-height:1.5}
+  nav.sidebar .footer{padding:12px 20px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:#647195}
 
-  main.workarea{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
-  header.topbar{flex:0 0 auto;border-bottom:1px solid var(--color-divider);background:#f7f7f8;padding:0 22px;height:56px;display:flex;align-items:center;gap:16px;white-space:nowrap}
-  header.topbar h1{font-size:21px;letter-spacing:.01em}
-  header.topbar .screennote{font-size:12px;color:var(--n600);border-left:1px solid var(--color-divider);padding-left:16px;overflow:hidden;text-overflow:ellipsis}
-  header.topbar .spacer{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
-  header.topbar .periodgroup{display:flex;border:1px solid var(--color-divider)}
-  header.topbar .periodgroup button{padding:6px 12px;font-size:12px;border:0;background:transparent;cursor:pointer;color:var(--n600);font-family:var(--font-body)}
-  header.topbar .periodgroup button.active{background:var(--color-accent);color:#fff}
-  header.topbar .periodgroup button+button{border-left:1px solid var(--color-divider)}
-  header.topbar .lock{background:none;border:1px solid var(--color-divider);padding:7px 14px;font-size:12px;color:var(--n600);cursor:pointer;font-family:var(--font-body)}
-  header.topbar .lock:hover{border-color:var(--n600)}
-  header.topbar .savepill{font-size:11px;color:var(--n500)}
+  main.workarea{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+  header.topbar{flex:0 0 auto;background:var(--card);border-bottom:1px solid var(--border-soft);padding:0 26px;height:64px;display:flex;align-items:center;gap:16px;white-space:nowrap}
+  header.topbar h1{font-size:19px}
+  header.topbar .screennote{font-size:12px;color:var(--text-mute);border-left:1.5px solid var(--border);padding-left:16px;overflow:hidden;text-overflow:ellipsis}
+  header.topbar .spacer{margin-left:auto;display:flex;align-items:center;gap:10px;flex:0 0 auto}
+  header.topbar .periodgroup{display:flex;background:var(--border-soft);border-radius:var(--r-pill);padding:3px}
+  header.topbar .periodgroup button{padding:6px 14px;font-size:12px;font-weight:600;border:0;background:transparent;cursor:pointer;color:var(--text-mute);font-family:var(--font);border-radius:var(--r-pill);transition:all .18s var(--ease)}
+  header.topbar .periodgroup button.active{background:#fff;color:var(--indigo-600);box-shadow:var(--shadow-sm)}
+  header.topbar .lock{background:var(--indigo-50);border:none;border-radius:var(--r-pill);padding:8px 15px;font-size:12px;font-weight:600;color:var(--indigo-600);cursor:pointer;font-family:var(--font);transition:all .18s var(--ease)}
+  header.topbar .lock:hover{background:var(--indigo-100)}
+  header.topbar .savepill{font-size:11px;color:var(--text-mute)}
 
   .workbody{flex:1;min-height:0;display:flex;overflow:hidden}
-  section.page{flex:1;min-width:0;overflow-y:auto;padding:22px}
-  aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--color-divider);background:#e4e4e6;overflow-y:auto;padding:20px;display:none}
+  section.page{flex:1;min-width:0;overflow-y:auto;padding:26px}
+  aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--border-soft);background:#EEF0F8;overflow-y:auto;padding:22px;display:none}
   .app-shell.split-view aside.docpane{display:block}
   #pane-new{max-width:660px}
 
-  /* — invoice document (Times New Roman, unchanged formal register) — */
+  /* — invoice document: unchanged formal register, deliberately not navy/orange — */
   .doc-head-row{display:flex;align-items:center;margin-bottom:12px}
-  .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--n700)}
-  .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--n600)}
-  .doc{background:#fff;box-shadow:var(--shadow-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
+  .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft)}
+  .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--text-mute)}
+  .doc{background:#fff;box-shadow:var(--shadow-lg);border-radius:var(--r-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
   .doc .top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:1.5px solid #111}
   .doc .logo-row{display:flex;align-items:center;gap:14px}
-  .doc .logo-box{width:52px;height:52px;border-radius:12px;background:var(--money);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;overflow:hidden;flex-shrink:0;font-family:var(--font-heading)}
+  .doc .logo-box{width:52px;height:52px;border-radius:12px;background:var(--money);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;overflow:hidden;flex-shrink:0;font-family:var(--font)}
   .doc .logo-box img{width:100%;height:100%;object-fit:cover}
   .doc .word-invoice{font-size:32px;font-weight:700;letter-spacing:0}
-  .doc .top-meta{display:flex;gap:34px;text-align:left;padding-top:8px;font-family:var(--font-heading)}
+  .doc .top-meta{display:flex;gap:34px;text-align:left;padding-top:8px;font-family:var(--font)}
   .doc .top-meta .k{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666;margin-bottom:3px}
   .doc .parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px}
   .doc .parties .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#666;margin-bottom:6px}
@@ -170,86 +189,61 @@
   .doc .ways .kv .v{word-break:break-word}
   .doc .ways .timing{font-size:11px;color:#555;font-style:italic;margin-top:7px}
   .doc .disclosure{margin-top:18px;padding:11px 13px;border-left:2px solid #999;background:#f7f7f7;font-size:11.5px;color:#333}
-  .doc .stripe-cta{margin-top:0}
-  .doc .stripe-cta a{color:var(--money);text-decoration:underline;font-weight:600;font-size:13px}
   .doc .fnotes{margin-top:22px;padding-top:12px;border-top:1px solid #ddd;font-size:12.5px;white-space:pre-line}
   .doc footer{margin-top:34px;padding-top:10px;border-top:1px solid #111;display:flex;justify-content:space-between;font-size:11px;color:#555}
 
   /* — dashboard — */
-  .revcard{grid-row:span 2;padding:22px 22px 18px;display:flex;flex-direction:column}
+  .revcard{grid-row:span 2;padding:26px 26px 22px;display:flex;flex-direction:column;overflow:hidden}
   .revcard .toprow{display:flex;align-items:baseline;justify-content:space-between}
-  .revcard .kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--n600)}
-  .revcard .period{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--n500)}
-  .revcard .big{font-family:var(--font-heading);font-weight:700;font-size:60px;line-height:1.02;letter-spacing:-.02em;color:var(--money);margin-top:8px}
-  .revcard .sub{font-size:12.5px;color:var(--n700);margin-top:6px}
-  .revcard .split{margin-top:16px;padding-top:14px;border-top:1px solid var(--color-divider);display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .revcard .split .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--n600)}
-  .revcard .split .v{font-family:var(--font-heading);font-weight:600;font-size:19px;margin-top:3px}
-  .revcard .trendwrap{margin-top:16px;flex:1;display:flex;flex-direction:column;justify-content:flex-end}
-  .revcard .trendlbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--n600);margin-bottom:8px}
-  .revcard .bars{display:flex;align-items:flex-end;gap:6px;height:80px;border-bottom:1px solid var(--color-divider);padding-bottom:1px}
+  .revcard .kicker{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute)}
+  .revcard .period{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--orange-600);background:var(--orange-100);padding:3px 10px;border-radius:var(--r-pill)}
+  .revcard .big{font-weight:800;font-size:58px;line-height:1.02;letter-spacing:-.02em;background:linear-gradient(135deg,var(--orange-500),var(--orange-600));-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:10px}
+  .revcard .sub{font-size:12.5px;color:var(--text-mute);margin-top:6px}
+  .revcard .split{margin-top:18px;padding-top:16px;border-top:1px solid var(--border-soft);display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .revcard .split .k{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--text-mute)}
+  .revcard .split .v{font-weight:700;font-size:19px;margin-top:3px;color:var(--indigo-700)}
+  .revcard .trendwrap{margin-top:18px;flex:1;display:flex;flex-direction:column;justify-content:flex-end}
+  .revcard .trendlbl{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--text-mute);margin-bottom:10px}
+  .revcard .bars{display:flex;align-items:flex-end;gap:7px;height:80px;padding-bottom:1px}
   .revcard .bars .barcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%}
-  .revcard .bars .mval{font-size:9.5px;color:var(--n500);text-align:center;margin-bottom:3px}
-  .revcard .barlabels{display:flex;gap:6px;margin-top:5px}
-  .revcard .barlabels span{flex:1;text-align:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--n500)}
-  .kpicell{padding:16px 16px 14px;display:flex;flex-direction:column;min-height:120px}
-  .kpicell .lbl{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--n600)}
-  .kpicell .val{font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1.1;margin-top:8px}
+  .revcard .bars .barcol .fill{border-radius:6px 6px 3px 3px;transform-origin:bottom;animation:growBar .5s var(--ease) both}
+  .revcard .mval{font-size:9.5px;color:var(--text-mute);text-align:center;margin-bottom:4px}
+  .revcard .barlabels{display:flex;gap:7px;margin-top:6px}
+  .revcard .barlabels span{flex:1;text-align:center;font-size:10px;font-weight:600;color:var(--text-mute)}
+  .kpicell{padding:18px 18px 16px;display:flex;flex-direction:column;min-height:122px}
+  .kpicell .lbl{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute)}
+  .kpicell .val{font-weight:800;font-size:29px;line-height:1.1;margin-top:8px}
   .kpicell .foot{margin-top:auto;padding-top:10px;font-size:11.5px}
-  .breakdown-row{display:grid;grid-template-columns:1fr 76px;gap:10px;align-items:center;margin-bottom:7px}
-  .breakdown-row .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px}
-  .breakdown-row .top .share{color:var(--n600)}
-  .breakdown-row .track{height:6px;background:var(--n200)}
-  .breakdown-row .track .fill{height:6px}
-  .breakdown-row .amt{text-align:right;font-size:12.5px}
+  .breakdown-row{display:grid;grid-template-columns:1fr 76px;gap:10px;align-items:center;margin-bottom:9px}
+  .breakdown-row .top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+  .breakdown-row .top .share{color:var(--text-mute)}
+  .breakdown-row .track{height:7px;background:var(--border-soft);border-radius:var(--r-pill);overflow:hidden}
+  .breakdown-row .track .fill{height:7px;border-radius:var(--r-pill);transition:width .5s var(--ease)}
+  .breakdown-row .amt{text-align:right;font-size:12.5px;font-weight:600}
 
-  /* — P&L rows (Reports) — */
-  .trow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
-  .trow.grand{font-weight:700;border-top:1px solid var(--color-divider);margin-top:6px;padding-top:8px;font-size:15px}
-  .trow.sub{color:var(--n600)}
+  /* — P&L rows — */
+  .trow{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px}
+  .trow.grand{font-weight:700;border-top:1.5px solid var(--border-soft);margin-top:6px;padding-top:10px;font-size:15.5px}
+  .trow.sub{color:var(--text-mute)}
 
   /* — dialog / toast — */
-  .overlay{position:fixed;inset:0;background:rgba(29,31,32,.44);display:flex;align-items:center;justify-content:center;z-index:100;animation:overlayIn .16s ease}
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:100}
   .overlay.hidden{display:none}
-  .modal{background:#fff;padding:24px 26px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border:1px solid var(--color-divider);border-radius:14px;animation:modalIn .22s cubic-bezier(.2,.9,.3,1.2)}
-  .modal h3{font-size:19px;margin-bottom:8px}
-  .modal p{font-size:13px;color:var(--n700);line-height:1.55;margin-bottom:14px}
-  .modal input{width:100%;padding:9px 11px;border:1px solid var(--color-divider);background:#fafafb;font-size:14px;margin-bottom:14px}
-  .modal input:focus-visible{outline-offset:0;border-color:var(--color-accent)}
-  .modal .mrow{display:flex;gap:9px;justify-content:flex-end}
+  .modal{background:#fff;padding:28px 30px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border-radius:var(--r-lg);animation:popIn .25s var(--ease) both}
+  .modal h3{font-size:19px;margin-bottom:9px}
+  .modal p{font-size:13px;color:var(--text-soft);line-height:1.55;margin-bottom:14px}
+  .modal input{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--card-alt);font-size:14px;margin-bottom:14px}
+  .modal input:focus-visible{outline-offset:0;border-color:var(--indigo-500);box-shadow:0 0 0 4px var(--indigo-50)}
+  .modal .mrow{display:flex;gap:10px;justify-content:flex-end}
   #gate.modal{text-align:center}
-  #gate .dot{width:44px;height:44px;border:1.5px solid var(--color-text);color:var(--money);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto 14px;overflow:hidden;font-family:var(--font-heading)}
+  #gate .dot{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--orange-500),var(--orange-600));color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;margin:0 auto 16px;overflow:hidden;box-shadow:0 6px 16px rgba(249,115,22,.35)}
   #gate .dot img{width:100%;height:100%;object-fit:cover}
-  .err{color:var(--money);font-size:12px;margin:-8px 0 10px;display:none}
-  .recoverybox{background:var(--n100);border:1px dashed var(--money);padding:16px;text-align:center;margin-bottom:14px}
+  .err{color:var(--orange-600);font-size:12px;margin:-8px 0 10px;display:none}
+  .recoverybox{background:var(--card-alt);border:1.5px dashed var(--orange-400);padding:16px;border-radius:var(--r-md);text-align:center;margin-bottom:14px}
   .recoverybox .code{font-family:ui-monospace,monospace;font-size:18px;font-weight:600;letter-spacing:.06em;margin:10px 0;word-break:break-all}
-  .linkbtn{background:none;border:none;color:var(--a700);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0}
-
-  /* — toast (popup messages) — */
-  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--n900);color:var(--color-bg);padding:11px 20px 11px 16px;font-size:13px;box-shadow:var(--shadow-lg);z-index:200;opacity:0;pointer-events:none;border-radius:10px;display:flex;align-items:center;gap:9px;border-left:3px solid var(--color-accent);transition:opacity .22s ease,transform .22s cubic-bezier(.2,.8,.3,1.1)}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .toast.success{border-left-color:#3ec97a}
-  .toast.error{border-left-color:var(--money)}
-  .toast-icon{font-size:13px;flex:0 0 auto;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14)}
-  .toast.success .toast-icon{color:#3ec97a}
-  .toast.error .toast-icon{color:#ff8a5c}
-  .toast.info .toast-icon{color:var(--a300)}
-
-  /* — micro-interactions — */
-  .btn{transition:transform .1s ease,background .15s ease}
-  .btn:active{transform:scale(.96)}
-  .pill{transition:transform .1s ease,background .15s ease,border-color .15s ease}
-  .pill:active{transform:scale(.94)}
-  nav.sidebar .navbtn{transition:background .15s ease,color .15s ease}
-  table.list tbody tr{transition:background .12s ease}
-  .bp{transition:box-shadow .18s ease,transform .12s ease}
-  .item-card-anim{animation:itemIn .22s cubic-bezier(.2,.85,.3,1.1)}
-
-  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
-  @keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-  @keyframes itemIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes paneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-  #pane-dashboard,#pane-new,#pane-list,#pane-expenses,#pane-reports,#pane-clients,#pane-archive,#pane-reference,#pane-settings{animation:paneIn .2s ease}
+  .linkbtn{background:none;border:none;color:var(--indigo-600);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy-900);color:#fff;padding:11px 20px;font-size:13px;font-weight:500;border-radius:var(--r-pill);box-shadow:var(--shadow-lg);z-index:200;opacity:0;transition:opacity .25s var(--ease);pointer-events:none}
+  .toast.show{opacity:1}
 
   @media print{
     html,body{height:auto;overflow:visible}
@@ -258,17 +252,16 @@
     main.workarea{overflow:visible}
     .workbody{display:block}
     aside.docpane{display:block!important;height:auto;overflow:visible;padding:0;background:#fff}
-    .doc{box-shadow:none;padding:0;margin:0 auto}
+    .doc{box-shadow:none;padding:0;margin:0 auto;border-radius:0}
   }
 
   /* — splash — */
-  #splash{position:fixed;inset:0;background:var(--n900);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;transition:opacity .3s ease}
+  #splash{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy-900),#131c33);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;transition:opacity .3s ease}
   #splash.fade{opacity:0;pointer-events:none}
-  #splash .mark{width:56px;height:56px;border:1.5px solid #fff;color:var(--money);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;font-family:var(--font-heading);margin-bottom:16px;overflow:hidden}
+  #splash .mark{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--orange-500),var(--orange-600));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:18px;overflow:hidden;box-shadow:0 8px 24px rgba(249,115,22,.4);animation:floaty 3s ease-in-out infinite}
   #splash .mark img{width:100%;height:100%;object-fit:cover}
-  #splash .word{color:#fff;font-family:var(--font-heading);font-weight:700;letter-spacing:.16em;font-size:13px;margin-bottom:18px}
-  #splash .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);border-top-color:var(--money);animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
+  #splash .word{color:#fff;font-weight:800;letter-spacing:.02em;font-size:14px;margin-bottom:20px}
+  #splash .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.2);border-top-color:var(--orange-500);animation:spin .8s linear infinite}
 </style>
 </head>
 <body>
@@ -320,8 +313,7 @@
 </div>
 
 <div class="overlay hidden" id="del-overlay">
-  <div class="modal bp">
-    <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  <div class="modal card">
     <h3 id="del-title">Archive this invoice?</h3>
     <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive \u2014 nothing is lost.</p>
     <input id="del-input" placeholder="delete" autocomplete="off">
@@ -332,6 +324,7 @@
   </div>
 </div>
 
+
 <div class="app-shell" id="app-shell">
 
   <nav class="sidebar">
@@ -341,21 +334,44 @@
       <div class="ver" id="hdr-version"></div>
     </div>
     <div class="navlist">
-      <button class="navbtn" id="tab-dashboard" onclick="showTab('dashboard')"><span class="mark"></span><span>Dashboard</span></button>
-      <button class="navbtn" id="tab-new" onclick="showTab('new')"><span class="mark"></span><span>New invoice</span></button>
-      <button class="navbtn" id="tab-list" onclick="showTab('list')"><span class="mark"></span><span>Invoices</span><span class="badge" id="nav-inv-count"></span></button>
-      <button class="navbtn" id="tab-expenses" onclick="showTab('expenses')"><span class="mark"></span><span>Expenses</span></button>
-      <button class="navbtn" id="tab-reports" onclick="showTab('reports')"><span class="mark"></span><span>Reports</span></button>
-      <button class="navbtn" id="tab-clients" onclick="showTab('clients')"><span class="mark"></span><span>Clients</span></button>
+      <button class="navbtn" id="tab-dashboard" onclick="showTab('dashboard')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        <span>Dashboard</span></button>
+      <button class="navbtn" id="tab-new" onclick="showTab('new')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        <span>New invoice</span></button>
+      <button class="navbtn" id="tab-list" onclick="showTab('list')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"></path><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="14" y2="16"></line></svg>
+        <span>Invoices</span><span class="badge" id="nav-inv-count"></span></button>
+      <button class="navbtn" id="tab-expenses" onclick="showTab('expenses')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="13" rx="2.5"></rect><path d="M2.5 10h19"></path><circle cx="17.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"></circle></svg>
+        <span>Expenses</span></button>
+      <button class="navbtn" id="tab-reports" onclick="showTab('reports')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="11"></line><line x1="12" y1="20" x2="12" y2="5"></line><line x1="19" y1="20" x2="19" y2="14"></line></svg>
+        <span>Reports</span></button>
+      <button class="navbtn" id="tab-clients" onclick="showTab('clients')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M2.7 20c0-3.3 2.8-6 6.3-6s6.3 2.7 6.3 6"></path><circle cx="17" cy="8.5" r="2.6"></circle><path d="M15.5 14.3c2.8.4 4.9 2.7 4.9 5.7"></path></svg>
+        <span>Clients</span></button>
       <div class="divider"></div>
-      <button class="navbtn" id="tab-archive" onclick="showTab('archive')"><span class="mark"></span><span>Archive</span></button>
-      <button class="navbtn" id="tab-reference" onclick="showTab('reference')"><span class="mark"></span><span>Reference</span></button>
-      <button class="navbtn" id="tab-settings" onclick="showTab('settings')"><span class="mark"></span><span>Settings</span></button>
+      <button class="navbtn" id="tab-archive" onclick="showTab('archive')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="19" height="5" rx="1.5"></rect><path d="M4 8.5v10a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-10"></path><line x1="9.5" y1="12.5" x2="14.5" y2="12.5"></line></svg>
+        <span>Archive</span></button>
+      <button class="navbtn" id="tab-reference" onclick="showTab('reference')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H11v18H5.5A1.5 1.5 0 0 1 4 19.5z"></path><path d="M20 4.5A1.5 1.5 0 0 0 18.5 3H13v18h5.5a1.5 1.5 0 0 0 1.5-1.5z"></path></svg>
+        <span>Reference</span></button>
+      <button class="navbtn" id="tab-settings" onclick="showTab('settings')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.4-2-3.4-2.3.7a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.4a7.6 7.6 0 0 0-2.6 1.5l-2.3-.7-2 3.4 2 1.4a7.6 7.6 0 0 0 0 3l-2 1.4 2 3.4 2.3-.7c.75.65 1.63 1.16 2.6 1.5l.5 2.4h4l.5-2.4a7.6 7.6 0 0 0 2.6-1.5l2.3.7 2-3.4z"></path></svg>
+        <span>Settings</span></button>
     </div>
-    <div class="kbd-cheat">
-      <div class="row"><span>New invoice</span><span class="k">\u2318N</span></div>
-      <div class="row"><span>Save</span><span class="k">\u2318S</span></div>
-      <div class="row"><span>Search invoices</span><span class="k">/</span></div>
+    <div class="plant-card floaty">
+      <svg viewBox="0 0 48 40" width="44" height="36" style="margin:0 auto;display:block">
+        <ellipse cx="24" cy="34" rx="13" ry="4" fill="#1E293B"></ellipse>
+        <path d="M15 34 L18 20 Q24 24 30 20 L33 34 Z" fill="#334155"></path>
+        <path d="M24 20 C24 20 18 14 24 6 C30 14 24 20 24 20 Z" fill="#FB923C"></path>
+        <path d="M24 18 C24 18 16 16 15 8 C24 8 24 18 24 18 Z" fill="#818CF8"></path>
+        <path d="M24 18 C24 18 32 16 33 8 C24 8 24 18 24 18 Z" fill="#A78BFA"></path>
+      </svg>
+      <div class="note">Every invoice, tracked and organized.</div>
     </div>
     <div class="footer">
       <span>LYCORE GROUP LLC</span>
@@ -376,7 +392,7 @@
         <span class="savepill" id="save-indicator"></span>
         <button class="lock" id="update-btn" style="display:none" onclick="updateClicked()">Update available</button>
         <button class="lock" onclick="lockNow()" id="lock-btn" style="display:none">Lock</button>
-        <button class="btn orange" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.72">\u2318N</span></button>
+        <button class="btn orange" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.85">\u2318N</span></button>
       </div>
     </header>
 
@@ -384,8 +400,8 @@
       <section class="page" id="page-content">
 
         <div id="pane-dashboard" style="display:none">
-          <div style="display:grid;grid-template-columns:minmax(340px,1.05fr) 1fr 1fr;gap:14px;align-items:stretch">
-            <div class="bp money-card revcard"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:grid;grid-template-columns:minmax(340px,1.05fr) 1fr 1fr;gap:16px;align-items:stretch">
+            <div class="card money hoverable anim-in revcard"><i class="corner tl"></i>
               <div class="toprow"><div class="kicker">Revenue collected</div><div class="period" id="dash-period-label">This month</div></div>
               <div class="big" id="dash-revenue-big">\u2014</div>
               <div class="sub">Cash in the door. Paid invoices only.</div>
@@ -398,19 +414,19 @@
                 <div class="bars" id="dash-chart"></div>
               </div>
             </div>
-            <div class="bp kpicell" id="kpi-cell-0"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div>
-            <div class="bp kpicell" id="kpi-cell-1"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div>
-            <div class="bp kpicell" id="kpi-cell-2"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div>
-            <div class="bp kpicell" id="kpi-cell-3"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i></div>
+            <div class="card hoverable anim-in anim-in-1 kpicell" id="kpi-cell-0"></div>
+            <div class="card hoverable anim-in anim-in-2 kpicell" id="kpi-cell-1"></div>
+            <div class="card hoverable anim-in anim-in-3 kpicell" id="kpi-cell-2"></div>
+            <div class="card hoverable anim-in anim-in-4 kpicell" id="kpi-cell-3"></div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-top:14px;align-items:start">
-            <div class="bp"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-top:16px;align-items:start">
+            <div class="card hoverable anim-in anim-in-2">
               <div class="sectionhd"><h3>Needs attention</h3><span class="cnt">Overdue, worst first</span><span class="cnt" style="margin-left:auto" id="dash-overdue-summary"></span></div>
               <table class="list"><tbody id="dash-overdue"></tbody></table>
               <div class="empty" id="dash-overdue-empty" style="display:none">Nothing overdue. Every invoice is either paid or still inside its terms.</div>
             </div>
-            <div class="bp" style="padding:16px 18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="card hoverable anim-in anim-in-3" style="padding:18px 20px">
               <h3 style="font-size:15px;margin-bottom:4px">Where the money comes from</h3>
               <div class="note" style="margin:0 0 14px">All time, billed</div>
               <div class="sec">By industry</div>
@@ -420,10 +436,10 @@
             </div>
           </div>
 
-          <div class="bp" style="margin-top:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card hoverable anim-in anim-in-4" style="margin-top:16px">
             <div class="sectionhd"><h3>Recent activity</h3>
-              <button class="btn" style="margin-left:auto;font-size:12px;padding:4px 10px" onclick="showTab('list')">All invoices</button>
-              <button class="btn" style="font-size:12px;padding:4px 10px" onclick="startNewExpense()">Log expense</button>
+              <button class="btn ghost" style="margin-left:auto;font-size:12px;padding:4px 10px" onclick="showTab('list')">All invoices</button>
+              <button class="btn ghost" style="font-size:12px;padding:4px 10px" onclick="startNewExpense()">Log expense</button>
             </div>
             <table class="list"><tbody id="dash-recent"></tbody></table>
             <div class="empty" id="dash-empty" style="display:none">No invoices yet \u2014 create your first one.</div>
@@ -431,7 +447,7 @@
         </div>
 
         <div id="pane-new" style="display:none">
-          <div class="bp" style="padding:16px 18px;margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card anim-in" style="padding:18px 20px;margin-bottom:16px">
             <div class="row3">
               <div class="field"><label>Invoice number</label><input id="f-number" class="mono" readonly></div>
               <div class="field"><label>Issue date</label><input type="date" id="f-date"></div>
@@ -439,8 +455,8 @@
             </div>
           </div>
 
-          <div class="bp" style="padding:16px 18px;margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <h3 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Client</h3>
+          <div class="card anim-in anim-in-1" style="padding:18px 20px;margin-bottom:16px">
+            <h3 style="font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px;color:var(--indigo-600)">Client</h3>
             <div class="row2">
               <div class="field"><label>Business name</label><input id="f-client" placeholder="Statewide Bail Bonds" list="client-suggest"></div>
               <datalist id="client-suggest"></datalist>
@@ -472,15 +488,15 @@
             <div class="field" id="f-industryother-wrap" style="display:none"><label>Industry name</label><input id="f-industryother"></div>
           </div>
 
-          <div class="bp" style="padding:16px 18px;margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:flex;align-items:center;margin-bottom:12px">
-              <h3 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin:0">Line items</h3>
-              <button class="btn" style="margin-left:auto;font-size:12px;padding:4px 10px" onclick="addItem()">+ Add line</button>
+          <div class="card anim-in anim-in-2" style="padding:18px 20px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;margin-bottom:14px">
+              <h3 style="font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;margin:0;color:var(--indigo-600)">Line items</h3>
+              <button class="btn ghost" style="margin-left:auto;font-size:12px;padding:4px 10px" onclick="addItem()">+ Add line</button>
             </div>
             <div id="items"></div>
           </div>
 
-          <div class="bp" style="padding:16px 18px;margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card anim-in anim-in-3" style="padding:18px 20px;margin-bottom:16px">
             <div class="row2" style="grid-template-columns:120px 1fr">
               <div class="field"><label>Tax rate %</label><input id="f-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
               <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/\u2026"></div>
@@ -488,32 +504,32 @@
             <div class="field" style="max-width:none;margin-top:12px"><label>Notes on the invoice</label><textarea id="f-notes"></textarea></div>
           </div>
 
-          <div style="display:flex;align-items:center;gap:10px;padding-bottom:20px">
-            <button class="btn orange bp" onclick="saveInvoice()"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><span id="save-invoice-label">Save invoice</span></button>
+          <div style="display:flex;align-items:center;gap:12px;padding-bottom:24px">
+            <button class="btn orange" onclick="saveInvoice()"><span id="save-invoice-label">Save invoice</span></button>
             <button class="btn" onclick="printInvoice()">Print / Save PDF</button>
-            <button class="btn" onclick="startNew(true)">Start blank</button>
+            <button class="btn ghost" onclick="startNew(true)">Start blank</button>
             <span class="note" style="margin-left:auto" id="draft-note">Saving updates the client record automatically.</span>
           </div>
         </div>
 
-        <div id="pane-list" style="display:none">
-          <table class="list bp"><thead><tr><th>Number</th><th>Client</th><th>Industry</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <div id="pane-list" style="display:none" class="anim-in">
+          <table class="list card"><thead><tr><th>Number</th><th>Client</th><th>Industry</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
             <tbody id="list-body"></tbody>
           </table>
           <div class="empty" id="list-empty" style="display:none">No invoices yet.<br>Your first one starts the sequence.</div>
         </div>
 
-        <div id="pane-expenses" style="display:none">
-          <div class="bp money-card" style="padding:16px 20px;margin-bottom:14px;display:flex;align-items:baseline;gap:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div id="pane-expenses" style="display:none" class="anim-in">
+          <div class="card money" style="padding:18px 22px;margin-bottom:16px;display:flex;align-items:baseline;gap:14px">
             <div>
-              <div class="lbl" style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--n600)">Monthly recurring</div>
-              <div style="font-family:var(--font-heading);font-weight:700;font-size:28px;color:var(--money);margin-top:2px" id="ex-recurring-total">\u2014</div>
+              <div class="lbl" style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute)">Monthly recurring</div>
+              <div style="font-weight:800;font-size:28px;color:var(--money);margin-top:3px" id="ex-recurring-total">\u2014</div>
             </div>
             <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses \u2014 the ongoing cost of running the business, separate from one-off spending.</div>
           </div>
-          <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
-            <div class="bp" style="padding:16px 18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <h3 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Log an expense</h3>
+          <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
+            <div class="card" style="padding:18px 20px">
+              <h3 style="font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px;color:var(--indigo-600)">Log an expense</h3>
               <div class="field"><label>Date</label><input type="date" id="ex-date"></div>
               <div class="field"><label>Category</label>
                 <select id="ex-category" onchange="renderExpenseHint()">
@@ -531,9 +547,9 @@
               </div>
               <label class="check"><input type="checkbox" id="ex-recurring"> Recurring monthly</label>
               <div class="field" style="max-width:none"><textarea id="ex-notes" placeholder="Optional notes"></textarea></div>
-              <button class="btn orange bp" style="width:100%;justify-content:center" onclick="saveExpense()"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Log expense</button>
+              <button class="btn orange" style="width:100%;justify-content:center" onclick="saveExpense()">Log expense</button>
             </div>
-            <div class="bp"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="card">
               <div class="sectionhd"><h3>Logged expenses</h3><span class="cnt" id="expense-summary"></span></div>
               <table class="list"><tbody id="expenses-body"></tbody></table>
               <div class="empty" id="expenses-empty" style="display:none">No expenses logged yet.</div>
@@ -541,37 +557,37 @@
           </div>
         </div>
 
-        <div id="pane-reports" style="display:none">
-          <div style="display:grid;grid-template-columns:minmax(380px,1fr) 1fr;gap:14px;align-items:start">
-            <div class="bp" style="padding:18px 20px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div id="pane-reports" style="display:none" class="anim-in">
+          <div style="display:grid;grid-template-columns:minmax(380px,1fr) 1fr;gap:16px;align-items:start">
+            <div class="card" style="padding:20px 22px">
               <div style="display:flex;align-items:center;margin-bottom:4px">
                 <h3 style="font-size:16px;margin:0">Profit &amp; loss</h3>
-                <select id="rep-period" onchange="renderReports()" style="margin-left:auto;padding:5px 8px;border:1px solid var(--color-divider);background:#fafafb;font-size:12px">
+                <select id="rep-period" onchange="renderReports()" style="margin-left:auto;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--r-pill);background:var(--card-alt);font-size:12px">
                   <option value="month">This month</option><option value="quarter">This quarter</option>
                   <option value="year">This year</option><option value="all">All time</option>
                 </select>
               </div>
               <div class="note" style="margin:0 0 16px">Cash basis \u2014 revenue counts when an invoice is marked paid.</div>
               <div id="rep-pl"></div>
-              <div style="display:flex;gap:9px;margin-top:18px;align-items:center">
-                <button class="btn" style="font-size:12.5px" onclick="exportCSV()">Export CSV</button>
+              <div style="display:flex;gap:10px;margin-top:18px;align-items:center">
+                <button class="btn ghost" style="font-size:12.5px" onclick="exportCSV()">Export CSV</button>
                 <span class="note" style="margin:0">Invoices and expenses for the selected period.</span>
               </div>
             </div>
-            <div style="display:grid;gap:14px">
-              <div class="bp" style="padding:18px 20px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display:grid;gap:16px">
+              <div class="card indigo-tint" style="padding:20px 22px">
                 <h3 style="font-size:16px;margin-bottom:4px">Tax reserve</h3>
                 <div class="note" style="margin:0 0 14px">Set aside a share of net profit before you draw anything.</div>
                 <div style="display:flex;align-items:center;gap:14px">
-                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" style="flex:1;accent-color:var(--color-accent)">
-                  <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;width:62px;text-align:right" id="rep-reserve-pct-label">25%</div>
+                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" style="flex:1;accent-color:var(--indigo-500)">
+                  <div style="font-weight:700;font-size:26px;width:62px;text-align:right;color:var(--indigo-700)" id="rep-reserve-pct-label">25%</div>
                 </div>
-                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-divider);display:flex;justify-content:space-between;align-items:baseline">
-                  <span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--n600)">Set aside</span>
-                  <span style="font-family:var(--font-heading);font-weight:700;font-size:28px;color:var(--money)" id="rep-reserve-amt">\u2014</span>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute)">Set aside</span>
+                  <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">\u2014</span>
                 </div>
               </div>
-              <div class="bp" style="padding:18px 20px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div class="card" style="padding:20px 22px">
                 <h3 style="font-size:16px;margin-bottom:12px">Expenses by category</h3>
                 <div id="rep-expense-cat"></div>
               </div>
@@ -579,39 +595,39 @@
           </div>
         </div>
 
-        <div id="pane-clients" style="display:none"></div>
+        <div id="pane-clients" style="display:none" class="anim-in"></div>
 
-        <div id="pane-archive" style="display:none">
-          <div class="bp" style="margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div id="pane-archive" style="display:none" class="anim-in">
+          <div class="card" style="margin-bottom:16px">
             <div class="sectionhd"><h3>Archived invoices</h3></div>
             <table class="list"><tbody id="archive-body"></tbody></table>
             <div class="empty" id="archive-empty" style="display:none">No archived invoices.</div>
           </div>
-          <div class="bp"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card">
             <div class="sectionhd"><h3>Archived expenses</h3></div>
             <table class="list"><tbody id="expense-archive-body"></tbody></table>
             <div class="empty" id="expense-archive-empty" style="display:none">No archived expenses.</div>
           </div>
         </div>
 
-        <div id="pane-reference" style="display:none">
-          <div id="reference-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;max-width:1180px"></div>
+        <div id="pane-reference" style="display:none" class="anim-in">
+          <div id="reference-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;max-width:1180px"></div>
         </div>
 
-        <div id="pane-settings" style="display:none">
-          <div style="display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;align-items:start">
+        <div id="pane-settings" style="display:none" class="anim-in">
+          <div style="display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px;align-items:start">
             <div style="position:sticky;top:0">
               <div class="sec">Sections</div>
-              <a href="#sec-company" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">Company</a>
-              <a href="#sec-numbering" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">Numbering &amp; links</a>
-              <a href="#sec-provider" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">Payment provider</a>
-              <a href="#sec-usd" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">USD account</a>
-              <a href="#sec-gbp" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">GBP account</a>
-              <a href="#sec-eur" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">EUR account</a>
-              <a href="#sec-catalog" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">Catalog</a>
-              <a href="#sec-access" style="display:block;padding:6px 0;font-size:13px;color:var(--n700);text-decoration:none;border-bottom:1px solid #eaeaec">Access</a>
+              <a href="#sec-company" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">Company</a>
+              <a href="#sec-numbering" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">Numbering &amp; links</a>
+              <a href="#sec-provider" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">Payment provider</a>
+              <a href="#sec-usd" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">USD account</a>
+              <a href="#sec-gbp" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">GBP account</a>
+              <a href="#sec-eur" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">EUR account</a>
+              <a href="#sec-catalog" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">Catalog</a>
+              <a href="#sec-access" style="display:block;padding:7px 0;font-size:13px;color:var(--text-soft);text-decoration:none;border-bottom:1px solid var(--border-soft)">Access</a>
             </div>
-            <div style="display:grid;gap:14px;max-width:860px" id="settings-body"></div>
+            <div style="display:grid;gap:16px;max-width:860px" id="settings-body"></div>
           </div>
         </div>
 
@@ -627,6 +643,7 @@
 
 <div class="toast" id="toast"></div>
 <script>
+
 /* ================= data ================= */
 const SYM={USD:'$',GBP:'\u00A3',EUR:'\u20AC'};
 const STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming'};
@@ -930,10 +947,10 @@ function fillSettingsForm(){
 }
 function renderSettingsBody(){
   const wrap=document.getElementById('settings-body'); if(!wrap) return;
-  const corners='<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>';
+  const corners='';
   let html='';
   SETTINGS_SECTIONS.forEach(sec=>{
-    html+=`<div id="${sec.id}" class="bp" style="padding:18px 20px;scroll-margin-top:20px">${corners}
+    html+=`<div id="${sec.id}" class="card hoverable" style="padding:18px 20px;scroll-margin-top:20px">${corners}
       <h3 style="font-size:17px;margin-bottom:3px">${esc(sec.title)}</h3>
       <div class="note" style="margin:0 0 15px">${esc(sec.note)}</div>
       <div class="row2">`;
@@ -956,22 +973,22 @@ function renderSettingsBody(){
     <div id="bundle-rows"></div>
     <button class="btn" style="margin-top:6px" onclick="addBundleRow()">+ Add bundle</button>
   </div>`;
-  html+=`<div class="bp" style="padding:18px 20px">${corners}
+  html+=`<div class="card hoverable" style="padding:18px 20px">${corners}
     <h3 style="font-size:17px;margin-bottom:3px">Service catalog</h3>
     <div class="note" style="margin:0 0 15px">Default prices \u2014 always editable per invoice. Each service can carry its own Stripe payment link, filled in automatically when picked.</div>
     <div id="catalog-rows"></div>
     <button class="btn" style="margin-top:6px" onclick="addCatalogRow()">+ Add service</button>
   </div>`;
-  html+=`<div class="bp" style="padding:18px 20px">${corners}
+  html+=`<div class="card hoverable" style="padding:18px 20px">${corners}
     <h3 style="font-size:17px;margin-bottom:3px">Logo</h3>
     <div class="note" style="margin:0 0 12px">Shown at top left of the app and on the printed invoice.</div>
     <div style="display:flex;align-items:center;gap:14px">
-      <div style="width:56px;height:56px;border:1px solid var(--color-divider);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:var(--font-heading);font-weight:700;font-size:22px;color:var(--money)" id="logo-preview-box">${settings.logo?'<img src="'+settings.logo+'" style="width:100%;height:100%;object-fit:cover">':'L'}</div>
+      <div style="width:56px;height:56px;border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:var(--font);font-weight:700;font-size:22px;color:var(--money)" id="logo-preview-box">${settings.logo?'<img src="'+settings.logo+'" style="width:100%;height:100%;object-fit:cover">':'L'}</div>
       <input type="file" accept="image/*" onchange="logoPicked(event)">
       <button class="btn" onclick="clearLogo()">Remove logo</button>
     </div>
   </div>`;
-  html+=`<div id="sec-access" class="bp" style="padding:18px 20px;margin-bottom:20px">${corners}
+  html+=`<div id="sec-access" class="card hoverable" style="padding:18px 20px;margin-bottom:20px">${corners}
     <h3 style="font-size:17px;margin-bottom:3px">Access</h3>
     <div class="note" style="margin:0 0 15px">The database file is encrypted at rest with Windows' own credential store, tied to your login. A passcode adds a screen on top of that.</div>
     <div class="row2" style="margin-bottom:14px">
@@ -1016,20 +1033,20 @@ function applyLogo(){
 function renderCatalogRows(){
   const w=document.getElementById('catalog-rows'); if(!w) return; w.innerHTML='';
   (catalog||[]).forEach((c)=>{
-    const d=document.createElement('div'); d.className='cat-row'; d.style.cssText='border:1px solid var(--color-divider);border-radius:8px;padding:10px;margin-bottom:8px;background:#fafafb';
+    const d=document.createElement('div'); d.className='cat-row'; d.style.cssText='border:1.5px solid var(--border-soft);border-radius:var(--r-md);padding:12px;margin-bottom:9px;background:var(--card-alt)';
     d.innerHTML=`
       <div class="row2" style="margin-bottom:8px">
-        <input class="cn" value="${esc(c.name)}" placeholder="Service name" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
-        <input class="cp" type="number" step="0.01" value="${c.price}" placeholder="Default price (USD)" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
+        <input class="cn" value="${esc(c.name)}" placeholder="Service name" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff">
+        <input class="cp" type="number" step="0.01" value="${c.price}" placeholder="Default price (USD)" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff">
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <select class="cf" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
+        <select class="cf" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff">
           <option value="once" ${c.freq!=='month'?'selected':''}>One-time</option>
           <option value="month" ${c.freq==='month'?'selected':''}>Monthly</option>
         </select>
         <button class="btn" style="margin-left:auto;padding:5px 10px" onclick="this.closest('.cat-row').remove()">\u00D7</button>
       </div>
-      <input class="cl" value="${esc(c.paylink||'')}" placeholder="Stripe payment link (optional \u2014 auto-fills when this service is picked)" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:12.5px;background:#fff;width:100%">`;
+      <input class="cl" value="${esc(c.paylink||'')}" placeholder="Stripe payment link (optional \u2014 auto-fills when this service is picked)" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;width:100%">`;
     w.appendChild(d);
   });
 }
@@ -1041,21 +1058,21 @@ function renderBundleRows(){
   const onceOpts=(catalog||[]).filter(c=>c.freq!=='month').map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
   const monthOpts=(catalog||[]).filter(c=>c.freq==='month').map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
   (bundles||[]).forEach((b)=>{
-    const d=document.createElement('div'); d.className='bundle-row'; d.style.cssText='border:1px solid var(--color-divider);border-radius:8px;padding:10px;margin-bottom:8px;background:#fafafb';
+    const d=document.createElement('div'); d.className='bundle-row'; d.style.cssText='border:1.5px solid var(--border-soft);border-radius:var(--r-md);padding:12px;margin-bottom:9px;background:var(--card-alt)';
     d.innerHTML=`
-      <input class="bl" value="${esc(b.label)}" placeholder="Bundle name shown in the dropdown" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%;margin-bottom:8px">
+      <input class="bl" value="${esc(b.label)}" placeholder="Bundle name shown in the dropdown" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff;width:100%;margin-bottom:8px">
       <div class="row2" style="margin-bottom:8px">
         <div>
-          <label style="display:block;font-size:10px;color:var(--n600);margin-bottom:3px">One-time part</label>
-          <select class="bp1" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${onceOpts}</select>
+          <label style="display:block;font-size:10px;color:var(--text-mute);margin-bottom:3px">One-time part</label>
+          <select class="bp1" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${onceOpts}</select>
         </div>
         <div>
-          <label style="display:block;font-size:10px;color:var(--n600);margin-bottom:3px">Monthly part</label>
-          <select class="bp2" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${monthOpts}</select>
+          <label style="display:block;font-size:10px;color:var(--text-mute);margin-bottom:3px">Monthly part</label>
+          <select class="bp2" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${monthOpts}</select>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end">
-        <input class="bpl" value="${esc(b.paylink||'')}" placeholder="Stripe payment link for this bundle" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:12.5px;background:#fff;flex:1">
+        <input class="bpl" value="${esc(b.paylink||'')}" placeholder="Stripe payment link for this bundle" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;flex:1">
         <button class="btn" style="padding:5px 10px" onclick="this.closest('.bundle-row').remove()">\u00D7</button>
       </div>`;
     d.querySelector('.bp1').value=b.parts[0]||'';
@@ -1197,20 +1214,20 @@ function renderItems(){
       +(bundleOpts?`<optgroup label="Bundles \u2014 setup + monthly, billed together">${bundleOpts}</optgroup>`:'')
       +`<optgroup label="Individual services">${singleOpts}</optgroup>`
       +`<option value="__custom" ${it.svc==='__custom'?'selected':''}>Custom line\u2026</option>`;
-    const d=document.createElement('div'); d.className='item-card-anim'; d.style.cssText='border:1px solid #e7e7ea;border-radius:8px;padding:11px;margin-bottom:9px;background:#fafafb';
+    const d=document.createElement('div'); d.className='item-card-anim'; d.style.cssText='border:1.5px solid var(--border-soft);border-radius:var(--r-md);padding:13px;margin-bottom:10px;background:var(--card-alt);transition:border-color .15s ease';
     d.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 118px 30px;gap:8px">
-        <select onchange="svcPicked(${i},this.value)" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">${opts}</select>
-        <select onchange="items[${i}].freq=this.value;render();scheduleAutosave()" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
+        <select onchange="svcPicked(${i},this.value)" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px">${opts}</select>
+        <select onchange="items[${i}].freq=this.value;render();scheduleAutosave()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px">
           <option value="once" ${it.freq!=='month'?'selected':''}>One-time</option>
           <option value="month" ${it.freq==='month'?'selected':''}>Monthly</option>
         </select>
-        <button onclick="removeItem(${i})" title="Remove" style="border:1px solid var(--color-divider);background:#fff;cursor:pointer;font-size:14px;color:var(--n600)">\u00D7</button>
+        <button onclick="removeItem(${i})" title="Remove" style="border:1px solid var(--border-soft);background:#fff;cursor:pointer;font-size:14px;color:var(--text-mute)">\u00D7</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 70px 110px;gap:8px;margin-top:8px">
-        <input placeholder="Description on invoice" value="${esc(it.desc)}" oninput="items[${i}].desc=this.value;render();scheduleAutosave()" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
-        <input type="number" min="0" step="1" placeholder="Qty" value="${it.qty}" oninput="items[${i}].qty=this.value;render();scheduleAutosave()" class="mono" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
-        <input type="number" min="0" step="0.01" placeholder="Unit price" value="${it.rate}" oninput="items[${i}].rate=this.value;delete items[${i}].usdBase;render();scheduleAutosave()" class="mono" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
+        <input placeholder="Description on invoice" value="${esc(it.desc)}" oninput="items[${i}].desc=this.value;render();scheduleAutosave()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px">
+        <input type="number" min="0" step="1" placeholder="Qty" value="${it.qty}" oninput="items[${i}].qty=this.value;render();scheduleAutosave()" class="mono" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px">
+        <input type="number" min="0" step="0.01" placeholder="Unit price" value="${it.rate}" oninput="items[${i}].rate=this.value;delete items[${i}].usdBase;render();scheduleAutosave()" class="mono" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px">
       </div>
       ${it.usdBase?`<div class="note" style="margin:6px 2px 0">${fxRates.asOf?`Converted from $${Number(it.usdBase).toFixed(2)} USD \u00b7 rate as of ${fxRates.asOf}`:`Priced from $${Number(it.usdBase).toFixed(2)} USD \u2014 exchange rate not loaded yet, showing the USD amount until it is`}. Editing the price directly detaches it from auto-conversion.</div>`:''}`;
     wrap.appendChild(d);
@@ -1512,7 +1529,7 @@ function renderReports(){
 
   const catEl=document.getElementById('rep-expense-cat');
   const catTotal=Object.values(realExpenseByCat).reduce((s,byCur)=>s+Object.values(byCur).reduce((a,b)=>a+b,0),0)||1;
-  const palette=['#5980a6','#7e9cb8','#9ebbd8','#bdd8f2','#2c455d'];
+  const palette=['var(--indigo-500)','var(--purple-400)','var(--orange-400)','var(--indigo-300, #A5B4FC)','var(--purple-300, #C4B5FD)'];
   catEl.innerHTML=Object.entries(realExpenseByCat).map(([cat,byCur],i)=>{
     const catSum=Object.values(byCur).reduce((a,b)=>a+b,0);
     const pct=Math.round(catSum/catTotal*100);
@@ -1625,14 +1642,14 @@ function renderDashboard(){
   document.getElementById('dash-collrate-val').textContent=billedTotal?Math.round(revTotal/billedTotal*100)+'%':'\u2014';
 
   const kpis=[
-    {label:'Net profit',val:fmtSum(netProfit),color:Object.values(netProfit).some(v=>v<0)?'var(--money)':'inherit',note:'Revenue minus real expenses. Owner draws excluded.',noteColor:'var(--n600)'},
-    {label:'Outstanding',val:fmtSum(outstandingAll),color:Object.keys(outstandingAll).length?'var(--money)':'inherit',note:Object.keys(outstandingAll).length?'Every unpaid invoice, any period':'Nothing owed right now',noteColor:Object.keys(outstandingAll).length?'var(--money)':'var(--n600)'},
-    {label:'Overdue',val:String(overdue.length),color:overdue.length?'var(--money)':'inherit',note:overdue.length?'Past due date, unpaid':'All caught up',noteColor:overdue.length?'var(--money)':'var(--n600)'},
-    {label:'Active clients',val:String(activeClients),color:'inherit',note:'Billed in this period',noteColor:'var(--n600)'}
+    {label:'Net profit',val:fmtSum(netProfit),color:Object.values(netProfit).some(v=>v<0)?'var(--money)':'inherit',note:'Revenue minus real expenses. Owner draws excluded.',noteColor:'var(--text-mute)'},
+    {label:'Outstanding',val:fmtSum(outstandingAll),color:Object.keys(outstandingAll).length?'var(--money)':'inherit',note:Object.keys(outstandingAll).length?'Every unpaid invoice, any period':'Nothing owed right now',noteColor:Object.keys(outstandingAll).length?'var(--money)':'var(--text-mute)'},
+    {label:'Overdue',val:String(overdue.length),color:overdue.length?'var(--money)':'inherit',note:overdue.length?'Past due date, unpaid':'All caught up',noteColor:overdue.length?'var(--money)':'var(--text-mute)'},
+    {label:'Active clients',val:String(activeClients),color:'inherit',note:'Billed in this period',noteColor:'var(--text-mute)'}
   ];
   kpis.forEach((k,i)=>{
     const el=document.getElementById('kpi-cell-'+i);
-    el.innerHTML=`<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    el.innerHTML=`
       <div class="lbl">${k.label}</div><div class="val" style="color:${k.color}">${k.val}</div><div class="foot" style="color:${k.noteColor}">${k.note}</div>`;
   });
 
@@ -1644,10 +1661,10 @@ function renderDashboard(){
     const h=Math.max(3,Math.round(monthTotals[i]/maxVal*74));
     const label=new Date(ym+'-01').toLocaleDateString('en-US',{month:'short'});
     const isLast=i===months.length-1;
-    return `<div class="barcol"><div class="mval">${monthTotals[i]?Math.round(monthTotals[i]/1000)+'k':''}</div><div style="height:${h}px;background:${isLast?'var(--money)':'#9ebbd8'}"></div></div>`;
+    return `<div class="barcol"><div class="mval">${monthTotals[i]?Math.round(monthTotals[i]/1000)+'k':''}</div><div style="height:${h}px;background:${isLast?'var(--money)':'var(--indigo-300, #A5B4FC)'}"></div></div>`;
   }).join('')+'</div><div class="barlabels">'+months.map((ym,i)=>{
     const label=new Date(ym+'-01').toLocaleDateString('en-US',{month:'short'});
-    return `<span style="color:${i===months.length-1?'var(--color-text)':'var(--n500)'}">${label}</span>`;
+    return `<span style="color:${i===months.length-1?'var(--text)':'var(--text-mute)'}">${label}</span>`;
   }).join('');
 
   const ovBody=document.getElementById('dash-overdue'); ovBody.innerHTML='';
@@ -1655,8 +1672,8 @@ function renderDashboard(){
   document.getElementById('dash-overdue-summary').textContent=overdue.length?overdue.length+' invoice'+(overdue.length===1?'':'s'):'';
   overdue.slice(0,8).forEach(inv=>{
     const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
-    tr.innerHTML=`<td class="mono" style="color:var(--n600);width:96px">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
-      <td style="color:var(--n600);font-size:12px">${esc(inv.industry||'')}</td>
+    tr.innerHTML=`<td class="mono" style="color:var(--text-mute);width:96px">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
+      <td style="color:var(--text-mute);font-size:12px">${esc(inv.industry||'')}</td>
       <td class="mono" style="text-align:right;font-weight:600">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
       <td class="mono" style="text-align:right;color:var(--money);font-weight:600;width:92px">${daysOverdue(inv.due)}d</td>`;
     ovBody.appendChild(tr);
@@ -1665,22 +1682,22 @@ function renderDashboard(){
   const byInd={}; invoices.forEach(inv=>{ const k=inv.industry||'Other'; byInd[k]=(byInd[k]||0)+inv.total; });
   const indTot=Object.values(byInd).reduce((a,b)=>a+b,0)||1;
   document.getElementById('dash-industry').innerHTML=Object.entries(byInd).sort((a,b)=>b[1]-a[1]).map(([name,val])=>
-    `<div class="breakdown-row"><div><div class="top"><span>${esc(name)}</span><span class="share">${Math.round(val/indTot*100)}%</span></div><div class="track"><div class="fill" style="width:${Math.round(val/indTot*100)}%;background:#5980a6"></div></div></div><div class="amt mono">${val.toFixed(0)}</div></div>`
+    `<div class="breakdown-row"><div><div class="top"><span>${esc(name)}</span><span class="share">${Math.round(val/indTot*100)}%</span></div><div class="track"><div class="fill" style="width:${Math.round(val/indTot*100)}%;background:var(--indigo-500)"></div></div></div><div class="amt mono">${val.toFixed(0)}</div></div>`
   ).join('') || '<p class="note">No data yet.</p>';
 
   const byCur={}; invoices.forEach(inv=>{ byCur[inv.currency]=(byCur[inv.currency]||0)+inv.total; });
   const curTot=Object.values(byCur).reduce((a,b)=>a+b,0)||1;
   document.getElementById('dash-currency').innerHTML=Object.entries(byCur).sort((a,b)=>b[1]-a[1]).map(([cur,val])=>
-    `<div class="breakdown-row"><div><div class="top"><span>${cur}</span><span class="share">${Math.round(val/curTot*100)}%</span></div><div class="track"><div class="fill" style="width:${Math.round(val/curTot*100)}%;background:#7e9cb8"></div></div></div><div class="amt mono">${(SYM[cur]||'')}${val.toFixed(0)}</div></div>`
+    `<div class="breakdown-row"><div><div class="top"><span>${cur}</span><span class="share">${Math.round(val/curTot*100)}%</span></div><div class="track"><div class="fill" style="width:${Math.round(val/curTot*100)}%;background:var(--purple-400)"></div></div></div><div class="amt mono">${(SYM[cur]||'')}${val.toFixed(0)}</div></div>`
   ).join('') || '<p class="note">No data yet.</p>';
 
   const body=document.getElementById('dash-recent'); body.innerHTML='';
   document.getElementById('dash-empty').style.display=invoices.length?'none':'block';
   invoices.slice(0,8).forEach(inv=>{
     const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
-    tr.innerHTML=`<td class="mono" style="color:var(--n600);width:96px">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
-      <td style="color:var(--n600);font-size:12px">${esc(inv.industry||'')}</td>
-      <td class="mono" style="color:var(--n600);font-size:12px">${esc(inv.date||'')}</td>
+    tr.innerHTML=`<td class="mono" style="color:var(--text-mute);width:96px">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
+      <td style="color:var(--text-mute);font-size:12px">${esc(inv.industry||'')}</td>
+      <td class="mono" style="color:var(--text-mute);font-size:12px">${esc(inv.date||'')}</td>
       <td class="mono" style="text-align:right;font-weight:600">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
       <td style="text-align:right;width:96px"><span class="pill ${inv.status==='paid'?'paid':'unpaid'}">${inv.status}</span></td>`;
     body.appendChild(tr);
@@ -1693,9 +1710,9 @@ function renderList(){
   document.getElementById('list-empty').style.display=invoices.length?'none':'block';
   invoices.forEach(inv=>{
     const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,false);
-    tr.innerHTML=`<td class="mono" style="color:var(--n600)">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
-      <td style="color:var(--n600);font-size:12px">${esc(inv.industry||'')}</td>
-      <td class="mono" style="color:var(--n600);font-size:12px">${esc(inv.date||'')}</td>
+    tr.innerHTML=`<td class="mono" style="color:var(--text-mute)">${esc(inv.number)}</td><td style="font-weight:500">${esc(inv.client)}</td>
+      <td style="color:var(--text-mute);font-size:12px">${esc(inv.industry||'')}</td>
+      <td class="mono" style="color:var(--text-mute);font-size:12px">${esc(inv.date||'')}</td>
       <td class="mono" style="text-align:right;font-weight:600">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
       <td style="text-align:right"><button class="pill ${inv.status==='paid'?'paid':'unpaid'}" onclick="toggleStatus('${inv.id}',event)">${inv.status}</button></td>
       <td style="text-align:right"><button class="pill gray" onclick="askDelete('${inv.id}',event,'archive')">archive</button></td>`;
@@ -1707,7 +1724,7 @@ function renderArchive(){
   document.getElementById('archive-empty').style.display=archive.length?'none':'block';
   archive.forEach(inv=>{
     const tr=document.createElement('tr'); tr.className='rowlink'; tr.onclick=()=>openInvoice(inv.id,true);
-    tr.innerHTML=`<td class="mono" style="color:var(--n600)">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
+    tr.innerHTML=`<td class="mono" style="color:var(--text-mute)">${esc(inv.number)}</td><td>${esc(inv.client)}</td>
       <td class="mono" style="text-align:right">${SYM[inv.currency]||''}${inv.total.toFixed(2)}</td>
       <td style="text-align:right;width:88px"><button class="pill gray" onclick="restoreInvoice('${inv.id}',event)">restore</button></td>
       <td style="text-align:right;width:76px"><button class="pill gray" style="color:var(--money);border-color:var(--money)" onclick="askDelete('${inv.id}',event,'purge')">purge</button></td>`;
@@ -1717,7 +1734,7 @@ function renderArchive(){
   document.getElementById('expense-archive-empty').style.display=expenseArchive.length?'none':'block';
   expenseArchive.forEach(ex=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="mono" style="color:var(--n600)">${esc(ex.date)}</td><td>${esc(ex.category)}</td>
+    tr.innerHTML=`<td class="mono" style="color:var(--text-mute)">${esc(ex.date)}</td><td>${esc(ex.category)}</td>
       <td class="mono" style="text-align:right">${SYM[ex.currency]||''}${ex.amount.toFixed(2)}</td>
       <td style="text-align:right;width:88px"><button class="pill gray" onclick="restoreExpense('${ex.id}',event)">restore</button></td>
       <td style="text-align:right;width:76px"><button class="pill gray" style="color:var(--money);border-color:var(--money)" onclick="askDelete('${ex.id}',event,'expense-purge')">purge</button></td>`;
@@ -1754,11 +1771,11 @@ function renderClients(){
     const total={}; list.forEach(c=>Object.entries(c.billed).forEach(([cur,amt])=>{ total[cur]=(total[cur]||0)+amt; }));
     const rowsHtml=list.map(c=>{
       const billed=Object.entries(c.billed).map(([cur,amt])=>SYM[cur]+amt.toFixed(0)).join(' + ');
-      return `<tr><td style="font-weight:500">${esc(c.name)}</td><td style="color:var(--n600)">${esc(c.attn)||'\u2014'}</td><td style="color:var(--n600)">${esc(c.loc)||'\u2014'}</td>
-        <td style="color:var(--n600)" class="mono">${c.count}</td><td class="mono" style="text-align:right;font-weight:600">${billed}</td><td style="text-align:right;color:var(--n600);font-size:12px" class="mono">${c.last||'\u2014'}</td></tr>`;
+      return `<tr><td style="font-weight:500">${esc(c.name)}</td><td style="color:var(--text-mute)">${esc(c.attn)||'\u2014'}</td><td style="color:var(--text-mute)">${esc(c.loc)||'\u2014'}</td>
+        <td style="color:var(--text-mute)" class="mono">${c.count}</td><td class="mono" style="text-align:right;font-weight:600">${billed}</td><td style="text-align:right;color:var(--text-mute);font-size:12px" class="mono">${c.last||'\u2014'}</td></tr>`;
     }).join('');
-    return `<div class="bp" style="margin-bottom:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-      <div class="sectionhd"><h3 style="letter-spacing:.06em;text-transform:uppercase">${esc(ind)}</h3><span class="cnt">${list.length}</span><span class="cnt" style="margin-left:auto;color:var(--n700)">${fmtSum(total)}</span></div>
+    return `<div class="card hoverable" style="margin-bottom:14px">
+      <div class="sectionhd"><h3 style="letter-spacing:.06em;text-transform:uppercase">${esc(ind)}</h3><span class="cnt">${list.length}</span><span class="cnt" style="margin-left:auto;color:var(--text-soft)">${fmtSum(total)}</span></div>
       <table class="list"><thead><tr><th>Client</th><th>Contact</th><th>Location</th><th>Invoices</th><th>Billed</th><th>Last</th></tr></thead>
       <tbody>${rowsHtml}</tbody></table></div>`;
   }).join('');
@@ -1903,11 +1920,11 @@ function renderReference(){
     {kicker:'Safety',title:'Back up your data',cols:'1fr',lines:[
       ['','File \u2192 Back Up Data writes invoices, clients, expenses and settings to a single file. Keep a copy off this computer. Nothing syncs to the cloud yet, so that file is the only safety net.']]}
   ];
-  wrap.innerHTML=cards.map(c=>`<div class="bp" style="padding:18px 20px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+  wrap.innerHTML=cards.map(c=>`<div class="card hoverable" style="padding:18px 20px">
     <div class="sec" style="margin-top:0">${esc(c.kicker)}</div>
     <h3 style="font-size:18px;margin:6px 0 10px">${esc(c.title)}</h3>
     ${c.lines.map(l=>`<div style="display:grid;grid-template-columns:${c.cols};gap:12px;padding:6px 0;border-top:1px solid #f0f0f2;font-size:13px;line-height:1.5">
-      <span style="color:var(--n700);font-weight:500">${esc(l[0])}</span><span style="color:var(--n900)">${esc(l[1])}</span>
+      <span style="color:var(--text-soft);font-weight:500">${esc(l[0])}</span><span style="color:var(--text)">${esc(l[1])}</span>
     </div>`).join('')}
   </div>`).join('');
 }
