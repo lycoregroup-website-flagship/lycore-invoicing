@@ -168,7 +168,7 @@
   .zoom-ctrl .zoom-reset{width:auto;padding:0 8px;font-size:10px;font-weight:600}
   #doc-zoom-pct{font-size:11px;color:var(--text-mute);min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
   .doc-zoom-wrap{width:max-content}
-  .doc{background:#fff;box-shadow:var(--shadow-lg);border-radius:var(--r-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
+  .doc{width:660px;box-sizing:border-box;background:#fff;box-shadow:var(--shadow-lg);border-radius:var(--r-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
   .doc .top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:1.5px solid #111}
   .doc .logo-row{display:flex;align-items:center;gap:14px}
   .doc .logo-box{width:52px;height:52px;border-radius:12px;background:var(--money);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;overflow:hidden;flex-shrink:0;font-family:var(--font)}
@@ -1981,12 +1981,14 @@ function applyDocZoom(){
   const factor=docZoomLevel/100;
   doc.style.transform=`scale(${factor})`;
   doc.style.transformOrigin='top left';
-  // transform is purely visual and doesn't affect layout size, so offsetWidth/Height
-  // here always reflects the doc's true unscaled size \u2014 safe to read regardless of
-  // whatever zoom was previously applied, then size the wrapper to the scaled result
-  // so the panel's scrollbars correctly reach every part of the zoomed content.
-  wrap.style.width=(doc.offsetWidth*factor)+'px';
-  wrap.style.height=(doc.offsetHeight*factor)+'px';
+  // .doc now has a fixed, explicit width (see .doc CSS), so offsetWidth/Height is
+  // always a stable, real measurement here \u2014 never dependent on this wrapper's own
+  // size, which is what previously caused a shrinking feedback loop across repeated
+  // calls. Guarded against 0 anyway, in case this ever runs while the panel is hidden.
+  if(doc.offsetWidth>0){
+    wrap.style.width=(doc.offsetWidth*factor)+'px';
+    wrap.style.height=(doc.offsetHeight*factor)+'px';
+  }
 }
 
 /* ================= reference ================= */
