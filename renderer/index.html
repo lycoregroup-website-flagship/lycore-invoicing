@@ -209,9 +209,9 @@
   .trow.sub{color:var(--n600)}
 
   /* — dialog / toast — */
-  .overlay{position:fixed;inset:0;background:rgba(29,31,32,.44);display:flex;align-items:center;justify-content:center;z-index:100}
+  .overlay{position:fixed;inset:0;background:rgba(29,31,32,.44);display:flex;align-items:center;justify-content:center;z-index:100;animation:overlayIn .16s ease}
   .overlay.hidden{display:none}
-  .modal{background:#fff;padding:24px 26px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border:1px solid var(--color-divider);border-radius:14px}
+  .modal{background:#fff;padding:24px 26px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border:1px solid var(--color-divider);border-radius:14px;animation:modalIn .22s cubic-bezier(.2,.9,.3,1.2)}
   .modal h3{font-size:19px;margin-bottom:8px}
   .modal p{font-size:13px;color:var(--n700);line-height:1.55;margin-bottom:14px}
   .modal input{width:100%;padding:9px 11px;border:1px solid var(--color-divider);background:#fafafb;font-size:14px;margin-bottom:14px}
@@ -224,8 +224,32 @@
   .recoverybox{background:var(--n100);border:1px dashed var(--money);padding:16px;text-align:center;margin-bottom:14px}
   .recoverybox .code{font-family:ui-monospace,monospace;font-size:18px;font-weight:600;letter-spacing:.06em;margin:10px 0;word-break:break-all}
   .linkbtn{background:none;border:none;color:var(--a700);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0}
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--n900);color:var(--color-bg);padding:10px 18px;font-size:13px;box-shadow:var(--shadow-lg);z-index:200;opacity:0;transition:opacity .25s;pointer-events:none}
-  .toast.show{opacity:1}
+
+  /* — toast (popup messages) — */
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--n900);color:var(--color-bg);padding:11px 20px 11px 16px;font-size:13px;box-shadow:var(--shadow-lg);z-index:200;opacity:0;pointer-events:none;border-radius:10px;display:flex;align-items:center;gap:9px;border-left:3px solid var(--color-accent);transition:opacity .22s ease,transform .22s cubic-bezier(.2,.8,.3,1.1)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.success{border-left-color:#3ec97a}
+  .toast.error{border-left-color:var(--money)}
+  .toast-icon{font-size:13px;flex:0 0 auto;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14)}
+  .toast.success .toast-icon{color:#3ec97a}
+  .toast.error .toast-icon{color:#ff8a5c}
+  .toast.info .toast-icon{color:var(--a300)}
+
+  /* — micro-interactions — */
+  .btn{transition:transform .1s ease,background .15s ease}
+  .btn:active{transform:scale(.96)}
+  .pill{transition:transform .1s ease,background .15s ease,border-color .15s ease}
+  .pill:active{transform:scale(.94)}
+  nav.sidebar .navbtn{transition:background .15s ease,color .15s ease}
+  table.list tbody tr{transition:background .12s ease}
+  .bp{transition:box-shadow .18s ease,transform .12s ease}
+  .item-card-anim{animation:itemIn .22s cubic-bezier(.2,.85,.3,1.1)}
+
+  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
+  @keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes itemIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes paneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  #pane-dashboard,#pane-new,#pane-list,#pane-expenses,#pane-reports,#pane-clients,#pane-archive,#pane-reference,#pane-settings{animation:paneIn .2s ease}
 
   @media print{
     html,body{height:auto;overflow:visible}
@@ -635,24 +659,38 @@ VA:['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandri
 WV:['Charleston','Huntington','Morgantown'],WI:['Milwaukee','Madison','Green Bay','Kenosha'],WY:['Cheyenne','Casper','Laramie']};
 
 const DEFAULT_CATALOG=[
-  {name:'Voice Receptionist \u2014 Setup',price:2999,freq:'once'},
-  {name:'Voice Receptionist \u2014 Monthly Service',price:499,freq:'month'},
-  {name:'Voice Receptionist \u2014 Monthly Service + Chatbot',price:699,freq:'month'},
-  {name:'Website Build',price:697,freq:'once'},
-  {name:'Website Maintenance \u2014 Monthly',price:89,freq:'month'},
-  {name:'Reputation Management \u2014 Monthly',price:349,freq:'month'},
-  {name:'Missed Call Text Back \u2014 Monthly',price:199,freq:'month'}
+  {name:'Voice Receptionist \u2014 Setup',price:2999,freq:'once',paylink:'https://buy.stripe.com/7sY28s2sy3wPcUT4Xa8Vi01'},
+  {name:'Voice Receptionist \u2014 Monthly Service',price:499,freq:'month',paylink:'https://buy.stripe.com/bJe4gAaZ4ebt5srbly8Vi02'},
+  {name:'Voice Receptionist \u2014 Monthly Service + Chatbot',price:699,freq:'month',paylink:'https://buy.stripe.com/9B67sMaZ4gjB0873T68Vi03'},
+  {name:'Website Build',price:697,freq:'once',paylink:'https://buy.stripe.com/8x25kEgjo0kDaML4Xa8Vi04'},
+  {name:'Website Maintenance \u2014 Monthly',price:89,freq:'month',paylink:'https://buy.stripe.com/14A7sMc383wP2gf3T68Vi00'},
+  {name:'Reputation Management \u2014 Monthly',price:349,freq:'month',paylink:'https://buy.stripe.com/00wcN6d7c5EX3kj75i8Vi05'},
+  {name:'Missed Call Text Back \u2014 Monthly',price:199,freq:'month',paylink:'https://buy.stripe.com/eVq6oI1ou3wPcUT75i8Vi06'}
+];
+/* Bundles pair a one-time setup fee with its recurring monthly companion so
+   picking either from the dropdown always adds both together \u2014 the mistake
+   this exists to prevent is billing a setup fee with no ongoing service
+   attached to it, or vice versa. Each bundle carries its own real Stripe
+   Payment Link (a combined checkout \u2014 setup charged today, the
+   subscription starts automatically 30 days later on the same card, no
+   second charge to chase down). Services with no setup fee (Reputation
+   Management, Missed Call Text Back) are never bundled \u2014 they stay
+   individually selectable, same as before. */
+const DEFAULT_BUNDLES=[
+  {label:'Voice Receptionist \u2014 Setup + Monthly Service',parts:['Voice Receptionist \u2014 Setup','Voice Receptionist \u2014 Monthly Service'],paylink:'https://buy.stripe.com/8x2cN6ffk3wPcUTbly8Vi07'},
+  {label:'Voice Receptionist \u2014 Setup + Monthly Service + Chatbot',parts:['Voice Receptionist \u2014 Setup','Voice Receptionist \u2014 Monthly Service + Chatbot'],paylink:'https://buy.stripe.com/9B6aEY6IO9Vd7Az89m8Vi09'},
+  {label:'Website \u2014 Build + Maintenance',parts:['Website Build','Website Maintenance \u2014 Monthly'],paylink:'https://buy.stripe.com/dRmcN62sy0kDg752P28Vi08'}
 ];
 const INDUSTRIES=['Bail Bonds','Restoration','Auto Detailing','Plumbing'];
 
-let settings={}, invoices=[], archive=[], expenses=[], expenseArchive=[], catalog=null, pinHash=null, recoveryHash=null, draft=null;
+let settings={}, invoices=[], archive=[], expenses=[], expenseArchive=[], catalog=null, bundles=null, pinHash=null, recoveryHash=null, draft=null;
 let items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
 let editingId=null, currentStatus='unpaid', pendingDelete=null, pendingDeleteMode='archive';
 let unlocked=false, saveTimer=null, dashPeriod='month';
 
 /* ================= storage ================= */
 async function sget(k){ try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;} }
-async function sset(k,v){ try{await window.storage.set(k,JSON.stringify(v));}catch(e){toast('Could not save \u2014 storage error');} }
+async function sset(k,v){ try{await window.storage.set(k,JSON.stringify(v));}catch(e){toast('Could not save \u2014 storage error','error');} }
 
 async function loadAll(){
   const startTs=Date.now();
@@ -662,10 +700,11 @@ async function loadAll(){
   expenses=(await sget('lyc-expenses'))||[];
   expenseArchive=(await sget('lyc-expense-archive'))||[];
   catalog=(await sget('lyc-catalog'))||DEFAULT_CATALOG.map(x=>({...x}));
+  bundles=(await sget('lyc-bundles'))||DEFAULT_BUNDLES.map(x=>({...x,parts:[...x.parts]}));
   pinHash=(await sget('lyc-pin'))||null;
   recoveryHash=(await sget('lyc-recovery'))||null;
   draft=(await sget('lyc-draft'))||null;
-  buildStateSelects(); fillSettingsForm(); renderCatalogRows(); applyLogo();
+  buildStateSelects(); fillSettingsForm(); renderCatalogRows(); renderBundleRows(); applyLogo();
   document.getElementById('lock-btn').style.display=pinHash?'inline-block':'none';
 
   const minShow=350, elapsed=Date.now()-startTs;
@@ -778,7 +817,7 @@ async function grantRecovery(){
   try{await window.storage.delete('lyc-recovery');}catch(e){}
   document.getElementById('lock-btn').style.display='none';
   afterUnlock();
-  toast('Access recovered \u2014 set a new passcode in Settings when you\u2019re ready');
+  toast('Access recovered \u2014 set a new passcode in Settings when you\u2019re ready','success');
   showTab('settings');
 }
 async function tryRecoverTotp(){
@@ -798,7 +837,7 @@ function closeRecoveryShow(){ document.getElementById('recoveryshow-overlay').cl
 
 /* ================= authenticator app (TOTP) ================= */
 async function startTotpSetup(){
-  if(!window.totp){ toast('Authenticator isn\u2019t available in this build'); return; }
+  if(!window.totp){ toast('Authenticator isn\u2019t available in this build','error'); return; }
   const r=await window.totp.setup();
   document.getElementById('totp-manual-key').textContent=r.secret;
   document.getElementById('totp-confirm-input').value='';
@@ -817,7 +856,7 @@ async function confirmTotpSetup(){
   const r=await window.totp.confirm(code);
   if(r&&r.success){
     document.getElementById('totp-setup-overlay').classList.add('hidden');
-    toast('Authenticator connected');
+    toast('Authenticator connected','success');
     renderTotpStatus();
   } else {
     document.getElementById('totp-setup-err').textContent=(r&&r.error)||'That code didn\u2019t match.';
@@ -826,7 +865,7 @@ async function confirmTotpSetup(){
 }
 async function removeTotp(){
   try{ await window.totp.remove(); }catch(e){}
-  toast('Authenticator removed');
+  toast('Authenticator removed','success');
   renderTotpStatus();
 }
 async function renderTotpStatus(){
@@ -840,14 +879,14 @@ async function renderTotpStatus(){
 }
 async function setPin(){
   const a=document.getElementById('s-pin1').value,b=document.getElementById('s-pin2').value;
-  if(!a){toast('Enter a passcode');return}
-  if(a!==b){toast('Passcodes don\u2019t match');return}
+  if(!a){toast('Enter a passcode','error');return}
+  if(a!==b){toast('Passcodes don\u2019t match','error');return}
   pinHash=await hash(a); await sset('lyc-pin',pinHash);
   const code=genRecoveryCode();
   recoveryHash=await hash('recovery-'+code); await sset('lyc-recovery',recoveryHash);
   document.getElementById('s-pin1').value='';document.getElementById('s-pin2').value='';
   document.getElementById('lock-btn').style.display='inline-block';
-  toast('Passcode set');
+  toast('Passcode set','success');
   document.getElementById('recovery-code-display').textContent=code;
   document.getElementById('recoveryshow-overlay').classList.remove('hidden');
 }
@@ -855,7 +894,7 @@ async function removePin(){
   pinHash=null; recoveryHash=null;
   try{await window.storage.delete('lyc-pin');}catch(e){}
   try{await window.storage.delete('lyc-recovery');}catch(e){}
-  document.getElementById('lock-btn').style.display='none'; toast('Passcode removed');
+  document.getElementById('lock-btn').style.display='none'; toast('Passcode removed','success');
 }
 
 /* ================= settings ================= */
@@ -911,9 +950,15 @@ function renderSettingsBody(){
     });
     html+=`</div></div>`;
   });
+  html+=`<div class="bp money-card" style="padding:18px 20px">${corners}
+    <h3 style="font-size:17px;margin-bottom:3px">Bundles</h3>
+    <div class="note" style="margin:0 0 15px">Setup fee + monthly service, billed together automatically so neither gets forgotten. Picking a bundle on an invoice adds both lines and fills in the matching Stripe payment link.</div>
+    <div id="bundle-rows"></div>
+    <button class="btn" style="margin-top:6px" onclick="addBundleRow()">+ Add bundle</button>
+  </div>`;
   html+=`<div class="bp" style="padding:18px 20px">${corners}
     <h3 style="font-size:17px;margin-bottom:3px">Service catalog</h3>
-    <div class="note" style="margin:0 0 15px">Default prices \u2014 always editable per invoice.</div>
+    <div class="note" style="margin:0 0 15px">Default prices \u2014 always editable per invoice. Each service can carry its own Stripe payment link, filled in automatically when picked.</div>
     <div id="catalog-rows"></div>
     <button class="btn" style="margin-top:6px" onclick="addCatalogRow()">+ Add service</button>
   </div>`;
@@ -944,6 +989,7 @@ function renderSettingsBody(){
   wrap.innerHTML=html;
   S_IDS.forEach(k=>{ if(SETTINGS_SECTIONS.some(s=>s.fields.some(f=>f[0]===k&&f[2]==='checkbox'))) return; });
   renderCatalogRows();
+  renderBundleRows();
   if(window.totp) renderTotpStatus();
 }
 let settingsSaveTimer=null;
@@ -955,9 +1001,9 @@ function applySettingsFieldLive(key,value){
 }
 function logoPicked(ev){
   const f=ev.target.files[0]; if(!f) return;
-  if(f.size>400*1024){toast('Use a logo under 400 KB');return}
+  if(f.size>400*1024){toast('Use a logo under 400 KB','error');return}
   const rd=new FileReader();
-  rd.onload=async()=>{settings.logo=rd.result; await sset('lyc-settings',settings); applyLogo(); render(); renderSettingsBody(); toast('Logo saved');};
+  rd.onload=async()=>{settings.logo=rd.result; await sset('lyc-settings',settings); applyLogo(); render(); renderSettingsBody(); toast('Logo saved','success');};
   rd.readAsDataURL(f);
 }
 async function clearLogo(){ delete settings.logo; await sset('lyc-settings',settings); applyLogo(); render(); renderSettingsBody(); }
@@ -974,27 +1020,64 @@ function renderCatalogRows(){
     d.innerHTML=`
       <div class="row2" style="margin-bottom:8px">
         <input class="cn" value="${esc(c.name)}" placeholder="Service name" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
-        <input class="cp" type="number" step="0.01" value="${c.price}" placeholder="Default price" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
+        <input class="cp" type="number" step="0.01" value="${c.price}" placeholder="Default price (USD)" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <select class="cf" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
           <option value="once" ${c.freq!=='month'?'selected':''}>One-time</option>
           <option value="month" ${c.freq==='month'?'selected':''}>Monthly</option>
         </select>
         <button class="btn" style="margin-left:auto;padding:5px 10px" onclick="this.closest('.cat-row').remove()">\u00D7</button>
-      </div>`;
+      </div>
+      <input class="cl" value="${esc(c.paylink||'')}" placeholder="Stripe payment link (optional \u2014 auto-fills when this service is picked)" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:12.5px;background:#fff;width:100%">`;
     w.appendChild(d);
   });
 }
-function addCatalogRow(){ catalog.push({name:'',price:'',freq:'once'}); renderCatalogRows(); }
+function addCatalogRow(){ catalog.push({name:'',price:'',freq:'once',paylink:''}); renderCatalogRows(); }
+
+/* ================= bundles (setup + monthly, billed together) ================= */
+function renderBundleRows(){
+  const w=document.getElementById('bundle-rows'); if(!w) return; w.innerHTML='';
+  const onceOpts=(catalog||[]).filter(c=>c.freq!=='month').map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  const monthOpts=(catalog||[]).filter(c=>c.freq==='month').map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  (bundles||[]).forEach((b)=>{
+    const d=document.createElement('div'); d.className='bundle-row'; d.style.cssText='border:1px solid var(--color-divider);border-radius:8px;padding:10px;margin-bottom:8px;background:#fafafb';
+    d.innerHTML=`
+      <input class="bl" value="${esc(b.label)}" placeholder="Bundle name shown in the dropdown" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%;margin-bottom:8px">
+      <div class="row2" style="margin-bottom:8px">
+        <div>
+          <label style="display:block;font-size:10px;color:var(--n600);margin-bottom:3px">One-time part</label>
+          <select class="bp1" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${onceOpts}</select>
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;color:var(--n600);margin-bottom:3px">Monthly part</label>
+          <select class="bp2" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff;width:100%"><option value="">\u2014 Pick \u2014</option>${monthOpts}</select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <input class="bpl" value="${esc(b.paylink||'')}" placeholder="Stripe payment link for this bundle" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:12.5px;background:#fff;flex:1">
+        <button class="btn" style="padding:5px 10px" onclick="this.closest('.bundle-row').remove()">\u00D7</button>
+      </div>`;
+    d.querySelector('.bp1').value=b.parts[0]||'';
+    d.querySelector('.bp2').value=b.parts[1]||'';
+    w.appendChild(d);
+  });
+}
+function addBundleRow(){ bundles.push({label:'',parts:['',''],paylink:''}); renderBundleRows(); }
 async function saveSettings(){
   catalog=[...document.querySelectorAll('#catalog-rows .cat-row')].map(r=>({
     name:r.querySelector('.cn').value.trim(),
     price:parseFloat(r.querySelector('.cp').value)||0,
-    freq:r.querySelector('.cf').value
+    freq:r.querySelector('.cf').value,
+    paylink:r.querySelector('.cl').value.trim()
   })).filter(x=>x.name);
-  await sset('lyc-settings',settings); await sset('lyc-catalog',catalog);
-  renderItems(); render(); toast('Settings saved');
+  bundles=[...document.querySelectorAll('#bundle-rows .bundle-row')].map(r=>({
+    label:r.querySelector('.bl').value.trim(),
+    parts:[r.querySelector('.bp1').value, r.querySelector('.bp2').value],
+    paylink:r.querySelector('.bpl').value.trim()
+  })).filter(x=>x.label && x.parts[0] && x.parts[1]);
+  await sset('lyc-settings',settings); await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles);
+  renderItems(); render(); toast('Settings saved','success');
 }
 
 /* ================= state / city (invoice form) ================= */
@@ -1069,12 +1152,38 @@ function refreshClientSuggest(){
 function addItem(){ items.push({svc:'',desc:'',qty:1,rate:'',freq:'once'}); renderItems(); render(); scheduleAutosave(); }
 function removeItem(i){ items.splice(i,1); if(!items.length)items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}]; renderItems(); render(); scheduleAutosave(); }
 function svcPicked(i,val){
+  if(val.indexOf('__bundle__')===0){
+    const idx=parseInt(val.slice('__bundle__'.length),10);
+    const b=(bundles||[])[idx]; if(!b) return;
+    const cur=document.getElementById('f-currency').value;
+    const newItems=b.parts.map(name=>{
+      const c=(catalog||[]).find(x=>x.name===name);
+      if(!c) return {svc:'',desc:name+' (missing from catalog \u2014 check Settings)',qty:1,rate:'',freq:'once'};
+      return {svc:c.name,desc:c.name,qty:1,freq:c.freq||'once',usdBase:c.price,rate:convertFromUSD(c.price,cur)};
+    });
+    // If this slot's neighbor is currently the second half of the SAME bundle
+    // pairing (i.e. she's changing tiers on an already-bundled pair), replace
+    // both slots cleanly instead of leaving the old second half orphaned as a
+    // stray extra line.
+    let removeCount=1;
+    if(i+1<items.length){
+      const curSvc=items[i].svc, nextSvc=items[i+1].svc;
+      const wasPair=(bundles||[]).some(bb=>bb.parts[0]===curSvc && bb.parts[1]===nextSvc);
+      if(wasPair) removeCount=2;
+    }
+    items.splice(i,removeCount,...newItems);
+    if(b.paylink) document.getElementById('f-paylink').value=b.paylink;
+    toast('Added both parts of the bundle \u2014 setup and monthly, billed together','success');
+    renderItems(); render(); scheduleAutosave();
+    return;
+  }
   items[i].svc=val;
   const c=(catalog||[]).find(x=>x.name===val);
   if(c){
     items[i].desc=c.name; items[i].freq=c.freq||'once';
     items[i].usdBase=c.price; // catalog prices are always entered in USD
     items[i].rate=convertFromUSD(c.price, document.getElementById('f-currency').value);
+    if(c.paylink) document.getElementById('f-paylink').value=c.paylink;
   }
   else if(val==='__custom'){ items[i].desc=''; items[i].rate=''; delete items[i].usdBase; }
   renderItems(); render(); scheduleAutosave();
@@ -1082,10 +1191,13 @@ function svcPicked(i,val){
 function renderItems(){
   const wrap=document.getElementById('items'); wrap.innerHTML='';
   items.forEach((it,i)=>{
-    const opts=['<option value="">\u2014 Pick a service \u2014</option>']
-      .concat((catalog||[]).map(c=>`<option ${it.svc===c.name?'selected':''} value="${esc(c.name)}">${esc(c.name)}${c.freq==='month'?' (monthly)':''}</option>`))
-      .concat([`<option value="__custom" ${it.svc==='__custom'?'selected':''}>Custom line\u2026</option>`]).join('');
-    const d=document.createElement('div'); d.style.cssText='border:1px solid #e7e7ea;border-radius:8px;padding:11px;margin-bottom:9px;background:#fafafb';
+    const bundleOpts=(bundles||[]).map((b,bi)=>`<option value="__bundle__${bi}">\u2605 ${esc(b.label)}</option>`).join('');
+    const singleOpts=(catalog||[]).map(c=>`<option ${it.svc===c.name?'selected':''} value="${esc(c.name)}">${esc(c.name)}${c.freq==='month'?' (monthly)':''}</option>`).join('');
+    const opts=`<option value="">\u2014 Pick a service \u2014</option>`
+      +(bundleOpts?`<optgroup label="Bundles \u2014 setup + monthly, billed together">${bundleOpts}</optgroup>`:'')
+      +`<optgroup label="Individual services">${singleOpts}</optgroup>`
+      +`<option value="__custom" ${it.svc==='__custom'?'selected':''}>Custom line\u2026</option>`;
+    const d=document.createElement('div'); d.className='item-card-anim'; d.style.cssText='border:1px solid #e7e7ea;border-radius:8px;padding:11px;margin-bottom:9px;background:#fafafb';
     d.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 118px 30px;gap:8px">
         <select onchange="svcPicked(${i},this.value)" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">${opts}</select>
@@ -1134,7 +1246,7 @@ async function refreshFxRates(force){
     await sset('lyc-fxrates',fxRates);
   }catch(e){
     if(cached){ fxRates=cached; } // fall back to whatever we last had, even if stale
-    else if(!fxRates.GBP && !fxRates.EUR){ toast('Could not reach exchange rates \u2014 check your connection'); }
+    else if(!fxRates.GBP && !fxRates.EUR){ toast('Could not reach exchange rates \u2014 check your connection','error'); }
   }
 }
 async function reconvertAllItems(){
@@ -1228,7 +1340,7 @@ function applyDraftToForm(d){
 }
 async function saveInvoice(){
   const inv=collect();
-  if(!inv.client){toast('Add a client name');return}
+  if(!inv.client){toast('Add a client name','error');return}
   const idx=invoices.findIndex(x=>x.id===inv.id);
   if(idx>=0)invoices[idx]=inv; else invoices.unshift(inv);
   editingId=inv.id;
@@ -1236,7 +1348,7 @@ async function saveInvoice(){
   await sset('lyc-invoices',invoices);
   draft=null; await sset('lyc-draft',null);
   renderList(); renderClients(); refreshClientSuggest(); renderDashboard();
-  toast('Saved '+inv.number+' \u2014 client record updated');
+  toast('Saved '+inv.number+' \u2014 client record updated','success');
 }
 function openInvoice(id,fromArchive){
   const src=fromArchive?archive:invoices;
@@ -1265,23 +1377,23 @@ function askDelete(id,ev,mode){
 }
 function closeDelete(){ document.getElementById('del-overlay').classList.add('hidden'); pendingDelete=null; }
 async function confirmDelete(){
-  if(document.getElementById('del-input').value.trim().toLowerCase()!=='delete'){toast('Type the word delete to confirm');return}
+  if(document.getElementById('del-input').value.trim().toLowerCase()!=='delete'){toast('Type the word delete to confirm','error');return}
   if(pendingDeleteMode==='archive'){
     const inv=invoices.find(x=>x.id===pendingDelete);
     if(inv){ archive.unshift(inv); invoices=invoices.filter(x=>x.id!==pendingDelete);
       await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
-      if(editingId===pendingDelete)startNew(true); toast('Moved to Archive'); }
+      if(editingId===pendingDelete)startNew(true); toast('Moved to Archive','success'); }
   } else if(pendingDeleteMode==='purge'){
     archive=archive.filter(x=>x.id!==pendingDelete);
-    await sset('lyc-archive',archive); toast('Permanently deleted');
+    await sset('lyc-archive',archive); toast('Permanently deleted','success');
   } else if(pendingDeleteMode==='expense-archive'){
     const ex=expenses.find(x=>x.id===pendingDelete);
     if(ex){ expenseArchive.unshift(ex); expenses=expenses.filter(x=>x.id!==pendingDelete);
       await sset('lyc-expenses',expenses); await sset('lyc-expense-archive',expenseArchive);
-      toast('Moved to Archive'); }
+      toast('Moved to Archive','success'); }
   } else if(pendingDeleteMode==='expense-purge'){
     expenseArchive=expenseArchive.filter(x=>x.id!==pendingDelete);
-    await sset('lyc-expense-archive',expenseArchive); toast('Permanently deleted');
+    await sset('lyc-expense-archive',expenseArchive); toast('Permanently deleted','success');
   }
   closeDelete(); renderList(); renderArchive(); renderClients(); renderExpenses(); renderDashboard();
 }
@@ -1290,7 +1402,7 @@ async function restoreInvoice(id,ev){
   const inv=archive.find(x=>x.id===id); if(!inv)return;
   invoices.unshift(inv); archive=archive.filter(x=>x.id!==id);
   await sset('lyc-invoices',invoices); await sset('lyc-archive',archive);
-  renderList(); renderArchive(); renderClients(); renderDashboard(); toast('Restored '+inv.number);
+  renderList(); renderArchive(); renderClients(); renderDashboard(); toast('Restored '+inv.number,'success');
 }
 
 /* ================= expenses ================= */
@@ -1316,7 +1428,7 @@ function startNewExpense(){
 async function saveExpense(){
   const amount=parseFloat(document.getElementById('ex-amount').value)||0;
   const vendor=document.getElementById('ex-vendor').value.trim();
-  if(!amount){toast('Enter an amount');return}
+  if(!amount){toast('Enter an amount','error');return}
   const ex={
     id:'exp-'+Date.now(),
     date:document.getElementById('ex-date').value||new Date().toISOString().slice(0,10),
@@ -1329,7 +1441,7 @@ async function saveExpense(){
   };
   expenses.unshift(ex);
   await sset('lyc-expenses',expenses);
-  toast('Expense logged');
+  toast('Expense logged','success');
   startNewExpense();
   renderExpenses(); renderDashboard();
 }
@@ -1430,7 +1542,7 @@ function exportCSV(){
   a.href=url; a.download=`LYCORE-${period}-${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast('CSV exported');
+  toast('CSV exported','success');
 }
 
 /* ================= bank + EPC ================= */
@@ -1617,7 +1729,7 @@ async function restoreExpense(id,ev){
   const ex=expenseArchive.find(x=>x.id===id); if(!ex)return;
   expenses.unshift(ex); expenseArchive=expenseArchive.filter(x=>x.id!==id);
   await sset('lyc-expenses',expenses); await sset('lyc-expense-archive',expenseArchive);
-  renderArchive(); renderExpenses(); toast('Restored expense');
+  renderArchive(); renderExpenses(); toast('Restored expense','success');
 }
 function renderClients(){
   const wrap=document.getElementById('pane-clients'); if(!wrap) return;
@@ -1821,9 +1933,13 @@ function showTab(t){
   if(t==='settings')renderSettingsBody();
 }
 let toastTimer;
-function toast(m){
-  const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
+const TOAST_ICONS={success:'\u2713',error:'\u26A0',info:'\u2139'};
+function toast(m,type){
+  type=type||'info';
+  const el=document.getElementById('toast');
+  el.innerHTML=`<span class="toast-icon">${TOAST_ICONS[type]}</span><span>${esc(m)}</span>`;
+  el.className='toast show '+type;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
 }
 
 /* ================= updates ================= */
@@ -1855,7 +1971,7 @@ if(window.menuBridge){
   window.menuBridge.onPrint(()=>printInvoice());
   window.menuBridge.onToast((msg)=>toast(msg));
   window.menuBridge.onRestored(async()=>{
-    toast('Backup restored \u2014 reloading\u2026');
+    toast('Backup restored \u2014 reloading\u2026','info');
     setTimeout(()=>location.reload(),900);
   });
 }
