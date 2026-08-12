@@ -42,7 +42,9 @@
   :focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
 
   /* — blueprint frame: the wireframe card every panel wears — */
-  .bp{position:relative;border:1px solid var(--color-divider);background:#fff;border-radius:0}
+  .bp{position:relative;border:1px solid var(--color-divider);background:#fff;border-radius:12px;border-top:3px solid var(--color-accent);box-shadow:var(--shadow-sm)}
+  .bp.money-card{border-top-color:var(--money)}
+  .bp>.corner{display:none}
   .bp>.corner{position:absolute;width:11px;height:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent)}
   .bp>.corner::before,.bp>.corner::after{content:"";position:absolute;background:currentColor}
   .bp>.corner::before{left:5px;top:0;width:1px;height:100%}
@@ -51,7 +53,7 @@
   .bp>.corner.bl{bottom:-6px;left:-6px} .bp>.corner.br{bottom:-6px;right:-6px}
 
   /* — buttons — */
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;font-family:var(--font-heading);font-weight:600;font-size:13px;color:var(--color-text);background:transparent;border:1px solid var(--color-divider);padding:8px 14px;border-radius:0}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;font-family:var(--font-heading);font-weight:600;font-size:13px;color:var(--color-text);background:transparent;border:1px solid var(--color-divider);padding:8px 14px;border-radius:8px}
   .btn:hover{background:color-mix(in srgb, var(--color-text) 7%, transparent)}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .btn.orange{background:var(--money);color:#fff;border-color:var(--money)}
@@ -63,7 +65,7 @@
   .field{margin-bottom:11px;max-width:640px}
   .row2 .field,.row3 .field{max-width:none}
   .field label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--n600);margin-bottom:5px}
-  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--color-divider);border-radius:0;background:#fafafb;font-size:13px;color:var(--color-text)}
+  .field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--color-divider);border-radius:8px;background:#fafafb;font-size:13px;color:var(--color-text)}
   .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{border-color:var(--color-accent);outline-offset:0}
   .field textarea{resize:vertical;min-height:64px}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -77,12 +79,12 @@
   table.list td{padding:10px 18px;border-bottom:1px solid #eeeef0}
   table.list tr.rowlink{cursor:pointer}
   table.list tr.rowlink:hover td,table.list tbody tr:hover td{background:#f4f7fa}
-  .pill{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2.5px 10px;border:1px solid;cursor:pointer;background:none;font-family:var(--font-body)}
+  .pill{font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2.5px 10px;border:1px solid;cursor:pointer;background:none;font-family:var(--font-body);border-radius:20px}
   .pill.unpaid{border-color:var(--money);color:var(--money);background:var(--money-tint)}
   .pill.paid{border-color:var(--color-accent);color:var(--a700);background:var(--a100)}
   .pill.gray{border:1px solid var(--color-divider);color:var(--n600);background:transparent}
   .pill.gray:hover{color:var(--money);border-color:var(--money);background:var(--money-tint)}
-  .tagpill{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;margin-left:6px;background:var(--n200);color:var(--n700)}
+  .tagpill{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;margin-left:6px;background:var(--n200);color:var(--n700);border-radius:6px}
   .empty{padding:26px 18px;color:var(--n600);font-size:13px}
 
   /* — section labels, notes — */
@@ -131,7 +133,7 @@
   section.page{flex:1;min-width:0;overflow-y:auto;padding:22px}
   aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--color-divider);background:#e4e4e6;overflow-y:auto;padding:20px;display:none}
   .app-shell.split-view aside.docpane{display:block}
-  .app-shell.split-view section.page{max-width:660px}
+  #pane-new{max-width:660px}
 
   /* — invoice document (Times New Roman, unchanged formal register) — */
   .doc-head-row{display:flex;align-items:center;margin-bottom:12px}
@@ -207,7 +209,7 @@
   /* — dialog / toast — */
   .overlay{position:fixed;inset:0;background:rgba(29,31,32,.44);display:flex;align-items:center;justify-content:center;z-index:100}
   .overlay.hidden{display:none}
-  .modal{background:#fff;padding:24px 26px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border:1px solid var(--color-divider)}
+  .modal{background:#fff;padding:24px 26px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border:1px solid var(--color-divider);border-radius:14px}
   .modal h3{font-size:19px;margin-bottom:8px}
   .modal p{font-size:13px;color:var(--n700);line-height:1.55;margin-bottom:14px}
   .modal input{width:100%;padding:9px 11px;border:1px solid var(--color-divider);background:#fafafb;font-size:14px;margin-bottom:14px}
@@ -304,17 +306,6 @@
   </div>
 </div>
 
-<div class="overlay hidden" id="resume-overlay">
-  <div class="modal">
-    <h3>Welcome back</h3>
-    <p id="resume-text">You left off editing an invoice. Pick up where you were, or start fresh?</p>
-    <div class="mrow">
-      <button class="btn" onclick="resumeChoice(false)">Start fresh</button>
-      <button class="btn orange" onclick="resumeChoice(true)">Resume</button>
-    </div>
-  </div>
-</div>
-
 <div class="app-shell" id="app-shell">
 
   <nav class="sidebar">
@@ -368,7 +359,7 @@
 
         <div id="pane-dashboard" style="display:none">
           <div style="display:grid;grid-template-columns:minmax(340px,1.05fr) 1fr 1fr;gap:14px;align-items:stretch">
-            <div class="bp revcard"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="bp money-card revcard"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div class="toprow"><div class="kicker">Revenue collected</div><div class="period" id="dash-period-label">This month</div></div>
               <div class="big" id="dash-revenue-big">\u2014</div>
               <div class="sub">Cash in the door. Paid invoices only.</div>
@@ -486,6 +477,13 @@
         </div>
 
         <div id="pane-expenses" style="display:none">
+          <div class="bp money-card" style="padding:16px 20px;margin-bottom:14px;display:flex;align-items:baseline;gap:14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div>
+              <div class="lbl" style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--n600)">Monthly recurring</div>
+              <div style="font-family:var(--font-heading);font-weight:700;font-size:28px;color:var(--money);margin-top:2px" id="ex-recurring-total">\u2014</div>
+            </div>
+            <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses \u2014 the ongoing cost of running the business, separate from one-off spending.</div>
+          </div>
           <div style="display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start">
             <div class="bp" style="padding:16px 18px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <h3 style="font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Log an expense</h3>
@@ -682,17 +680,8 @@ async function loadAll(){
 function afterUnlock(){
   unlocked=true;
   renderList(); renderClients(); renderArchive();
-  if(draft && draft.number){
-    document.getElementById('resume-overlay').classList.remove('hidden');
-  } else {
-    startNew(false);
-    showTab('dashboard');
-  }
-}
-function resumeChoice(yes){
-  document.getElementById('resume-overlay').classList.add('hidden');
-  if(yes && draft){ applyDraftToForm(draft); }
-  else { startNew(true); }
+  startNew(false); // quietly prepares a fresh invoice form, ready whenever New Invoice is clicked
+  showTab('dashboard');
 }
 
 /* ================= passcode ================= */
@@ -970,7 +959,7 @@ function applyLogo(){
 function renderCatalogRows(){
   const w=document.getElementById('catalog-rows'); if(!w) return; w.innerHTML='';
   (catalog||[]).forEach((c)=>{
-    const d=document.createElement('div'); d.className='cat-row'; d.style.cssText='border:1px solid var(--color-divider);padding:10px;margin-bottom:8px;background:#fafafb';
+    const d=document.createElement('div'); d.className='cat-row'; d.style.cssText='border:1px solid var(--color-divider);border-radius:8px;padding:10px;margin-bottom:8px;background:#fafafb';
     d.innerHTML=`
       <div class="row2" style="margin-bottom:8px">
         <input class="cn" value="${esc(c.name)}" placeholder="Service name" style="border:1px solid var(--color-divider);padding:7px 9px;font-size:13px;background:#fff">
@@ -1080,7 +1069,7 @@ function renderItems(){
     const opts=['<option value="">\u2014 Pick a service \u2014</option>']
       .concat((catalog||[]).map(c=>`<option ${it.svc===c.name?'selected':''} value="${esc(c.name)}">${esc(c.name)}${c.freq==='month'?' (monthly)':''}</option>`))
       .concat([`<option value="__custom" ${it.svc==='__custom'?'selected':''}>Custom line\u2026</option>`]).join('');
-    const d=document.createElement('div'); d.style.cssText='border:1px solid #e7e7ea;padding:11px;margin-bottom:9px;background:#fafafb';
+    const d=document.createElement('div'); d.style.cssText='border:1px solid #e7e7ea;border-radius:8px;padding:11px;margin-bottom:9px;background:#fafafb';
     d.innerHTML=`
       <div style="display:grid;grid-template-columns:1fr 118px 30px;gap:8px">
         <select onchange="svcPicked(${i},this.value)" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">${opts}</select>
@@ -1290,6 +1279,14 @@ function renderExpenses(){
   document.getElementById('expenses-empty').style.display=expenses.length?'none':'block';
   const total={}; expenses.forEach(e=>{ total[e.currency]=(total[e.currency]||0)+e.amount; });
   document.getElementById('expense-summary').textContent=expenses.length?fmtSum(total)+' logged':'';
+
+  const recurring={}; let recurringCount=0;
+  expenses.forEach(e=>{ if(e.recurring){ recurring[e.currency]=(recurring[e.currency]||0)+e.amount; recurringCount++; } });
+  document.getElementById('ex-recurring-total').textContent=recurringCount?fmtSum(recurring):'\u2014';
+  document.getElementById('ex-recurring-note').textContent=recurringCount
+    ? `Across ${recurringCount} recurring expense${recurringCount===1?'':'s'} \u2014 the ongoing monthly cost of running the business, separate from one-off spending.`
+    : 'None marked recurring yet \u2014 check "Recurring monthly" when logging a subscription to have it counted here.';
+
   expenses.forEach(ex=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td class="mono">${esc(ex.date)}</td><td>${esc(ex.category)}${ex.recurring?' <span class="tagpill">monthly</span>':''}</td>
@@ -1657,7 +1654,7 @@ function render(){
   document.getElementById('doc').innerHTML=`
     <div class="top">
       <div>
-        <div class="brand-block">LYCORE</div>
+        <div class="brand-block">${settings.logo?`<img src="${settings.logo}" alt="" style="height:34px;display:block;margin-bottom:4px">`:'LYCORE'}</div>
         <div class="brand-sub">GROUP LLC</div>
       </div>
       <div>
