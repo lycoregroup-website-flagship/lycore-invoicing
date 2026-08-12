@@ -187,6 +187,8 @@
   .doc .ways .kv{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:2.5px 0;font-size:12px}
   .doc .ways .kv .k{color:#666}
   .doc .ways .kv .v{word-break:break-word}
+  .doc .pay-btn{display:inline-block;background:var(--money);color:#fff!important;text-decoration:none!important;font-weight:700;font-size:13px;padding:9px 18px;border-radius:6px;margin:2px 0 4px}
+  .doc .pay-btn:hover{background:var(--money-dark)}
   .doc .ways .timing{font-size:11px;color:#555;font-style:italic;margin-top:7px}
   .doc .disclosure{margin-top:18px;padding:11px 13px;border-left:2px solid #999;background:#f7f7f7;font-size:11.5px;color:#333}
   .doc .fnotes{margin-top:22px;padding-top:12px;border-top:1px solid #ddd;font-size:12.5px;white-space:pre-line}
@@ -1836,7 +1838,7 @@ function render(){
   }
   const epc=cur==='EUR'?epcPayload(inv):null;
   const kv=(pairs)=>pairs.filter(p=>p[1]).map(p=>`<div class="kv"><span class="k">${p[0]}</span><span class="v mono">${esc(p[1])}</span></div>`).join('');
-  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Any card, any currency \u2014 converts automatically, no calculation needed</div>${kv([['Link',inv.paylink]])}<div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
+  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Any card, any currency \u2014 converts automatically, no calculation needed</div><a href="${esc(inv.paylink)}" class="pay-btn" target="_blank" rel="noopener">Pay online \u2192</a><div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
   const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="timing">${esc(c.proc)}</div>`:''}</div>`).join('')
     +(epc?`<div class="col"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox" style="margin-top:8px"></div></div>`:'');
 
