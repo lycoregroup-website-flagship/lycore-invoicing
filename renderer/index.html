@@ -261,11 +261,12 @@
   @media print{
     html,body{height:auto;overflow:visible}
     body{display:block}
-    nav.sidebar,header.topbar,section.page,#splash,.overlay,.toast{display:none!important}
+    nav.sidebar,header.topbar,section.page,#splash,.overlay,.toast,.panel-resizer,.doc-head-row{display:none!important}
     main.workarea{overflow:visible}
     .workbody{display:block}
     aside.docpane{display:block!important;height:auto;overflow:visible;padding:0;background:#fff}
-    .doc{box-shadow:none;padding:0;margin:0 auto;border-radius:0}
+    .doc-zoom-wrap{width:auto!important;height:auto!important}
+    .doc{box-shadow:none;padding:0;margin:0 auto;border-radius:0;transform:none!important}
   }
 
   /* — splash — */
