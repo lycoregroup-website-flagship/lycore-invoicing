@@ -187,9 +187,10 @@
   .doc .ways .kv{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:2.5px 0;font-size:12px}
   .doc .ways .kv .k{color:#666}
   .doc .ways .kv .v{word-break:break-word}
-  .doc .pay-btn{display:inline-block;background:var(--money);color:#fff!important;text-decoration:none!important;font-weight:700;font-size:13px;padding:9px 18px;border-radius:6px;margin:2px 0 4px}
-  .doc .pay-btn:hover{background:var(--money-dark)}
+  .doc .pay-link{color:var(--money);font-weight:700;text-decoration:underline;text-underline-offset:2px;font-size:13px}
+  .doc .pay-link:hover{color:var(--money-dark)}
   .doc .ways .timing{font-size:11px;color:#555;font-style:italic;margin-top:7px}
+  .doc .ways .paywarn{font-size:11px;color:var(--money-dark);font-weight:600;margin-top:5px;padding-top:5px;border-top:1px solid #eee}
   .doc .disclosure{margin-top:18px;padding:11px 13px;border-left:2px solid #999;background:#f7f7f7;font-size:11.5px;color:#333}
   .doc .fnotes{margin-top:22px;padding-top:12px;border-top:1px solid #ddd;font-size:12.5px;white-space:pre-line}
   .doc footer{margin-top:34px;padding-top:10px;border-top:1px solid #111;display:flex;justify-content:space-between;font-size:11px;color:#555}
@@ -1812,6 +1813,7 @@ function render(){
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['usd-acct']||ben){
       cols.push({t:'ACH transfer',s:'For payments from US bank accounts',proc:'Typically arrives in 1\u20133 business days.',
+        warn:'Please pay from your business account. Personal payments under $4,000 are accepted, except from New York or Texas.',
         p:[['Reference',inv.number],['Account holder',ben],['Account type',settings['usd-type']],['Account number',settings['usd-acct']],['ACH routing',settings['usd-ach']],['Bank',settings['usd-bank']]]});
       cols.push({t:'Wire'+(settings['usd-fednow']?' & FedNow':''),s:settings['usd-fednow']?'Same-day wire or instant FedNow payment':'For same-day wire payments',
         proc:settings['usd-fednow']?'Wire typically arrives same business day; FedNow settles instantly, 24/7, when the sending bank supports it.':'Typically arrives the same business day when sent before your bank\u2019s cutoff time.',
@@ -1823,6 +1825,7 @@ function render(){
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['gbp-acct']||settings['gbp-iban']||ben){
       cols.push({t:'Local bank details',s:'Pay GBP from bank accounts inside the UK \u2014 via Faster Payments',proc:'Typically arrives within a few hours; some banks may take up to 2 business days.',
+        warn:'Business payments only \u2014 this account cannot accept a payment sent from a personal account.',
         p:[['Reference',inv.number],['Account holder',ben],['Sort code',settings['gbp-sort']],['Account number',settings['gbp-acct']],['Bank',bank]]});
       cols.push({t:'International bank details',s:'Pay GBP from bank accounts outside the UK \u2014 via SWIFT',proc:'Typically takes 1\u20135 business days depending on intermediary banks.',
         p:[['Reference',inv.number],['Account holder',ben],['Swift/BIC',settings['gbp-bic']],['IBAN',settings['gbp-iban']],['Bank',bank]]});
@@ -1833,13 +1836,14 @@ function render(){
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['eur-iban']||ben){
       cols.push({t:'SEPA transfer',s:'Pay EUR from any European bank account \u2014 via SEPA Credit Transfer',proc:'Typically arrives within 1 business day.',
+        warn:'Please pay from your business account. If paying from a personal account, contact us first so we can help avoid a delay or refund.',
         p:[['Reference',inv.number],['Account holder',ben],['IBAN',settings['eur-iban']],['Swift/BIC',settings['eur-bic']],['Bank',bank]]});
     }
   }
   const epc=cur==='EUR'?epcPayload(inv):null;
   const kv=(pairs)=>pairs.filter(p=>p[1]).map(p=>`<div class="kv"><span class="k">${p[0]}</span><span class="v mono">${esc(p[1])}</span></div>`).join('');
-  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Any card, any currency \u2014 converts automatically, no calculation needed</div><a href="${esc(inv.paylink)}" class="pay-btn" target="_blank" rel="noopener">Pay online \u2192</a><div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
-  const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="timing">${esc(c.proc)}</div>`:''}</div>`).join('')
+  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Charged in USD \u2014 your bank converts automatically if your card is in another currency</div><a href="${esc(inv.paylink)}" class="pay-link" target="_blank" rel="noopener">Pay online</a><div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
+  const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="timing">${esc(c.proc)}</div>`:''}${c.warn?`<div class="paywarn">${esc(c.warn)}</div>`:''}</div>`).join('')
     +(epc?`<div class="col"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox" style="margin-top:8px"></div></div>`:'');
 
   document.getElementById('doc').innerHTML=`
