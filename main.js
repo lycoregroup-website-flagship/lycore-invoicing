@@ -3,14 +3,19 @@ const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
-// Auto-update is dormant until package.json's build.publish.owner is a real
-// GitHub username. Until then this whole block is a silent no-op — no
-// network calls, no errors, nothing the user ever sees.
+// Auto-update readiness is checked against app-update.yml, the file electron-builder
+// actually writes into the packaged app's resources folder from build.publish at
+// build time, and the file electron-updater itself reads at runtime. package.json's
+// own "build" field is deliberately stripped out by electron-builder when it packages
+// the app, so checking pkg.build here (as an earlier version of this file did) is
+// always false in any real installed build — that was the root cause of the
+// "auto-update not set up" message appearing in every release, including when it
+// genuinely was configured.
 let mainWin = null;
 let manualUpdateCheck = false;
 const pkg = require('./package.json');
-const publishCfg = (pkg.build && pkg.build.publish && pkg.build.publish[0]) || {};
-const updatesConfigured = publishCfg.owner && publishCfg.owner !== 'REPLACE_WITH_GITHUB_USERNAME';
+const updateConfigPath = app.isPackaged ? path.join(process.resourcesPath, 'app-update.yml') : null;
+const updatesConfigured = !!(updateConfigPath && fs.existsSync(updateConfigPath));
 
 autoUpdater.autoDownload = false;
 autoUpdater.on('update-available', (info) => {
@@ -214,7 +219,6 @@ function buildMenu() {
     {
       label: 'View',
       submenu: [
-        { label: 'Toggle Dark Mode', click: () => mainWin && mainWin.webContents.send('menu:toggle-dark') },
         { role: 'reload', label: 'Reload' }
       ]
     },
