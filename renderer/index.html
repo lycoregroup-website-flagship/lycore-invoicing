@@ -141,10 +141,12 @@
   .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--n600)}
   .doc{background:#fff;box-shadow:var(--shadow-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
   .doc .top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:1.5px solid #111}
-  .doc .brand-block{font-family:var(--font-heading);font-weight:700;font-size:22px;letter-spacing:.18em}
-  .doc .brand-sub{font-size:11px;letter-spacing:.1em;color:#555;margin-top:3px}
-  .doc .word-invoice{font-size:30px;letter-spacing:.06em;text-align:right}
-  .doc .meta{font-size:12px;color:#444;margin-top:4px;text-align:right}
+  .doc .logo-row{display:flex;align-items:center;gap:14px}
+  .doc .logo-box{width:52px;height:52px;border-radius:12px;background:var(--money);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;overflow:hidden;flex-shrink:0;font-family:var(--font-heading)}
+  .doc .logo-box img{width:100%;height:100%;object-fit:cover}
+  .doc .word-invoice{font-size:32px;font-weight:700;letter-spacing:0}
+  .doc .top-meta{display:flex;gap:34px;text-align:left;padding-top:8px;font-family:var(--font-heading)}
+  .doc .top-meta .k{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666;margin-bottom:3px}
   .doc .parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px}
   .doc .parties .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#666;margin-bottom:6px}
   .doc .parties .v{white-space:pre-line}
@@ -440,6 +442,7 @@
               </div>
               <div class="field"><label>Currency</label>
                 <select id="f-currency"><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select>
+                <div class="note" id="fx-rate-note" style="margin-top:5px"></div>
               </div>
             </div>
             <div class="field" id="f-industryother-wrap" style="display:none"><label>Industry name</label><input id="f-industryother"></div>
@@ -682,6 +685,14 @@ function afterUnlock(){
   renderList(); renderClients(); renderArchive();
   startNew(false); // quietly prepares a fresh invoice form, ready whenever New Invoice is clicked
   showTab('dashboard');
+  refreshFxRates(false).then(updateFxNote); // fetch quietly in the background so rates are ready by the time she needs them
+}
+function updateFxNote(){
+  const el=document.getElementById('fx-rate-note'); if(!el) return;
+  const cur=document.getElementById('f-currency').value;
+  if(cur==='USD'){ el.textContent=''; return; }
+  const r=fxRates[cur];
+  el.textContent = r ? `1 USD \u2248 ${cur==='GBP'?'\u00A3':'\u20AC'}${r.toFixed(4)}${fxRates.asOf?' \u00b7 as of '+fxRates.asOf:''}` : 'Rates not loaded yet \u2014 prices will convert once available.';
 }
 
 /* ================= passcode ================= */
@@ -1046,6 +1057,7 @@ function startNew(clearDraft){
   document.getElementById('f-industry').value='Bail Bonds'; industryChanged();
   document.getElementById('f-currency').value='USD';
   document.getElementById('save-invoice-label').textContent='Save invoice';
+  updateFxNote();
   refreshClientSuggest(); renderItems(); render();
   if(clearDraft){ draft=null; sset('lyc-draft',null); }
   showTab('new');
@@ -1059,8 +1071,12 @@ function removeItem(i){ items.splice(i,1); if(!items.length)items=[{svc:'',desc:
 function svcPicked(i,val){
   items[i].svc=val;
   const c=(catalog||[]).find(x=>x.name===val);
-  if(c){ items[i].desc=c.name; items[i].rate=c.price; items[i].freq=c.freq||'once'; }
-  else if(val==='__custom'){ items[i].desc=''; items[i].rate=''; }
+  if(c){
+    items[i].desc=c.name; items[i].freq=c.freq||'once';
+    items[i].usdBase=c.price; // catalog prices are always entered in USD
+    items[i].rate=convertFromUSD(c.price, document.getElementById('f-currency').value);
+  }
+  else if(val==='__custom'){ items[i].desc=''; items[i].rate=''; delete items[i].usdBase; }
   renderItems(); render(); scheduleAutosave();
 }
 function renderItems(){
@@ -1082,12 +1098,55 @@ function renderItems(){
       <div style="display:grid;grid-template-columns:1fr 70px 110px;gap:8px;margin-top:8px">
         <input placeholder="Description on invoice" value="${esc(it.desc)}" oninput="items[${i}].desc=this.value;render();scheduleAutosave()" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
         <input type="number" min="0" step="1" placeholder="Qty" value="${it.qty}" oninput="items[${i}].qty=this.value;render();scheduleAutosave()" class="mono" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
-        <input type="number" min="0" step="0.01" placeholder="Unit price" value="${it.rate}" oninput="items[${i}].rate=this.value;render();scheduleAutosave()" class="mono" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
-      </div>`;
+        <input type="number" min="0" step="0.01" placeholder="Unit price" value="${it.rate}" oninput="items[${i}].rate=this.value;delete items[${i}].usdBase;render();scheduleAutosave()" class="mono" style="padding:7px 9px;border:1px solid var(--color-divider);background:#fff;font-size:13px">
+      </div>
+      ${it.usdBase?`<div class="note" style="margin:6px 2px 0">${fxRates.asOf?`Converted from $${Number(it.usdBase).toFixed(2)} USD \u00b7 rate as of ${fxRates.asOf}`:`Priced from $${Number(it.usdBase).toFixed(2)} USD \u2014 exchange rate not loaded yet, showing the USD amount until it is`}. Editing the price directly detaches it from auto-conversion.</div>`:''}`;
     wrap.appendChild(d);
   });
 }
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+/* ================= live USD -> GBP/EUR conversion =================
+   Every catalog price is entered and thought of in USD. When an invoice is
+   billed in GBP or EUR, the line shown to the client is the converted
+   equivalent, not the raw USD number relabeled with a different symbol.
+   Rates come from Frankfurter (ECB reference rates, no API key) and are
+   cached locally so the app still works offline on whatever was last
+   fetched, refreshing quietly in the background at most every 12 hours. */
+let fxRates={GBP:null,EUR:null,asOf:null,fetchedAt:0};
+function convertFromUSD(usdAmount, targetCurrency){
+  if(targetCurrency==='USD' || !usdAmount) return usdAmount;
+  const r=fxRates[targetCurrency];
+  if(!r) return usdAmount; // no rate available yet \u2014 leave as-is rather than guess
+  return Math.round(usdAmount*r*100)/100;
+}
+async function refreshFxRates(force){
+  const cached=await sget('lyc-fxrates');
+  if(cached && !force && (Date.now()-cached.fetchedAt) < 12*3600*1000){
+    fxRates=cached; return;
+  }
+  try{
+    const [gbpRes,eurRes]=await Promise.all([
+      fetch('https://api.frankfurter.dev/v2/rate/USD/GBP').then(r=>r.json()),
+      fetch('https://api.frankfurter.dev/v2/rate/USD/EUR').then(r=>r.json())
+    ]);
+    fxRates={GBP:gbpRes.rate, EUR:eurRes.rate, asOf:gbpRes.date, fetchedAt:Date.now()};
+    await sset('lyc-fxrates',fxRates);
+  }catch(e){
+    if(cached){ fxRates=cached; } // fall back to whatever we last had, even if stale
+    else if(!fxRates.GBP && !fxRates.EUR){ toast('Could not reach exchange rates \u2014 check your connection'); }
+  }
+}
+async function reconvertAllItems(){
+  // called when the currency dropdown changes, to convert every catalog-sourced
+  // line to the newly-selected currency; custom lines are left untouched since
+  // there's no known "original" currency to convert them from
+  await refreshFxRates(false);
+  updateFxNote();
+  items.forEach(it=>{ if(it.usdBase) it.rate=convertFromUSD(it.usdBase, document.getElementById('f-currency').value); });
+  renderItems(); render(); scheduleAutosave();
+}
+
 ['f-number','f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-paylink','f-taxrate'].forEach(id=>{
   document.getElementById(id).addEventListener('input',()=>{render();scheduleAutosave();});
 });
@@ -1097,7 +1156,7 @@ document.getElementById('f-cityother').addEventListener('input',()=>{render();sc
 document.getElementById('f-industryother').addEventListener('input',()=>{render();scheduleAutosave();});
 document.getElementById('f-date').addEventListener('input',dateChanged);
 document.getElementById('f-due').addEventListener('input',()=>{render();scheduleAutosave();});
-document.getElementById('f-currency').addEventListener('change',()=>{render();scheduleAutosave();});
+document.getElementById('f-currency').addEventListener('change',reconvertAllItems);
 
 /* ================= autosave draft ================= */
 function scheduleAutosave(){
@@ -1156,6 +1215,7 @@ function applyDraftToForm(d){
   document.getElementById('f-zip').value=d.zip||'';
   document.getElementById('f-clientemail').value=d.clientEmail||'';
   document.getElementById('f-currency').value=d.currency||'USD';
+  updateFxNote();
   document.getElementById('f-notes').value=d.notes||'';
   document.getElementById('f-paylink').value=d.paylink||'';
   document.getElementById('f-taxrate').value=d.taxrate||'';
@@ -1653,13 +1713,13 @@ function render(){
 
   document.getElementById('doc').innerHTML=`
     <div class="top">
-      <div>
-        <div class="brand-block">${settings.logo?`<img src="${settings.logo}" alt="" style="height:34px;display:block;margin-bottom:4px">`:'LYCORE'}</div>
-        <div class="brand-sub">GROUP LLC</div>
-      </div>
-      <div>
+      <div class="logo-row">
+        <div class="logo-box">${settings.logo?`<img src="${settings.logo}" alt="">`:'L'}</div>
         <div class="word-invoice">Invoice</div>
-        <div class="meta mono">${esc(inv.number)} \u00B7 ${fmtDate(inv.date)}</div>
+      </div>
+      <div class="top-meta">
+        <div><div class="k">Invoice number</div><div class="mono">${esc(inv.number)}</div></div>
+        <div><div class="k">Issue date</div><div>${fmtDate(inv.date)}</div></div>
       </div>
     </div>
 
