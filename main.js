@@ -107,6 +107,45 @@ ipcMain.handle('app:info', () => ({
 }));
 ipcMain.handle('app:version', () => app.getVersion());
 
+// ---- TOTP authenticator (Google Authenticator / Microsoft Authenticator etc.) ----
+// Fully offline: the shared secret lives only in the local encrypted DB and on the
+// user's phone once scanned. No email, no server, nothing to intercept in transit.
+const { authenticator } = require('otplib');
+let pendingTotpSecret = null; // held only during setup, until the user confirms a real code
+ipcMain.handle('totp:setup', () => {
+  pendingTotpSecret = authenticator.generateSecret();
+  const otpauthUrl = authenticator.keyuri('owner', 'LYCORE Invoicing', pendingTotpSecret);
+  return { secret: pendingTotpSecret, otpauthUrl };
+});
+ipcMain.handle('totp:confirm', (e, code) => {
+  if (!pendingTotpSecret) return { success: false, error: 'Start setup again.' };
+  const ok = authenticator.check(String(code || '').trim(), pendingTotpSecret);
+  if (!ok) return { success: false, error: 'That code didn\'t match. Check the time on your phone is correct and try the newest code shown.' };
+  const db = loadDB();
+  db['lyc-totp-secret'] = pendingTotpSecret;
+  saveDB();
+  pendingTotpSecret = null;
+  return { success: true };
+});
+ipcMain.handle('totp:cancelSetup', () => { pendingTotpSecret = null; return true; });
+ipcMain.handle('totp:status', () => {
+  const db = loadDB();
+  return { configured: !!db['lyc-totp-secret'] };
+});
+ipcMain.handle('totp:verify', (e, code) => {
+  const db = loadDB();
+  const secret = db['lyc-totp-secret'];
+  if (!secret) return { success: false, error: 'No authenticator is set up.' };
+  const ok = authenticator.check(String(code || '').trim(), secret);
+  return { success: ok };
+});
+ipcMain.handle('totp:remove', () => {
+  const db = loadDB();
+  delete db['lyc-totp-secret'];
+  saveDB();
+  return true;
+});
+
 // ---- backup / restore (business data only — never the passcode or recovery hash) ----
 const BACKUP_KEYS = ['lyc-settings', 'lyc-invoices', 'lyc-archive', 'lyc-expenses', 'lyc-expense-archive', 'lyc-catalog'];
 async function doBackupExport() {

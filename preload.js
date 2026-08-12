@@ -28,3 +28,12 @@ contextBridge.exposeInMainWorld('menuBridge', {
   onToast: (cb) => ipcRenderer.on('menu:toast', (e, msg) => cb(msg)),
   onRestored: (cb) => ipcRenderer.on('menu:restored', () => cb())
 });
+
+contextBridge.exposeInMainWorld('totp', {
+  setup: () => ipcRenderer.invoke('totp:setup'),
+  confirm: (code) => ipcRenderer.invoke('totp:confirm', code),
+  cancelSetup: () => ipcRenderer.invoke('totp:cancelSetup'),
+  status: () => ipcRenderer.invoke('totp:status'),
+  verify: (code) => ipcRenderer.invoke('totp:verify', code),
+  remove: () => ipcRenderer.invoke('totp:remove')
+});

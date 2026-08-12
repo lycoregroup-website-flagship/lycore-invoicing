@@ -55,14 +55,16 @@
      that's the only screen where a live document preview actually makes sense. */
   main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr;overflow:hidden}
   main.split-view{grid-template-columns:minmax(360px,470px) 1fr}
-  .panel{min-height:0;height:100%;padding:28px 36px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);max-width:1180px;margin:0;width:100%}
-  main.split-view .panel{max-width:none;padding:24px}
+  .panel{min-height:0;height:100%;padding:28px 40px;overflow-y:auto;background:var(--white);border-right:1px solid var(--line);width:100%}
+  main.split-view .panel{padding:24px}
   .doc-wrap{display:none}
   main.split-view .doc-wrap{display:flex}
 
   h2.sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin:26px 0 12px;font-weight:700}
   h2.sec:first-child{margin-top:0}
-  .field{margin-bottom:13px}
+  .field{margin-bottom:13px;max-width:640px}
+  .row2 .field,.row3 .field{max-width:none}
+  #pane-reference .note,#pane-reference p{max-width:720px}
   .field label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px}
   .field input,.field textarea,.field select{width:100%;background:var(--white);border:1px solid var(--line);color:var(--ink);padding:9px 11px;font-size:14px;border-radius:8px;font-family:var(--ui-font)}
   .field textarea{resize:vertical;min-height:54px}
@@ -229,26 +231,34 @@
 </div>
 
 <div class="overlay hidden" id="recover-overlay">
-  <div class="modal">
-    <h3>Recover access</h3>
-    <p>Enter the recovery code you saved when you first set your passcode. This resets your passcode — you'll set a new one right after.</p>
-    <input id="recover-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:ui-monospace,monospace;letter-spacing:.06em">
-    <div class="err" id="recover-err">That recovery code doesn't match.</div>
-    <div class="mrow">
-      <button class="btn ghost" onclick="closeRecoveryPrompt()">Cancel</button>
-      <button class="btn orange" onclick="tryRecover()">Verify</button>
-    </div>
+  <div class="modal" id="recover-modal">
+    <!-- content injected dynamically by openRecoveryPrompt() depending on what's actually configured -->
   </div>
 </div>
 
 <div class="overlay hidden" id="recoveryshow-overlay">
   <div class="modal" style="text-align:center">
     <h3>Save your recovery code</h3>
-    <p>This is the only way back in if you forget your passcode \u2014 there's no email reset. Write it down or store it somewhere safe. We can't show it to you again.</p>
+    <p>This is a backup if you forget your passcode and don't have your authenticator app on hand. Write it down or store it somewhere safe. We can't show it to you again.</p>
     <div class="recoverybox">
       <div class="code" id="recovery-code-display">\u2014</div>
     </div>
     <button class="btn orange" style="width:100%" onclick="closeRecoveryShow()">I've saved it</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="totp-setup-overlay">
+  <div class="modal" style="text-align:center;max-width:380px">
+    <h3>Set up an authenticator app</h3>
+    <p>Scan this with Google Authenticator, Microsoft Authenticator, or any TOTP app. Fully offline \u2014 nothing sent anywhere, nothing to intercept.</p>
+    <div id="totp-qrbox" style="display:flex;justify-content:center;margin:16px 0"></div>
+    <p class="note" style="margin-bottom:10px">Can't scan? Enter this key manually: <span class="mono" id="totp-manual-key" style="word-break:break-all"></span></p>
+    <input id="totp-confirm-input" placeholder="Enter the 6-digit code" autocomplete="off" style="text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.1em">
+    <div class="err" id="totp-setup-err">That code didn't match \u2014 try the newest one shown in your app.</div>
+    <div class="mrow">
+      <button class="btn ghost" onclick="cancelTotpSetup()">Cancel</button>
+      <button class="btn orange" onclick="confirmTotpSetup()">Confirm</button>
+    </div>
   </div>
 </div>
 
@@ -609,6 +619,10 @@
       </div>
       <p class="note">Your database file is encrypted at rest using Windows' own credential store (tied to your login). The passcode is an extra screen on top of that. Setting a passcode generates a one-time <strong>recovery code</strong> — save it. It's the only way back in if you forget, since there's no email to send a reset to.</p>
 
+      <h2 class="sec">Authenticator app</h2>
+      <p class="note" style="margin-top:0">A second, more reliable way back in if you forget your passcode — scan a QR code once with Google Authenticator, Microsoft Authenticator, or any TOTP app, then use the 6-digit code it generates to recover access any time. Fully offline; nothing is sent anywhere.</p>
+      <div id="totp-status"></div>
+
       <h2 class="sec">Service catalog</h2>
       <div id="catalog-rows"></div>
       <button class="btn ghost" onclick="addCatalogRow()">+ Add service</button>
@@ -914,37 +928,127 @@ async function tryUnlock(){
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     if(!document.getElementById('gate-overlay').classList.contains('hidden')) tryUnlock();
-    else if(!document.getElementById('recover-overlay').classList.contains('hidden')) tryRecover();
+    else if(!document.getElementById('recover-overlay').classList.contains('hidden')){
+      if(document.getElementById('recover-modal').innerHTML.includes('tryRecoverTotp')) tryRecoverTotp();
+      else if(document.getElementById('recover-input')) tryRecover();
+    }
+    else if(!document.getElementById('totp-setup-overlay').classList.contains('hidden')) confirmTotpSetup();
   }
 });
 function lockNow(){ if(pinHash){ unlocked=false; document.getElementById('gate-overlay').classList.remove('hidden'); document.getElementById('gate-pin').focus(); } }
-function openRecoveryPrompt(){
+async function openRecoveryPrompt(){
   document.getElementById('gate-overlay').classList.add('hidden');
-  document.getElementById('recover-input').value=''; document.getElementById('recover-err').style.display='none';
+  const modal=document.getElementById('recover-modal');
+  let totpConfigured=false;
+  try{ const r=await window.totp.status(); totpConfigured=!!(r&&r.configured); }catch(e){}
+
+  if(totpConfigured){
+    modal.innerHTML=`
+      <h3>Recover access</h3>
+      <p>Enter the 6-digit code from your authenticator app. This resets your passcode \u2014 you'll set a new one right after.</p>
+      <input id="recover-input" placeholder="000000" autocomplete="off" style="text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.15em">
+      <div class="err" id="recover-err">That code didn't match \u2014 try the newest one shown in your app.</div>
+      ${recoveryHash?`<p style="margin-top:10px"><button class="linkbtn" onclick="switchToCodeRecovery()">Use my saved recovery code instead</button></p>`:''}
+      <div class="mrow"><button class="btn ghost" onclick="closeRecoveryPrompt()">Cancel</button><button class="btn orange" onclick="tryRecoverTotp()">Verify</button></div>`;
+  } else if(recoveryHash){
+    modal.innerHTML=`
+      <h3>Recover access</h3>
+      <p>Enter the recovery code you saved when you first set your passcode. This resets your passcode \u2014 you'll set a new one right after.</p>
+      <input id="recover-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:ui-monospace,monospace;letter-spacing:.06em">
+      <div class="err" id="recover-err">That recovery code doesn't match.</div>
+      <div class="mrow"><button class="btn ghost" onclick="closeRecoveryPrompt()">Cancel</button><button class="btn orange" onclick="tryRecover()">Verify</button></div>`;
+  } else {
+    modal.innerHTML=`
+      <h3>No recovery method is set up</h3>
+      <p>This passcode was set before a recovery option existed, or one was never configured. There's no way to reset it from here \u2014 the only path forward is uninstalling and reinstalling the app, which clears local data unless you have a backup (File \u2192 Restore from Backup will bring it back afterward).</p>
+      <p class="note">Once you're back in, set up an authenticator or a recovery code in Settings so this doesn't happen again.</p>
+      <div class="mrow"><button class="btn orange" onclick="closeRecoveryPrompt()">OK</button></div>`;
+  }
   document.getElementById('recover-overlay').classList.remove('hidden');
+  const inp=document.getElementById('recover-input'); if(inp) inp.focus();
+}
+function switchToCodeRecovery(){
+  const modal=document.getElementById('recover-modal');
+  modal.innerHTML=`
+    <h3>Recover access</h3>
+    <p>Enter the recovery code you saved when you first set your passcode.</p>
+    <input id="recover-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" style="font-family:ui-monospace,monospace;letter-spacing:.06em">
+    <div class="err" id="recover-err">That recovery code doesn't match.</div>
+    <div class="mrow"><button class="btn ghost" onclick="closeRecoveryPrompt()">Cancel</button><button class="btn orange" onclick="tryRecover()">Verify</button></div>`;
   document.getElementById('recover-input').focus();
 }
 function closeRecoveryPrompt(){
   document.getElementById('recover-overlay').classList.add('hidden');
   document.getElementById('gate-overlay').classList.remove('hidden');
 }
+async function grantRecovery(){
+  document.getElementById('recover-overlay').classList.add('hidden');
+  document.getElementById('gate-overlay').classList.add('hidden');
+  pinHash=null; recoveryHash=null;
+  try{await window.storage.delete('lyc-pin');}catch(e){}
+  try{await window.storage.delete('lyc-recovery');}catch(e){}
+  document.getElementById('lock-btn').style.display='none';
+  afterUnlock();
+  toast('Access recovered \u2014 set a new passcode in Settings when you\u2019re ready');
+  showTab('settings');
+}
+async function tryRecoverTotp(){
+  const v=document.getElementById('recover-input').value.trim();
+  try{
+    const r=await window.totp.verify(v);
+    if(r&&r.success) grantRecovery();
+    else document.getElementById('recover-err').style.display='block';
+  }catch(e){ document.getElementById('recover-err').style.display='block'; }
+}
 async function tryRecover(){
   const v=document.getElementById('recover-input').value.trim().toUpperCase();
-  if(recoveryHash && v && await hash('recovery-'+v)===recoveryHash){
-    document.getElementById('recover-overlay').classList.add('hidden');
-    document.getElementById('gate-overlay').classList.add('hidden');
-    pinHash=null; recoveryHash=null;
-    try{await window.storage.delete('lyc-pin');}catch(e){}
-    try{await window.storage.delete('lyc-recovery');}catch(e){}
-    document.getElementById('lock-btn').style.display='none';
-    afterUnlock();
-    toast('Access recovered \u2014 set a new passcode in Settings when you\u2019re ready');
-    showTab('settings');
-  } else {
-    document.getElementById('recover-err').style.display='block';
-  }
+  if(recoveryHash && v && await hash('recovery-'+v)===recoveryHash){ grantRecovery(); }
+  else { document.getElementById('recover-err').style.display='block'; }
 }
 function closeRecoveryShow(){ document.getElementById('recoveryshow-overlay').classList.add('hidden'); }
+
+/* ================= authenticator app (TOTP) setup, from Settings ================= */
+async function startTotpSetup(){
+  if(!window.totp){ toast('Authenticator isn\u2019t available in this build'); return; }
+  const r=await window.totp.setup();
+  document.getElementById('totp-manual-key').textContent=r.secret;
+  document.getElementById('totp-confirm-input').value='';
+  document.getElementById('totp-setup-err').style.display='none';
+  document.getElementById('totp-qrbox').innerHTML='';
+  try{ new QRCode(document.getElementById('totp-qrbox'),{text:r.otpauthUrl,width:180,height:180,correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+  document.getElementById('totp-setup-overlay').classList.remove('hidden');
+  document.getElementById('totp-confirm-input').focus();
+}
+async function cancelTotpSetup(){
+  try{ await window.totp.cancelSetup(); }catch(e){}
+  document.getElementById('totp-setup-overlay').classList.add('hidden');
+}
+async function confirmTotpSetup(){
+  const code=document.getElementById('totp-confirm-input').value.trim();
+  const r=await window.totp.confirm(code);
+  if(r&&r.success){
+    document.getElementById('totp-setup-overlay').classList.add('hidden');
+    toast('Authenticator connected');
+    renderTotpStatus();
+  } else {
+    document.getElementById('totp-setup-err').textContent=(r&&r.error)||'That code didn\u2019t match.';
+    document.getElementById('totp-setup-err').style.display='block';
+  }
+}
+async function removeTotp(){
+  try{ await window.totp.remove(); }catch(e){}
+  toast('Authenticator removed');
+  renderTotpStatus();
+}
+async function renderTotpStatus(){
+  const el=document.getElementById('totp-status'); if(!el || !window.totp) return;
+  const r=await window.totp.status();
+  if(r&&r.configured){
+    el.innerHTML=`<span class="pill paid" style="margin-right:10px">Connected</span><button class="btn ghost" onclick="removeTotp()">Remove authenticator</button>`;
+  } else {
+    el.innerHTML=`<button class="btn ghost" onclick="startTotpSetup()">Set up authenticator app</button>`;
+  }
+}
 async function setPin(){
   const a=document.getElementById('s-pin1').value,b=document.getElementById('s-pin2').value;
   if(!a){toast('Enter a passcode');return}
@@ -1725,6 +1829,7 @@ if(window.menuBridge){
 }
 
 if(window.api && window.api.version){ window.api.version().then(v=>{ document.getElementById('hdr-version').textContent='v'+v; }); }
+if(window.totp) renderTotpStatus();
 loadAll();
 </script>
 </body>
