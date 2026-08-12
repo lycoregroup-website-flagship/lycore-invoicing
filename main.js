@@ -219,7 +219,11 @@ function buildMenu() {
     {
       label: 'View',
       submenu: [
-        { role: 'reload', label: 'Reload' }
+        { role: 'reload', label: 'Reload' },
+        { type: 'separator' },
+        { role: 'zoomIn', label: 'Zoom In' },
+        { role: 'zoomOut', label: 'Zoom Out' },
+        { role: 'resetZoom', label: 'Reset Zoom' }
       ]
     },
     {

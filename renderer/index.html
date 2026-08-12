@@ -150,14 +150,20 @@
 
   .workbody{flex:1;min-height:0;display:flex;overflow:hidden}
   section.page{flex:1;min-width:0;overflow-y:auto;padding:26px}
-  aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--border-soft);background:#EEF0F8;overflow-y:auto;padding:22px;display:none}
+  aside.docpane{flex:0 0 clamp(460px,42%,640px);border-left:1px solid var(--border-soft);background:#EEF0F8;overflow:auto;padding:22px;display:none}
   .app-shell.split-view aside.docpane{display:block}
   #pane-new{max-width:660px}
 
   /* — invoice document: unchanged formal register, deliberately not navy/orange — */
-  .doc-head-row{display:flex;align-items:center;margin-bottom:12px}
+  .doc-head-row{display:flex;align-items:center;margin-bottom:12px;position:sticky;top:0;z-index:2}
   .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft)}
   .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--text-mute)}
+  .zoom-ctrl{display:flex;align-items:center;gap:5px;margin-left:14px}
+  .zoom-ctrl button{width:23px;height:23px;border:1px solid var(--border-soft);background:#fff;border-radius:5px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--text-soft)}
+  .zoom-ctrl button:hover{border-color:var(--color-accent);color:var(--color-accent)}
+  .zoom-ctrl .zoom-reset{width:auto;padding:0 8px;font-size:10px;font-weight:600}
+  #doc-zoom-pct{font-size:11px;color:var(--text-mute);min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
+  .doc-zoom-wrap{width:max-content}
   .doc{background:#fff;box-shadow:var(--shadow-lg);border-radius:var(--r-md);padding:46px 44px;font-family:'Times New Roman',Times,serif;color:#111;font-size:13.5px;line-height:1.5}
   .doc .top{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:1.5px solid #111}
   .doc .logo-row{display:flex;align-items:center;gap:14px}
@@ -410,7 +416,7 @@
               <div class="sub">Cash in the door. Paid invoices only.</div>
               <div class="split">
                 <div><div class="k">Billed</div><div class="v" id="dash-billed-val">\u2014</div></div>
-                <div><div class="k">Collection rate</div><div class="v" id="dash-collrate-val">\u2014</div></div>
+                <div><div class="k" title="Of everything billed this period, the share that's actually been paid so far">Collection rate</div><div class="v" id="dash-collrate-val">\u2014</div></div>
               </div>
               <div class="trendwrap">
                 <div class="trendlbl">Six-month collected trend</div>
@@ -582,7 +588,7 @@
                 <h3 style="font-size:16px;margin-bottom:4px">Tax reserve</h3>
                 <div class="note" style="margin:0 0 14px">Set aside a share of net profit before you draw anything.</div>
                 <div style="display:flex;align-items:center;gap:14px">
-                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" style="flex:1;accent-color:var(--indigo-500)">
+                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" title="A rough guide for taxes and a rainy-day cushion \u2014 not a real reserve account, just a number to plan against" style="flex:1;accent-color:var(--indigo-500)">
                   <div style="font-weight:700;font-size:26px;width:62px;text-align:right;color:var(--indigo-700)" id="rep-reserve-pct-label">25%</div>
                 </div>
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:baseline">
@@ -636,8 +642,19 @@
 
       </section>
       <aside class="docpane" id="doc-wrap">
-        <div class="doc-head-row"><span class="lbl">Printed document</span><span class="cur" id="doc-currency-note"></span></div>
-        <div class="doc" id="doc"></div>
+        <div class="doc-head-row">
+          <span class="lbl">Printed document</span>
+          <span class="cur" id="doc-currency-note"></span>
+          <div class="zoom-ctrl" title="Adjust how large the invoice preview appears \u2014 doesn't affect the printed size">
+            <button onclick="docZoom(-1)" title="Zoom out">\u2212</button>
+            <span id="doc-zoom-pct" class="mono">100%</span>
+            <button onclick="docZoom(1)" title="Zoom in">+</button>
+            <button onclick="docZoom(0)" class="zoom-reset" title="Back to 100%">Reset</button>
+          </div>
+        </div>
+        <div class="doc-zoom-wrap" id="doc-zoom-wrap">
+          <div class="doc" id="doc"></div>
+        </div>
       </aside>
     </div>
   </main>
@@ -724,6 +741,7 @@ async function loadAll(){
   pinHash=(await sget('lyc-pin'))||null;
   recoveryHash=(await sget('lyc-recovery'))||null;
   draft=(await sget('lyc-draft'))||null;
+  docZoomLevel=(await sget('lyc-doc-zoom'))||100;
   buildStateSelects(); fillSettingsForm(); renderCatalogRows(); renderBundleRows(); applyLogo();
   document.getElementById('lock-btn').style.display=pinHash?'inline-block':'none';
 
@@ -923,11 +941,11 @@ const SETTINGS_SECTIONS=[
   {id:'sec-company',title:'Company',note:'Name and address print under \u201cIssued by.\u201d Phone, email and website print in the footer.',
     fields:[['name','Legal name','text','span2'],['street','Street address','text','span2'],['city','City','text',''],['state','State','text',''],['zip','ZIP','text',''],['phone','Phone','text',''],['email','Email','text',''],['web','Website','text','']]},
   {id:'sec-numbering',title:'Numbering, tax and links',note:'Invoice numbers continue from the highest number on record, so nothing collides.',
-    fields:[['prefix','Number prefix','text',''],['numyear','Include year in number','checkbox',''],['taxrate','Default tax rate %','text',''],['paylink','Default payment link','text','span2']]},
+    fields:[['prefix','Number prefix','text',''],['numyear','Include year in number','checkbox','','Adds the current year into every invoice number, e.g. LYC-2026-001 instead of LYC-001'],['taxrate','Default tax rate %','text',''],['paylink','Default payment link','text','span2']]},
   {id:'sec-provider',title:'Payment provider',note:'Printed automatically on any invoice where the account holder differs from LYCORE GROUP LLC \u2014 currently every GBP and EUR invoice.',
     fields:[['platform','Infrastructure partner','text',''],['provider','Regulated bank','text',''],['providerdesc','Regulatory description','text','span2'],['disclosure','Disclosure wording (use {platform} {provider} {providerdesc} {holder} {number})','textarea','span2'],['feenote','Bank fee note (optional, prints under Ways to pay)','text','span2']]},
   {id:'sec-usd',title:'USD account',note:'ACH and wire details for invoices billed in dollars.',
-    fields:[['usd-ben','Account holder','text',''],['usd-type','Account type','text',''],['usd-bank','Bank name and address','text','span2'],['usd-acct','Account number','text',''],['usd-ach','ACH routing','text',''],['usd-wire','Wire routing','text',''],['usd-fednow','Offer FedNow','checkbox','']]},
+    fields:[['usd-ben','Account holder','text',''],['usd-type','Account type','text',''],['usd-bank','Bank name and address','text','span2'],['usd-acct','Account number','text',''],['usd-ach','ACH routing','text',''],['usd-wire','Wire routing','text',''],['usd-fednow','Offer FedNow','checkbox','','Adds FedNow as a same-day instant payment option alongside wire, when your bank supports it']]},
   {id:'sec-gbp',title:'GBP account',note:'Local details print as Faster Payments; international details print as SWIFT.',
     fields:[['gbp-ben','Account holder','text',''],['gbp-bankname','Bank name','text',''],['gbp-bankaddr','Bank address','text','span2'],['gbp-sort','Sort code','text',''],['gbp-acct','Account number','text',''],['gbp-iban','IBAN','text',''],['gbp-bic','Swift / BIC','text','']]},
   {id:'sec-eur',title:'EUR account',note:'Prints as a SEPA Credit Transfer once holder and IBAN are filled in.',
@@ -957,15 +975,16 @@ function renderSettingsBody(){
       <h3 style="font-size:17px;margin-bottom:3px">${esc(sec.title)}</h3>
       <div class="note" style="margin:0 0 15px">${esc(sec.note)}</div>
       <div class="row2">`;
-    sec.fields.forEach(([key,label,type,span])=>{
+    sec.fields.forEach(([key,label,type,span,tip])=>{
       const val=settings[key]!==undefined?settings[key]:'';
       const colStyle=span==='span2'?'grid-column:1/-1':'';
+      const tipAttr=tip?` title="${esc(tip)}"`:'';
       if(type==='checkbox'){
-        html+=`<div style="${colStyle}"><label class="check" style="margin-bottom:0"><input type="checkbox" id="s-${key}" ${val?'checked':''} onchange="applySettingsFieldLive('${key}',this.checked)"> ${esc(label)}</label></div>`;
+        html+=`<div style="${colStyle}"><label class="check" style="margin-bottom:0"${tipAttr}><input type="checkbox" id="s-${key}" ${val?'checked':''} onchange="applySettingsFieldLive('${key}',this.checked)"> ${esc(label)}</label></div>`;
       } else if(type==='textarea'){
-        html+=`<div style="${colStyle}" class="field" style="max-width:none"><label>${esc(label)}</label><textarea id="s-${key}" oninput="applySettingsFieldLive('${key}',this.value)">${esc(val)}</textarea></div>`;
+        html+=`<div style="${colStyle}" class="field" style="max-width:none"><label${tipAttr}>${esc(label)}</label><textarea id="s-${key}" oninput="applySettingsFieldLive('${key}',this.value)">${esc(val)}</textarea></div>`;
       } else {
-        html+=`<div style="${colStyle}" class="field" style="max-width:none"><label>${esc(label)}</label><input id="s-${key}" value="${esc(val)}" oninput="applySettingsFieldLive('${key}',this.value)"></div>`;
+        html+=`<div style="${colStyle}" class="field" style="max-width:none"><label${tipAttr}>${esc(label)}</label><input id="s-${key}" value="${esc(val)}" oninput="applySettingsFieldLive('${key}',this.value)"></div>`;
       }
     });
     html+=`</div></div>`;
@@ -1211,7 +1230,7 @@ function svcPicked(i,val){
 function renderItems(){
   const wrap=document.getElementById('items'); wrap.innerHTML='';
   items.forEach((it,i)=>{
-    const bundleOpts=(bundles||[]).map((b,bi)=>`<option value="__bundle__${bi}">\u2605 ${esc(b.label)}</option>`).join('');
+    const bundleOpts=(bundles||[]).map((b,bi)=>`<option value="__bundle__${bi}" title="Adds both the setup fee and the monthly line together">\u2605 ${esc(b.label)}</option>`).join('');
     const singleOpts=(catalog||[]).map(c=>`<option ${it.svc===c.name?'selected':''} value="${esc(c.name)}">${esc(c.name)}${c.freq==='month'?' (monthly)':''}</option>`).join('');
     const opts=`<option value="">\u2014 Pick a service \u2014</option>`
       +(bundleOpts?`<optgroup label="Bundles \u2014 setup + monthly, billed together">${bundleOpts}</optgroup>`:'')
@@ -1897,6 +1916,31 @@ function render(){
   if(epc&&window.QRCode){
     try{ new QRCode(document.getElementById('qrbox'),{text:epc,width:104,height:104,correctLevel:QRCode.CorrectLevel.M,colorDark:'#0F1720',colorLight:'#FFFFFF'}); }catch(e){}
   }
+  applyDocZoom();
+}
+
+/* ================= invoice preview zoom ================= */
+let docZoomLevel=100;
+function docZoom(direction){
+  if(direction===0) docZoomLevel=100;
+  else docZoomLevel=Math.max(50,Math.min(200,docZoomLevel+direction*10));
+  applyDocZoom();
+  sset('lyc-doc-zoom',docZoomLevel);
+}
+function applyDocZoom(){
+  const doc=document.getElementById('doc'), wrap=document.getElementById('doc-zoom-wrap');
+  const pctEl=document.getElementById('doc-zoom-pct');
+  if(!doc||!wrap) return;
+  if(pctEl) pctEl.textContent=docZoomLevel+'%';
+  const factor=docZoomLevel/100;
+  doc.style.transform=`scale(${factor})`;
+  doc.style.transformOrigin='top left';
+  // transform is purely visual and doesn't affect layout size, so offsetWidth/Height
+  // here always reflects the doc's true unscaled size \u2014 safe to read regardless of
+  // whatever zoom was previously applied, then size the wrapper to the scaled result
+  // so the panel's scrollbars correctly reach every part of the zoomed content.
+  wrap.style.width=(doc.offsetWidth*factor)+'px';
+  wrap.style.height=(doc.offsetHeight*factor)+'px';
 }
 
 /* ================= reference ================= */

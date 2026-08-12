@@ -1,6 +1,6 @@
 {
   "name": "lycore-invoicing",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "LYCORE GROUP LLC invoicing desktop application",
   "main": "main.js",
   "author": "LYCORE GROUP LLC",
