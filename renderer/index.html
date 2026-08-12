@@ -191,6 +191,8 @@
   .doc .totals .grand{border-top:1px solid #111;font-weight:700;font-size:15px}
   .doc .ways{margin-top:30px}
   .doc .ways .hd{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#555;padding-bottom:7px;border-bottom:1px solid #111}
+  .doc .ways-shared{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 24px;padding-bottom:12px;margin-bottom:2px;border-bottom:1px solid #eee}
+  .doc .ways-shared .kv{padding:2px 0}
   .doc .ways .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:22px;margin-top:14px}
   .doc .ways .col .ct{font-weight:700;font-size:13.5px}
   .doc .ways .col .cs{font-size:11.5px;color:#555;font-style:italic;margin:3px 0 8px}
@@ -1600,7 +1602,6 @@ function epcPayload(inv){
   if(!ben||!iban||!inv.total)return null;
   return ['BCD','002','1','SCT',bic,ben,iban,'EUR'+inv.total.toFixed(2),'','',('Invoice '+inv.number).slice(0,140)].join('\n');
 }
-function bankBlock(name,addr){ return [name,addr].filter(Boolean).join(', '); }
 function fillTemplate(tpl,vars){
   return tpl.replace(/\{(\w+)\}/g,(m,k)=>vars[k]!==undefined?vars[k]:m);
 }
@@ -1834,41 +1835,44 @@ function render(){
       <td class="r mono">${amt?sym+amt.toFixed(2)+(it.freq==='month'?'/mo':''):''}</td></tr>`;
   }).join('')||'<tr><td colspan="4" style="color:#888">Pick a service on the left to add lines</td></tr>';
 
-  let cols=[], mismatchBen=null;
+  let cols=[], mismatchBen=null, shared=null;
   if(cur==='USD'){
     const ben=settings['usd-ben'];
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['usd-acct']||ben){
+      shared={ben,bankName:settings['usd-bank'],bankAddr:'',extra:[['Account type',settings['usd-type']],['Account number',settings['usd-acct']]]};
       cols.push({t:'ACH transfer',s:'For payments from US bank accounts',proc:'Typically arrives in 1\u20133 business days.',
         warn:'Please pay from your business account. Personal payments under $4,000 are accepted, except from New York or Texas.',
-        p:[['Reference',inv.number],['Account holder',ben],['Account type',settings['usd-type']],['Account number',settings['usd-acct']],['ACH routing',settings['usd-ach']],['Bank',settings['usd-bank']]]});
+        p:[['Reference',inv.number],['ACH routing',settings['usd-ach']]]});
       cols.push({t:'Wire'+(settings['usd-fednow']?' & FedNow':''),s:settings['usd-fednow']?'Same-day wire or instant FedNow payment':'For same-day wire payments',
         proc:settings['usd-fednow']?'Wire typically arrives same business day; FedNow settles instantly, 24/7, when the sending bank supports it.':'Typically arrives the same business day when sent before your bank\u2019s cutoff time.',
-        p:[['Reference',inv.number],['Account holder',ben],['Account number',settings['usd-acct']],['Wire routing',settings['usd-wire']||settings['usd-ach']],['Bank',settings['usd-bank']]]});
+        p:[['Reference',inv.number],['Wire routing',settings['usd-wire']||settings['usd-ach']]]});
     }
   } else if(cur==='GBP'){
     const ben=settings['gbp-ben'];
-    const bank=bankBlock(settings['gbp-bankname'],settings['gbp-bankaddr']);
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['gbp-acct']||settings['gbp-iban']||ben){
-      cols.push({t:'Local bank details',s:'Pay GBP from bank accounts inside the UK \u2014 via Faster Payments',proc:'Typically arrives within a few hours; some banks may take up to 2 business days.',
+      shared={ben,bankName:settings['gbp-bankname'],bankAddr:settings['gbp-bankaddr'],extra:[]};
+      cols.push({t:'Faster Payments (UK)',s:'Pay GBP from bank accounts inside the UK',proc:'Typically arrives within a few hours; some banks may take up to 2 business days.',
         warn:'Business payments only \u2014 this account cannot accept a payment sent from a personal account.',
-        p:[['Reference',inv.number],['Account holder',ben],['Sort code',settings['gbp-sort']],['Account number',settings['gbp-acct']],['Bank',bank]]});
-      cols.push({t:'International bank details',s:'Pay GBP from bank accounts outside the UK \u2014 via SWIFT',proc:'Typically takes 1\u20135 business days depending on intermediary banks.',
-        p:[['Reference',inv.number],['Account holder',ben],['Swift/BIC',settings['gbp-bic']],['IBAN',settings['gbp-iban']],['Bank',bank]]});
+        p:[['Reference',inv.number],['Sort code',settings['gbp-sort']],['Account number',settings['gbp-acct']]]});
+      cols.push({t:'SWIFT (international)',s:'Pay GBP from bank accounts outside the UK',proc:'Typically takes 1\u20135 business days depending on intermediary banks.',
+        p:[['Reference',inv.number],['Swift/BIC',settings['gbp-bic']],['IBAN',settings['gbp-iban']]]});
     }
   } else {
     const ben=settings['eur-ben'];
-    const bank=bankBlock(settings['eur-bankname'],settings['eur-bankaddr']);
     if(ben&&ben.trim().toUpperCase()!==legal.trim().toUpperCase())mismatchBen=ben;
     if(settings['eur-iban']||ben){
-      cols.push({t:'SEPA transfer',s:'Pay EUR from any European bank account \u2014 via SEPA Credit Transfer',proc:'Typically arrives within 1 business day.',
+      shared={ben,bankName:settings['eur-bankname'],bankAddr:settings['eur-bankaddr'],extra:[]};
+      cols.push({t:'SEPA transfer',s:'Pay EUR from any European bank account',proc:'Typically arrives within 1 business day.',
         warn:'Please pay from your business account. If paying from a personal account, contact us first so we can help avoid a delay or refund.',
-        p:[['Reference',inv.number],['Account holder',ben],['IBAN',settings['eur-iban']],['Swift/BIC',settings['eur-bic']],['Bank',bank]]});
+        p:[['Reference',inv.number],['IBAN',settings['eur-iban']],['Swift/BIC',settings['eur-bic']]]});
     }
   }
   const epc=cur==='EUR'?epcPayload(inv):null;
   const kv=(pairs)=>pairs.filter(p=>p[1]).map(p=>`<div class="kv"><span class="k">${p[0]}</span><span class="v mono">${esc(p[1])}</span></div>`).join('');
+  const sharedPairs=shared?[['Account holder',shared.ben],['Bank name',shared.bankName],['Bank address',shared.bankAddr],...shared.extra].filter(p=>p[1]):[];
+  const sharedHtml=sharedPairs.length?`<div class="ways-shared">${kv(sharedPairs)}</div>`:'';
   const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Charged in USD \u2014 your bank converts automatically if your card is in another currency</div><a href="${esc(inv.paylink)}" class="pay-link" target="_blank" rel="noopener">Pay online</a><div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
   const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="timing">${esc(c.proc)}</div>`:''}${c.warn?`<div class="paywarn">${esc(c.warn)}</div>`:''}</div>`).join('')
     +(epc?`<div class="col"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox" style="margin-top:8px"></div></div>`:'');
@@ -1909,6 +1913,7 @@ function render(){
     ${cardCol||cols.length?`
     <div class="ways">
       <div class="hd">Ways to pay</div>
+      ${sharedHtml}
       <div class="cols">${cardCol||''}${colsHtml}</div>
       ${mismatchBen?`<div class="disclosure"><strong>Account holder note. </strong>${esc(fillTemplate(settings.disclosure||DEFAULT_DISCLOSURE,{legal:legal,platform:platform,provider:provider,providerdesc:providerDesc,holder:mismatchBen,number:inv.number}))}</div>`:''}
       ${settings.feenote?`<div class="disclosure">${esc(settings.feenote)}</div>`:''}
