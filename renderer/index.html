@@ -518,6 +518,10 @@
               <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/…"></div>
             </div>
             <div class="field" style="max-width:none;margin-top:12px"><label>Notes on the invoice</label><textarea id="f-notes"></textarea></div>
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft)">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="f-recurring" onchange="renderRecurringNote();render();scheduleAutosave()" style="width:15px;height:15px"> Repeat this invoice monthly</label>
+              <div class="note" id="f-recurring-note" style="margin-top:6px;display:none">Next one generates automatically \u2014 waiting for the app to be open on or after that date \u2014 with a fresh invoice number and today's date. This invoice keeps recurring until you turn it off.</div>
+            </div>
           </div>
 
           <div style="display:flex;align-items:center;gap:12px;padding-bottom:24px">
@@ -607,6 +611,11 @@
                   <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">—</span>
                 </div>
                 <div class="note" style="margin-top:10px">Self-employment tax is calculated precisely from 2026 IRS figures. The income tax portion is a rough planning estimate, not a substitute for a CPA or Form 1040-ES.</div>
+              </div>
+              <div class="card" style="padding:20px 22px">
+                <h3 style="font-size:16px;margin-bottom:4px">1099-NEC tracker</h3>
+                <div class="note" style="margin:0 0 14px">Contractors paid $600 or more in USD this calendar year likely need a 1099-NEC from you by January 31.</div>
+                <div id="rep-1099-body"></div>
               </div>
               <div class="card" style="padding:20px 22px">
                 <h3 style="font-size:16px;margin-bottom:12px">Expenses by category</h3>
@@ -757,6 +766,7 @@ async function loadAll(){
   docZoomLevel=(await sget('lyc-doc-zoom'))||100;
   await restorePanelWidth();
   initPanelResizer();
+  await checkRecurringInvoices();
   buildStateSelects(); fillSettingsForm(); renderCatalogRows(); renderBundleRows(); applyLogo();
   document.getElementById('lock-btn').style.display=pinHash?'inline-block':'none';
 
@@ -1179,12 +1189,64 @@ function nextNumber(){
   });
   return withYear ? prefix+'-'+yr+'-'+String(max+1).padStart(3,'0') : prefix+'-'+String(max+1).padStart(3,'0');
 }
+function renderRecurringNote(){
+  const box=document.getElementById('f-recurring'); if(!box)return;
+  document.getElementById('f-recurring-note').style.display=box.checked?'block':'none';
+}
+
+/* ================= recurring invoices ================= */
+function addOneMonth(dateStr){
+  if(!dateStr) return dateStr;
+  const d=new Date(dateStr+'T00:00:00');
+  const day=d.getDate();
+  d.setDate(1);                 // avoid month-length rollover while advancing the month
+  d.setMonth(d.getMonth()+1);
+  const lastDayOfTarget=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(day,lastDayOfTarget));   // clamp e.g. Jan 31 -> Feb 28/29, not into March
+  return d.toISOString().slice(0,10);
+}
+async function checkRecurringInvoices(){
+  const today=new Date().toISOString().slice(0,10);
+  const due=invoices.filter(inv=>inv.recurring && inv.recurring.enabled && inv.recurring.nextDate<=today);
+  if(!due.length) return;
+  const generated=[];
+  due.forEach(template=>{
+    const clone={
+      ...template,
+      id:'inv-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),
+      number:nextNumberExcluding(generated.map(g=>g.number)),
+      date:today,
+      due:new Date(Date.now()+30*864e5).toISOString().slice(0,10),
+      status:'unpaid',
+      recurring:null,
+      items:template.items.map(x=>({...x}))
+    };
+    generated.push(clone);
+    template.recurring.nextDate=addOneMonth(template.recurring.nextDate<today?today:template.recurring.nextDate);
+  });
+  invoices=[...generated,...invoices];
+  await sset('lyc-invoices',invoices);
+  renderList(); renderClients(); renderDashboard();
+  const names=generated.map(g=>g.number).join(', ');
+  toast((generated.length>1?`Generated ${generated.length} recurring invoices: `:'Generated recurring invoice ')+names,'success');
+}
+function nextNumberExcluding(alreadyUsed){
+  // same logic as nextNumber(), but also accounts for numbers just generated
+  // in this same batch, in case more than one recurring invoice is due at once
+  const prefix=(settings.prefix||'LYC').toUpperCase(); const yr=new Date().getFullYear(); const withYear=!!settings.numyear; let max=0;
+  const re=new RegExp('^'+prefix+'-(?:\\d{4}-)?(\\d+)$');
+  [...invoices,...archive].forEach(inv=>{ const m=(inv.number||'').match(re); if(m) max=Math.max(max,parseInt(m[1],10)); });
+  alreadyUsed.forEach(n=>{ const m=(n||'').match(re); if(m) max=Math.max(max,parseInt(m[1],10)); });
+  return withYear ? prefix+'-'+yr+'-'+String(max+1).padStart(3,'0') : prefix+'-'+String(max+1).padStart(3,'0');
+}
 
 /* ================= invoice form ================= */
 function startNew(clearDraft){
   editingId=null; currentStatus='unpaid';
   items=[{svc:'',desc:'',qty:1,rate:'',freq:'once'}];
   document.getElementById('f-number').value=nextNumber();
+  document.getElementById('f-recurring').checked=false;
+  renderRecurringNote();
   document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('f-due').value=new Date(Date.now()+30*864e5).toISOString().slice(0,10);
   ['f-client','f-attn','f-street','f-zip','f-clientemail','f-notes','f-cityother','f-industryother'].forEach(id=>document.getElementById(id).value='');
@@ -1365,8 +1427,17 @@ function collect(){
     items:clean.map(x=>({...x})), subtotal, taxrate, taxAmount, total,
     notes:document.getElementById('f-notes').value,
     paylink:document.getElementById('f-paylink').value.trim(),
-    status:currentStatus
+    status:currentStatus,
+    recurring:collectRecurring()
   };
+}
+function collectRecurring(){
+  if(!document.getElementById('f-recurring').checked) return null;
+  // Preserve an already-scheduled nextDate when just re-saving an existing recurring
+  // invoice for some other edit \u2014 only compute a fresh date when first turning this on.
+  const existing=editingId?invoices.find(x=>x.id===editingId):null;
+  if(existing && existing.recurring && existing.recurring.enabled) return existing.recurring;
+  return {enabled:true,frequency:'monthly',nextDate:addOneMonth(document.getElementById('f-date').value)};
 }
 function applyDraftToForm(d){
   editingId=d.id&&invoices.some(x=>x.id===d.id)?d.id:null;
@@ -1390,6 +1461,8 @@ function applyDraftToForm(d){
   updateFxNote();
   document.getElementById('f-notes').value=d.notes||'';
   document.getElementById('f-paylink').value=d.paylink||'';
+  document.getElementById('f-recurring').checked=!!(d.recurring&&d.recurring.enabled);
+  renderRecurringNote();
   document.getElementById('f-taxrate').value=d.taxrate||'';
   const ind=d.industry||'Bail Bonds';
   if(INDUSTRIES.includes(ind)){document.getElementById('f-industry').value=ind;}
@@ -1587,6 +1660,34 @@ function renderReports(){
   }).join('')||'<div class="note">No expenses logged for this period.</div>';
 
   renderTaxEstimate();
+  render1099Tracker();
+}
+
+function render1099Tracker(){
+  const el=document.getElementById('rep-1099-body'); if(!el)return;
+  const yearStart=new Date().getFullYear()+'-01-01';
+  const contractorExp=expenses.filter(e=>e.category==='Contractors' && (e.date||'')>=yearStart);
+  const byVendor={};
+  contractorExp.forEach(e=>{
+    const raw=(e.vendor||'').trim();
+    const key=raw.toLowerCase()||'(unnamed vendor)';
+    if(!byVendor[key]) byVendor[key]={display:raw||'(unnamed vendor)',byCur:{}};
+    byVendor[key].byCur[e.currency]=(byVendor[key].byCur[e.currency]||0)+e.amount;
+  });
+  const vendors=Object.values(byVendor).sort((a,b)=>(b.byCur.USD||0)-(a.byCur.USD||0));
+  if(!vendors.length){ el.innerHTML='<div class="note">No contractor expenses logged yet this year.</div>'; return; }
+  el.innerHTML=vendors.map(v=>{
+    const usdTotal=v.byCur.USD||0;
+    const flagged=usdTotal>=600;
+    const otherCur=Object.entries(v.byCur).filter(([c])=>c!=='USD');
+    const primaryAmt=usdTotal>0?'$'+usdTotal.toFixed(2):(otherCur.length?(SYM[otherCur[0][0]]||'')+otherCur[0][1].toFixed(2):'$0.00');
+    return `<div class="trow" style="align-items:flex-start;padding:6px 0">
+      <span>${esc(v.display)}${flagged?` <span style="color:var(--money);font-weight:700;font-size:11px;margin-left:4px">1099-NEC likely required</span>`:''}
+        ${otherCur.length?`<div class="note" style="margin:2px 0 0">Also paid ${otherCur.map(([c,a])=>(SYM[c]||'')+a.toFixed(2)+' '+c).join(', ')} \u2014 the $600 threshold applies to USD payments to US-based contractors, not foreign-currency payments</div>`:''}
+      </span>
+      <span class="mono" style="color:${flagged?'var(--money)':'inherit'}">${primaryAmt}</span>
+    </div>`;
+  }).join('');
 }
 
 async function renderTaxEstimate(){
