@@ -592,16 +592,21 @@
             </div>
             <div style="display:grid;gap:16px">
               <div class="card indigo-tint" style="padding:20px 22px">
-                <h3 style="font-size:16px;margin-bottom:4px">Tax reserve</h3>
-                <div class="note" style="margin:0 0 14px">Set aside a share of net profit before you draw anything.</div>
-                <div style="display:flex;align-items:center;gap:14px">
-                  <input type="range" min="0" max="50" step="1" id="rep-reserve-pct" value="25" oninput="renderReports()" title="A rough guide for taxes and a rainy-day cushion — not a real reserve account, just a number to plan against" style="flex:1;accent-color:var(--indigo-500)">
-                  <div style="font-weight:700;font-size:26px;width:62px;text-align:right;color:var(--indigo-700)" id="rep-reserve-pct-label">25%</div>
+                <h3 style="font-size:16px;margin-bottom:4px">Quarterly estimated tax</h3>
+                <div class="note" style="margin:0 0 14px" id="tax-est-note">Based on this calendar year’s net profit, converted to USD.</div>
+                <div id="tax-est-body"></div>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft)">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+                    <label for="rep-tax-rate" style="font-size:12px;font-weight:600;color:var(--text-mute)">Estimated federal income tax rate</label>
+                    <span style="font-weight:700;font-size:15px;color:var(--indigo-700)" id="rep-tax-rate-label">12%</span>
+                  </div>
+                  <input type="range" min="0" max="37" step="1" id="rep-tax-rate" value="12" oninput="renderTaxEstimate()" title="This depends on your total income, filing status, and deductions — adjust to match your own situation or a number from your accountant. Self-employment tax below is calculated precisely; this part is a planning estimate only." style="width:100%;accent-color:var(--indigo-500)">
                 </div>
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:baseline">
-                  <span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute)">Set aside</span>
+                  <span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute)" id="tax-est-due-label">Set aside per quarter</span>
                   <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">—</span>
                 </div>
+                <div class="note" style="margin-top:10px">Self-employment tax is calculated precisely from 2026 IRS figures. The income tax portion is a rough planning estimate, not a substitute for a CPA or Form 1040-ES.</div>
               </div>
               <div class="card" style="padding:20px 22px">
                 <h3 style="font-size:16px;margin-bottom:12px">Expenses by category</h3>
@@ -1281,6 +1286,12 @@ function convertFromUSD(usdAmount, targetCurrency){
   if(!r) return usdAmount; // no rate available yet \u2014 leave as-is rather than guess
   return Math.round(usdAmount*r*100)/100;
 }
+function convertToUSD(amount, sourceCurrency){
+  if(sourceCurrency==='USD' || !amount) return amount;
+  const r=fxRates[sourceCurrency];
+  if(!r) return null; // no rate available \u2014 caller must handle this rather than silently mixing currencies
+  return amount/r;
+}
 async function refreshFxRates(force){
   const cached=await sget('lyc-fxrates');
   if(cached && !force && (Date.now()-cached.fetchedAt) < 12*3600*1000){
@@ -1456,8 +1467,14 @@ async function restoreInvoice(id,ev){
 
 /* ================= expenses ================= */
 const EXPENSE_HINTS={
-  'Owner Draw':'Not a business expense \u2014 this is money leaving the business to you personally. Tracked separately from profit.',
-  'Bank & Processing Fees':'Wire fees, Stripe/payment processor cuts, currency conversion charges.'
+  'Owner Draw':'Not a business expense \u2014 this is money leaving the business to you personally. Tracked separately from profit. Does not appear on Schedule C.',
+  'Bank & Processing Fees':'Wire fees, Stripe/payment processor cuts, currency conversion charges. Schedule C line 10 (Commissions and fees).',
+  'Software & Subscriptions':'Schedule C line 27a (Other expenses) \u2014 SaaS tools, hosting, app subscriptions.',
+  'Telephony & Numbers':'Schedule C line 27a (Other expenses) \u2014 phone numbers, calling/SMS credit, voice infrastructure costs.',
+  'Contractors':'Schedule C line 11 (Contract labor) \u2014 payments to non-employees for services. If any single contractor is paid $600+ this year, you\u2019ll likely owe them a 1099-NEC.',
+  'Advertising':'Schedule C line 8 (Advertising).',
+  'Travel & Meals':'Splits across two different Schedule C lines \u2014 line 24a (Travel, fully deductible) and line 24b (Meals, generally only 50% deductible). Combining them here means your accountant will need to split this total; consider logging travel and meals separately going forward for a cleaner deduction.',
+  'Equipment':'Usually Schedule C line 22 (Supplies) for smaller purchases. Larger equipment may need to be depreciated over several years (line 13) instead of expensed all at once \u2014 confirm with your accountant for any single purchase over a few hundred dollars.'
 };
 function renderExpenseHint(){
   const cat=document.getElementById('ex-category').value;
@@ -1528,7 +1545,6 @@ function reportPeriodStart(period){
 function renderReports(){
   const el=document.getElementById('rep-pl'); if(!el)return;
   const period=document.getElementById('rep-period').value;
-  document.getElementById('rep-reserve-pct-label').textContent=document.getElementById('rep-reserve-pct').value+'%';
   const since=reportPeriodStart(period);
   const inv=invoices.filter(i=>(i.date||'')>=since);
   const exp=expenses.filter(e=>(e.date||'')>=since);
@@ -1565,16 +1581,88 @@ function renderReports(){
   catEl.innerHTML=Object.entries(realExpenseByCat).map(([cat,byCur],i)=>{
     const catSum=Object.values(byCur).reduce((a,b)=>a+b,0);
     const pct=Math.round(catSum/catTotal*100);
-    return `<div class="breakdown-row"><div><div class="top"><span>${esc(cat)}</span><span class="share">${pct}%</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${palette[i%palette.length]}"></div></div></div><div class="amt mono">${fmtSum(byCur)}</div></div>`;
+    const hint=EXPENSE_HINTS[cat];
+    const schedLine=hint?hint.match(/Schedule C line [0-9a-z]+ \([^)]+\)/):null;
+    return `<div class="breakdown-row"><div><div class="top"><span>${esc(cat)}${schedLine?`<span style="font-weight:400;font-size:10.5px;color:var(--text-mute);margin-left:6px">${esc(schedLine[0])}</span>`:''}</span><span class="share">${pct}%</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${palette[i%palette.length]}"></div></div></div><div class="amt mono">${fmtSum(byCur)}</div></div>`;
   }).join('')||'<div class="note">No expenses logged for this period.</div>';
 
-  const pct=parseFloat(document.getElementById('rep-reserve-pct').value)||0;
-  const reserve={};
-  Object.entries(netProfit).forEach(([c,v])=>{ if(v>0) reserve[c]=v*(pct/100); });
-  document.getElementById('rep-reserve-amt').textContent=Object.keys(reserve).length?fmtSum(reserve):'\u2014';
+  renderTaxEstimate();
 }
-function csvEscape(s){ s=String(s??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
-function exportCSV(){
+
+async function renderTaxEstimate(){
+  const el=document.getElementById('tax-est-body'); if(!el)return;
+  const rateEl=document.getElementById('rep-tax-rate');
+  document.getElementById('rep-tax-rate-label').textContent=rateEl.value+'%';
+
+  // Tax is always calendar-year, regardless of whatever period the P&L card above is showing.
+  const yearStart=new Date().getFullYear()+'-01-01';
+  const yearInv=invoices.filter(i=>(i.date||'')>=yearStart && i.status==='paid');
+  const yearExp=expenses.filter(e=>(e.date||'')>=yearStart && e.category!=='Owner Draw');
+
+  const revByCur={}, expByCur={};
+  yearInv.forEach(i=>{ revByCur[i.currency]=(revByCur[i.currency]||0)+i.total; });
+  yearExp.forEach(e=>{ expByCur[e.currency]=(expByCur[e.currency]||0)+e.amount; });
+  const allCur=new Set([...Object.keys(revByCur),...Object.keys(expByCur)]);
+
+  let missingRate=false, netProfitUSD=0;
+  allCur.forEach(cur=>{
+    const net=(revByCur[cur]||0)-(expByCur[cur]||0);
+    if(net===0) return;
+    const usd=convertToUSD(net,cur);
+    if(usd===null){ missingRate=true; return; }
+    netProfitUSD+=usd;
+  });
+
+  if(missingRate){
+    el.innerHTML='<div class="note">Exchange rates haven\u2019t loaded yet, so this can\u2019t be converted to a single USD total right now. Try again once the app has a connection.</div>';
+    document.getElementById('rep-reserve-amt').textContent='\u2014';
+    return;
+  }
+
+  const seTax=calcSETax(netProfitUSD);
+  const incomeRate=parseFloat(rateEl.value)/100;
+  const incomeTax=netProfitUSD>0?netProfitUSD*incomeRate:0;
+  const totalTax=seTax+incomeTax;
+  const nextQ=nextQuarterlyDueDate();
+
+  el.innerHTML=`
+    <div class="trow"><span>Net profit, ${new Date().getFullYear()} YTD (USD equiv.)</span><span class="mono">$${netProfitUSD.toFixed(2)}</span></div>
+    <div class="trow"><span>Self-employment tax (15.3%, precise)</span><span class="mono">$${seTax.toFixed(2)}</span></div>
+    <div class="trow"><span>Est. federal income tax (${rateEl.value}%)</span><span class="mono">$${incomeTax.toFixed(2)}</span></div>
+    <div class="trow grand" style="color:var(--money)"><span>Total estimated tax, YTD</span><span class="mono">$${totalTax.toFixed(2)}</span></div>`;
+
+  document.getElementById('tax-est-due-label').textContent=`Suggested payment for ${nextQ.label} (due ${fmtDate(nextQ.due)})`;
+  document.getElementById('rep-reserve-amt').textContent=netProfitUSD>0?'$'+(totalTax/4).toFixed(2):'\u2014';
+}
+/* ================= quarterly estimated tax ================= */
+// 2026 figures, verified against IRS Form 1040-ES and SSA guidance as of this build.
+// These change every year -- if this is ever run in a later tax year, verify the
+// SS wage base and due dates against irs.gov before trusting the numbers below.
+const SE_NET_FACTOR=0.9235;        // net SE earnings = net profit \u00d7 92.35%, per IRS rule
+const SS_WAGE_BASE_2026=184500;    // Social Security portion (12.4%) only applies up to this
+const ADDL_MEDICARE_THRESHOLD=200000; // single-filer threshold; joint filers is $250,000 \u2014
+                                       // this tool assumes single/simplest case, adjust if that's wrong for you
+const Q_DUE_DATES_2026=[
+  {label:'Q1 2026',due:'2026-04-15'},
+  {label:'Q2 2026',due:'2026-06-15'},
+  {label:'Q3 2026',due:'2026-09-15'},
+  {label:'Q4 2026',due:'2027-01-15'}
+];
+function calcSETax(netProfitUSD){
+  if(!netProfitUSD||netProfitUSD<=0) return 0;
+  const netSE=netProfitUSD*SE_NET_FACTOR;
+  const ssTax=Math.min(netSE,SS_WAGE_BASE_2026)*0.124;
+  const medicareTax=netSE*0.029;
+  const addlMedicare=netSE>ADDL_MEDICARE_THRESHOLD?(netSE-ADDL_MEDICARE_THRESHOLD)*0.009:0;
+  return ssTax+medicareTax+addlMedicare;
+}
+function nextQuarterlyDueDate(){
+  const today=new Date().toISOString().slice(0,10);
+  for(const q of Q_DUE_DATES_2026){ if(q.due>=today) return q; }
+  return Q_DUE_DATES_2026[Q_DUE_DATES_2026.length-1];
+}
+
+function csvEscape(s){ s=String(s??''); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }function exportCSV(){
   const period=document.getElementById('rep-period').value;
   const since=reportPeriodStart(period);
   const rows=[['Type','Date','Number/Category','Client/Vendor','Currency','Amount','Status/Notes']];
