@@ -279,6 +279,7 @@
   #splash .word{color:#fff;font-weight:800;letter-spacing:.02em;font-size:14px;margin-bottom:20px}
   #splash .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.2);border-top-color:var(--orange-500);animation:spin .8s linear infinite}
 </style>
+<link rel="stylesheet" href="callconsole.css">
 </head>
 <body>
 
@@ -346,13 +347,20 @@
   <nav class="sidebar">
     <div class="brand">
       <div class="word"><span class="mark-logo" id="hdr-logo">L</span>LYCORE</div>
-      <div class="sub">Invoicing</div>
+      <div class="sub">Desk</div>
       <div class="ver" id="hdr-version"></div>
     </div>
     <div class="navlist">
       <button class="navbtn" id="tab-dashboard" onclick="showTab('dashboard')">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
         <span>Dashboard</span></button>
+      <button class="navbtn" id="tab-leads" onclick="showTab('leads')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"></path></svg>
+        <span>Leads</span><span class="badge" id="nav-lead-count"></span></button>
+      <button class="navbtn" id="tab-callreports" onclick="showTab('callreports')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l3.5-4 3 2.5L20 7"></path></svg>
+        <span>Call reports</span></button>
+      <div class="divider"></div>
       <button class="navbtn" id="tab-new" onclick="showTab('new')">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
         <span>New invoice</span></button>
@@ -644,6 +652,9 @@
           <div id="reference-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;max-width:1180px"></div>
         </div>
 
+        <div id="pane-leads" style="display:none"></div>
+        <div id="pane-callreports" style="display:none" class="anim-in"></div>
+
         <div id="pane-settings" style="display:none" class="anim-in">
           <div style="display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px;align-items:start">
             <div style="position:sticky;top:0">
@@ -684,6 +695,10 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Call console. Loaded before the main script so loadAll() can call ccLoad(). -->
+<script src="calldata.js"></script>
+<script src="callconsole.js"></script>
 <script>
 
 /* ================= data ================= */
@@ -764,6 +779,7 @@ async function loadAll(){
   recoveryHash=(await sget('lyc-recovery'))||null;
   draft=(await sget('lyc-draft'))||null;
   docZoomLevel=(await sget('lyc-doc-zoom'))||100;
+  await ccLoad();
   await restorePanelWidth();
   initPanelResizer();
   await checkRecurringInvoices();
@@ -2224,17 +2240,22 @@ function renderReference(){
 
 /* ================= tabs & toast ================= */
 function showTab(t){
-  ['dashboard','new','list','expenses','reports','reference','clients','archive','settings'].forEach(x=>{
+  ['dashboard','leads','callreports','new','list','expenses','reports','reference','clients','archive','settings'].forEach(x=>{
     document.getElementById('pane-'+x).style.display=x===t?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active',x===t);
   });
   document.getElementById('app-shell').classList.toggle('split-view', t==='new');
+  document.getElementById('app-shell').classList.toggle('call-view', t==='leads');
   document.getElementById('dash-period-group').style.display=t==='dashboard'?'flex':'none';
-  const titles={dashboard:'Dashboard',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',settings:'Settings'};
-  const notes={dashboard:'Cash basis',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};
+  const titles={dashboard:'Dashboard',leads:'Leads',callreports:'Call reports',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',settings:'Settings'};
+  const notes={dashboard:'Cash basis',leads:'Green is what you say, red is what you do',callreports:'Built from your own calls',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};
   document.getElementById('screen-title').textContent=titles[t]||t;
   document.getElementById('screen-note').textContent=notes[t]||'';
   document.getElementById('nav-inv-count').textContent=invoices.length?String(invoices.length):'';
+  const lc=document.getElementById('nav-lead-count');
+  if(lc)lc.textContent=(typeof ccLeads!=='undefined'&&ccLeads.length)?String(ccLeads.length):'';
+  if(t==='leads')renderLeadsPane();
+  if(t==='callreports')renderCallReports();
   if(t==='dashboard')renderDashboard();
   if(t==='list')renderList(); if(t==='clients')renderClients(); if(t==='archive')renderArchive();
   if(t==='expenses'){ if(!document.getElementById('ex-date').value) startNewExpense(); renderExpenses(); }
