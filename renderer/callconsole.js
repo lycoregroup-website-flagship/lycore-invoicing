@@ -359,13 +359,16 @@ function ccRenderInfo() {
   if (!l) { el.innerHTML = ''; return; }
   const row = (k, v, cls) => `<div class="cc-row"><span>${k}</span><b class="${v ? (cls || '') : 'gap'}">${v || 'not pulled'}</b></div>`;
   const gap = (l.competitor_reviews && l.reviews !== '') ? (Number(l.competitor_reviews) - Number(l.reviews)) : null;
+  const revGap = (l.review_gap !== undefined && l.review_gap !== '') ? l.review_gap : (gap != null ? String(gap) : '');
   const ready = l.competitor && l.competitor_reviews && l.reviews !== '' && l.reviews != null;
+  const social = ['fb_url','twitter_url','linkedin_url','instagram_url'].map(k => l[k] ? '<a href="' + esc(l[k]) + '" target="_blank" rel="noopener">' + esc(k.replace('_url','')) + '</a>' : '').filter(Boolean).join(' &middot; ');
 
   el.innerHTML = `
     ${ready ? '' : '<div class="cc-warn">Missing competitor or review data. The script names them out loud five times.</div>'}
     <div class="cc-infogrid">
-      <div class="cc-infocard"><h5>Business</h5>
+      <div class="cc-infocard"><h5>Business ${l.priority ? '<span class="cc-tag">' + esc(l.priority) + '</span>' : ''}</h5>
         ${row('Decision maker', esc([l.first_name, l.last_name].filter(Boolean).join(' ')))}
+        ${row('Role', esc(l.role))}
         ${row('Type', esc(l.business_type || l.category))}
         ${row('Location', esc([l.address, l.city, l.state].filter(Boolean).join(', ')))}
         ${row('Established', esc(l.established))}
@@ -377,21 +380,34 @@ function ccRenderInfo() {
         ${row('Angi', l.angi_reviews ? (l.angi_rating ? esc(l.angi_rating) + ' · ' : '') + esc(l.angi_reviews) + ' reviews' : '')}
         ${row('Yelp', l.yelp_reviews ? (l.yelp_rating ? esc(l.yelp_rating) + ' · ' : '') + esc(l.yelp_reviews) + ' reviews' : '')}
         ${row('Yellow Pages', l.yp_reviews ? (l.yp_rating ? esc(l.yp_rating) + ' · ' : '') + esc(l.yp_reviews) + ' reviews' : '')}
+        ${row('Bing', l.bing_reviews ? (l.bing_rating ? esc(l.bing_rating) + ' &middot; ' : '') + esc(l.bing_reviews) + ' reviews' : '')}
         ${row('Website', l.website ? esc(l.website) : '')}
+        ${row('Social', social)}
       </div>
       <div class="cc-infocard hit"><h5>Competitor and rank</h5>
         ${row('Competitor', esc(l.competitor), 'warn')}
         ${row('Their reviews', esc(l.competitor_reviews), 'warn')}
         ${row('Their rating', esc(l.competitor_rating), 'warn')}
         ${row('Map position', esc(l.map_rank || l.rank), 'warn')}
-        ${row('Reviews behind', gap != null ? String(gap) : '', 'warn')}
+        ${row('Reviews behind', revGap, 'warn')}
       </div>
       <div class="cc-infocard hit"><h5>Reputation health</h5>
         ${row('Last review', esc(l.last_review), 'warn')}
         ${row('Unanswered', esc(l.unanswered_reviews), 'warn')}
-        ${row('Negative reviews', esc(l.negative_reviews), 'warn')}
+        ${row('Negative reviews', esc(l.negative_reviews) || (l.negative_share ? Math.round(Number(l.negative_share) * 100) + '% share' : ''), 'warn')}
+        ${row('Owner replied?', esc(l.owner_replied), 'warn')}
+        ${row('Rank signal', esc(l.rank_signal), 'warn')}
+        ${row('Other platforms', esc(l.other_platforms), 'warn')}
+        ${row('Confidence', esc(l.verification_confidence), 'warn')}
         ${row('A bad one said', esc(l.bad_review), 'warn')}
       </div>
+      ${(l.qualify_reason || l.outreach_angle || l.sales_implication || l.company_evidence) ? `
+      <div class="cc-infocard hit talk"><h5>Talking points</h5>
+        ${l.qualify_reason ? '<p><b>Why this lead:</b> ' + esc(l.qualify_reason) + '</p>' : ''}
+        ${l.outreach_angle ? '<p><b>Angle:</b> ' + esc(l.outreach_angle) + '</p>' : ''}
+        ${l.sales_implication ? '<p><b>Use this:</b> ' + esc(l.sales_implication) + '</p>' : ''}
+        ${l.company_evidence ? '<p><b>Evidence:</b> ' + esc(l.company_evidence) + '</p>' : ''}
+      </div>` : ''}
     </div>`;
 }
 
@@ -631,30 +647,47 @@ const CC_ALIAS = {
   business: ['business','business_name','company','company_name','name','title'],
   first_name: ['first_name','firstname','owner_first_name','contact_first_name'],
   last_name: ['last_name','lastname','owner_last_name'],
-  owner: ['owner','owner_name','contact','contact_name','decision_maker'],
+  owner: ['owner','owner_name','contact','contact_name','decision_maker','owner_decision_maker'],
+  role: ['role'],
   phone: ['phone','phone_number','telephone','mobile','cell','phone_unformatted'],
   email: ['email','email_address','contact_email'],
   city: ['city','town','locality'], state: ['state','region','province'],
-  address: ['address','full_address','street','street_address'],
+  address: ['current_public_address','address','full_address','street','street_address','original_leadswift_address'],
   website: ['website','url','site','domain'],
-  reviews: ['reviews','review_count','reviews_count','total_reviews','user_ratings_total','google_reviews'],
-  rating: ['rating','stars','avg_rating','total_score','score','google_rating'],
+  reviews: ['verified_google_reviews','google_reviews','reviews','review_count','reviews_count','total_reviews','user_ratings_total','leadswift_reviews'],
+  rating: ['verified_google_rating','google_rating','rating','stars','avg_rating','total_score','score','leadswift_rating'],
   category: ['category','industry','type','categoryname'],
   business_type: ['business_type','primary_category'],
   map_rank: ['map_rank','rank','maps_position','google_rank','position'],
   web_rank: ['web_rank','organic_rank','google_page'],
-  competitor: ['competitor','top_competitor','top_competitor_name'],
+  google_places_rank: ['google_places_rank','leadswift_places_rank'],
+  priority: ['priority'],
+  company_size: ['company_size'],
+  competitor: ['local_competitor','competitor','top_competitor','top_competitor_name'],
   competitor_reviews: ['competitor_reviews','top_competitor_reviews'],
   competitor_rating: ['competitor_rating','top_competitor_rating'],
   competitor_platform: ['competitor_platform','competitor_source'],
+  review_gap: ['review_gap'],
   angi_reviews: ['angi_reviews','angie_reviews','angieslist_reviews'],
   angi_rating: ['angi_rating','angie_rating','angieslist_rating'],
   yelp_reviews: ['yelp_reviews'], yelp_rating: ['yelp_rating'],
   bbb_reviews: ['bbb_reviews'], bbb_rating: ['bbb_rating','bbb_score'],
   yp_reviews: ['yp_reviews','yellowpages_reviews'], yp_rating: ['yp_rating','yellowpages_rating'],
   fb_reviews: ['fb_reviews','facebook_reviews'], fb_rating: ['fb_rating','facebook_rating','facebook_recommendation'],
-  bad_review: ['bad_review','worst_review','negative_review_text','bad_review_quote'],
-  last_review: ['last_review','last_review_date','most_recent_review','days_since_review'],
+  bing_rating: ['bing_rating'], bing_reviews: ['bing_reviews'],
+  fb_url: ['fb_url','facebook_url'], twitter_url: ['twitter_url'], linkedin_url: ['linkedin_url'], instagram_url: ['instagram_url'],
+  verification_confidence: ['verification_confidence'],
+  qualify_reason: ['why_this_lead_qualifies'],
+  outreach_angle: ['personalised_outreach_angle_why_them','personalized_outreach_angle_why_them'],
+  company_evidence: ['unique_selling_point_company_evidence'],
+  negative_share: ['1_2_star_share'],
+  review_type: ['review_type'],
+  owner_replied: ['owner_replied'],
+  sales_implication: ['review_summary_sales_implication'],
+  rank_signal: ['local_visibility_rank_signal'],
+  other_platforms: ['bbb_other_platforms'],
+  bad_review: ['exact_review_excerpt_25_words','bad_review','worst_review','negative_review_text','bad_review_quote'],
+  last_review: ['review_date_relative','last_review_date_relative','last_review','last_review_date','most_recent_review','exact_days_since_last_review','days_since_review'],
   unanswered_reviews: ['unanswered_reviews','unresponded_reviews','no_owner_response'],
   negative_reviews: ['negative_reviews','one_star_reviews','low_star_reviews'],
   established: ['established','established_since','year_founded'],
@@ -664,50 +697,106 @@ const CC_ALIAS = {
   attempts: ['attempts'], notes: ['notes','note','comment']
 };
 
+const CC_PLACEHOLDER_EXACT = new Set(['-','--','—','n/a','na','unknown','unverified','tbd','pending','none','']);
+function ccCleanPlaceholders(o) {
+  for (const k of Object.keys(o)) {
+    if (typeof o[k] !== 'string') continue;
+    if (CC_PLACEHOLDER_EXACT.has(o[k].trim().toLowerCase())) o[k] = '';
+  }
+  if (o.owner && /not (publicly )?verified/i.test(o.owner)) o.owner = '';
+}
+
 /* Reads .xlsx/.xls/.xlsm into the same row-of-arrays shape ccParseCSV returns,
    so everything downstream (aliasing, saving, rendering) is unchanged.
    Blank rows are dropped, and every cell is stringified because the alias
    mapping below expects strings, not the numbers Excel hands back. */
-async function ccReadSheet(file) {
+async function ccReadWorkbook(file) {
   if (typeof XLSX === 'undefined') { toast('Excel support failed to load', 'error'); return []; }
   const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-  const first = wb.SheetNames[0];
-  if (!first) return [];
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[first], { header: 1, blankrows: false, defval: '' });
-  return rows.map(r => r.map(c => c === null || c === undefined ? '' : String(c)));
+  return wb.SheetNames.map(name => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, blankrows: false, defval: '' })
+      .map(r => r.map(c => c === null || c === undefined ? '' : String(c)));
+    return { name, rows };
+  });
 }
 
-async function ccImportCSV(e) {
-  const f = e.target.files[0]; if (!f) return;
-  const isExcel = /\.(xlsx|xls|xlsm)$/i.test(f.name);
-  const rows = isExcel ? await ccReadSheet(f) : ccParseCSV(await f.text());
-  if (rows.length < 2) return toast(isExcel ? 'That sheet looks empty' : 'That CSV looks empty', 'error');
-  const heads = rows[0].map(h => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
+const CC_SHEET_SKIP_HEADERS = ['audit_status', 'why_excluded', 'disposition_reason'];
 
-  const sourceId = 'src-' + Date.now();
-  const added = rows.slice(1).filter(r => r.some(c => String(c || '').trim())).map((r, i) => {
+function ccNormHeads(row) {
+  return row.map(h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
+}
+
+function ccSheetLooksLikeLeads(heads) {
+  if (heads.some(h => CC_SHEET_SKIP_HEADERS.includes(h))) return false;
+  const hasBiz = CC_ALIAS.business.some(a => heads.includes(a));
+  const hasPhone = CC_ALIAS.phone.some(a => heads.includes(a));
+  return hasBiz && hasPhone;
+}
+
+function ccRowsToLeads(rows, sourceId) {
+  const heads = ccNormHeads(rows[0]);
+  return rows.slice(1).filter(r => r.some(c => String(c || '').trim())).map((r, i) => {
     const raw = {}; heads.forEach((h, j) => raw[h] = (r[j] || '').trim());
     const o = { id: sourceId + '-' + i, sourceId };
     for (const [key, list] of Object.entries(CC_ALIAS)) {
       for (const a of list) if (raw[a]) { o[key] = raw[a]; break; }
       if (o[key] === undefined) o[key] = '';
     }
+    ccCleanPlaceholders(o);
+    if (o.email && o.email.includes('|')) {
+      const parts = o.email.split('|').map(s => s.trim());
+      o.email = parts[0] || '';
+      if (!o.first_name && parts[1]) o.first_name = parts[1];
+      if (!o.last_name && parts[2]) o.last_name = parts[2];
+    }
     if (!o.first_name && o.owner) {
       const b = o.owner.split(/\s+/); o.first_name = b[0]; o.last_name = b.slice(1).join(' ');
     }
     return o;
   });
+}
 
-  if (!added.length) return toast(isExcel ? 'That sheet looks empty' : 'That CSV looks empty', 'error');
+async function ccImportCSV(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const isExcel = /\.(xlsx|xls|xlsm)$/i.test(f.name);
+  const newEntries = [];
+  let addedTotal = 0;
 
-  ccLeads = ccLeads.concat(added);
-  ccSources.push({ id: sourceId, name: f.name, count: added.length, at: new Date().toISOString() });
+  if (isExcel) {
+    const sheets = await ccReadWorkbook(f);
+    const usable = sheets.filter(s => s.rows.length > 1 && ccSheetLooksLikeLeads(ccNormHeads(s.rows[0])));
+    if (!usable.length) return toast('No sheet in that file looks like a lead list (need a business name + phone column)', 'error');
+    usable.forEach(s => {
+      const sourceId = 'src-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+      const added = ccRowsToLeads(s.rows, sourceId);
+      if (!added.length) return;
+      ccLeads = ccLeads.concat(added);
+      const label = usable.length > 1 ? f.name + ' — ' + s.name : f.name;
+      ccSources.push({ id: sourceId, name: label, count: added.length, at: new Date().toISOString() });
+      newEntries.push(...added);
+      addedTotal += added.length;
+    });
+  } else {
+    const rows = ccParseCSV(await f.text());
+    if (rows.length < 2) return toast('That CSV looks empty', 'error');
+    const sourceId = 'src-' + Date.now();
+    const added = ccRowsToLeads(rows, sourceId);
+    if (added.length) {
+      ccLeads = ccLeads.concat(added);
+      ccSources.push({ id: sourceId, name: f.name, count: added.length, at: new Date().toISOString() });
+      newEntries.push(...added);
+      addedTotal += added.length;
+    }
+  }
+
+  if (!addedTotal) return toast('No usable rows found in that file', 'error');
+
   await ccSaveLeads();
   await ccSaveSources();
   ccRenderRail();
   ccRenderSources();
-  if (!ccLead) ccSelect(added[0]);
-  toast(added.length + ' leads added from ' + f.name, 'success');
+  if (!ccLead) ccSelect(newEntries[0]);
+  toast(addedTotal + ' leads added from ' + f.name, 'success');
   e.target.value = '';
 }
 
