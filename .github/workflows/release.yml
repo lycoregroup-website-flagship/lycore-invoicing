@@ -1,20 +1,30 @@
-name: Release
+﻿name: Build and release
+
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
+    inputs:
+      version:
+        description: Version tag to publish, e.g. v3.1.0
+        required: true
+
 permissions:
   contents: write
+
 jobs:
-  build-and-publish:
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - name: Build and publish to GitHub Releases
-        run: npx electron-builder --win --publish always
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win --publish always
