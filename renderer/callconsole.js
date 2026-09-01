@@ -1,4 +1,4 @@
-/* ===========================================================================
+﻿/* ===========================================================================
    LYCORE Call Console, inside the desktop app.
 
    Everything persists through the same encrypted store the invoices use, so
@@ -149,7 +149,7 @@ function ccShellHTML() {
     <aside class="cc-rail" id="cc-rail">
       <div class="cc-railtop">
         <input id="cc-search" class="cc-input" placeholder="Search leads">
-        <label class="cc-import" title="Load a CSV">CSV<input type="file" id="cc-csv" accept=".csv" hidden></label>
+        <label class="cc-import" title="Load a CSV or Excel file">Import<input type="file" id="cc-csv" accept=".csv,.xlsx,.xls,.xlsm" hidden></label>
       </div>
       <div class="cc-chips" id="cc-filters">
         <button class="cc-chip active" data-f="all">All</button>
@@ -254,8 +254,8 @@ function ccFocus() {
 
 function ccStars(r) {
   const n = Math.round(Number(r) || 0);
-  return '<span class="cc-stars">' + '★'.repeat(Math.min(5, n)) +
-         '<span class="off">' + '★'.repeat(Math.max(0, 5 - n)) + '</span></span>';
+  return '<span class="cc-stars">' + 'â˜…'.repeat(Math.min(5, n)) +
+         '<span class="off">' + 'â˜…'.repeat(Math.max(0, 5 - n)) + '</span></span>';
 }
 
 function ccRenderRail() {
@@ -277,8 +277,8 @@ function ccRenderRail() {
       <div class="cc-tag">${l.last_called ? 'Called ' + esc(l.last_called) : 'Not called yet'}</div>
       <div class="cc-name">${esc(l.business || 'Unnamed')}</div>
       ${ccStars(l.rating)}
-      <div class="cc-sub">${l.reviews === '' || l.reviews == null ? 'no review data' : esc(l.reviews) + ' reviews'}${l.city ? ' · ' + esc(l.city) : ''}</div>
-      ${s ? `<div class="cc-state t-${s.tone}">${esc(l.status)}${l.attempts ? ' · ' + esc(l.attempts) + ' tries' : ''}</div>` : ''}
+      <div class="cc-sub">${l.reviews === '' || l.reviews == null ? 'no review data' : esc(l.reviews) + ' reviews'}${l.city ? ' Â· ' + esc(l.city) : ''}</div>
+      ${s ? `<div class="cc-state t-${s.tone}">${esc(l.status)}${l.attempts ? ' Â· ' + esc(l.attempts) + ' tries' : ''}</div>` : ''}
     </div>`;
   }).join('') : '<div class="cc-empty">No leads. Use the CSV button above, or add them in the invoicing Clients tab.</div>';
 
@@ -301,10 +301,10 @@ function ccRenderHead() {
   if (!l) { h.innerHTML = '<div class="cc-empty">Pick a lead on the left to start.</div>'; return; }
   const tel = String(l.phone || '').replace(/[^0-9+]/g, '');
   h.innerHTML = `
-    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">☰</button>
+    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">â˜°</button>
     <div class="cc-headname">
       <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
-      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' · ' + esc(l.city) : ''}</div>
+      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' Â· ' + esc(l.city) : ''}</div>
     </div>
     <a class="cc-phone" href="tel:${esc(tel)}">${esc(l.phone || 'no number')}</a>
     <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
@@ -592,7 +592,7 @@ function ccOfferInvoice(l) {
 /* ------------------------------------------------------------ CSV import */
 
 function ccParseCSV(text) {
-  text = text.replace(/^﻿/, '').replace(/\r\n|\r/g, '\n');
+  text = text.replace(/^ï»¿/, '').replace(/\r\n|\r/g, '\n');
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
@@ -634,10 +634,24 @@ const CC_ALIAS = {
   attempts: ['attempts'], notes: ['notes','note','comment']
 };
 
+/* Reads .xlsx/.xls/.xlsm into the same row-of-arrays shape ccParseCSV returns,
+   so everything downstream (aliasing, saving, rendering) is unchanged.
+   Blank rows are dropped, and every cell is stringified because the alias
+   mapping below expects strings, not the numbers Excel hands back. */
+async function ccReadSheet(file) {
+  if (typeof XLSX === 'undefined') { toast('Excel support failed to load', 'error'); return []; }
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const first = wb.SheetNames[0];
+  if (!first) return [];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[first], { header: 1, blankrows: false, defval: '' });
+  return rows.map(r => r.map(c => c === null || c === undefined ? '' : String(c)));
+}
+
 async function ccImportCSV(e) {
   const f = e.target.files[0]; if (!f) return;
-  const rows = ccParseCSV(await f.text());
-  if (rows.length < 2) return toast('That CSV looks empty', 'error');
+  const isExcel = /\.(xlsx|xls|xlsm)$/i.test(f.name);
+  const rows = isExcel ? await ccReadSheet(f) : ccParseCSV(await f.text());
+  if (rows.length < 2) return toast(isExcel ? 'That sheet looks empty' : 'That CSV looks empty', 'error');
   const heads = rows[0].map(h => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
 
   ccLeads = rows.slice(1).map((r, i) => {
