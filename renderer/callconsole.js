@@ -1,4 +1,4 @@
-﻿/* ===========================================================================
+/* ===========================================================================
    LYCORE Call Console, inside the desktop app.
 
    Everything persists through the same encrypted store the invoices use, so
@@ -10,9 +10,10 @@
    =========================================================================== */
 
 let ccLeads = [], ccEvents = [], ccScripts = [], ccObjections = { groups: [] };
+let ccSources = [];
 let ccSettings = {};
 let ccLead = null, ccScript = null, ccScriptId = '';
-let ccFilter = 'all', ccQuery = '', ccObjQuery = '', ccOpenObj = null;
+let ccFilter = 'all', ccQuery = '', ccOpenObj = null;
 let ccHeard = new Set();
 let ccTimer = { on: false, start: 0, elapsed: 0 };
 let ccRanges = { sum: 30, obj: 30, scr: 30 };
@@ -37,6 +38,12 @@ const ccStatus = l => CC_STATUSES.find(s => s.label === l);
 
 async function ccLoad() {
   ccLeads      = (await sget('lyc-leads')) || [];
+  ccSources    = (await sget('lyc-sources')) || [];
+  if (!ccSources.length && ccLeads.length) {
+    ccSources = [{ id: 'legacy', name: 'Imported leads', count: ccLeads.length, at: new Date().toISOString() }];
+    ccLeads.forEach(l => { if (!l.sourceId) l.sourceId = 'legacy'; });
+    ccSaveSources();
+  }
   ccEvents     = (await sget('lyc-call-events')) || [];
   ccScripts    = (await sget('lyc-scripts')) || DEFAULT_SCRIPTS.map(s => ({ ...s }));
   ccObjections = (await sget('lyc-objections')) || JSON.parse(JSON.stringify(DEFAULT_OBJECTIONS));
@@ -47,6 +54,7 @@ async function ccLoad() {
 }
 
 const ccSaveLeads    = () => sset('lyc-leads', ccLeads);
+const ccSaveSources  = () => sset('lyc-sources', ccSources);
 const ccSaveSettings = () => sset('lyc-call-settings', ccSettings);
 
 function ccLogEvent(e) {
@@ -58,6 +66,8 @@ function ccSaveUI() { ccSettings.ui = ccUI; ccSaveSettings(); }
 
 /* ------------------------------------------------------------- variables */
 
+const CC_AUTO_FALLBACK = { first_name: 'there', last_name: '' };
+
 function ccVars() {
   const L = ccLead || {}, M = (ccScript && ccScript.meta) || {};
   const v = Object.assign({}, M, L, {
@@ -65,6 +75,10 @@ function ccVars() {
     discount_line: ccSettings.discount_line,
     rep_name: ccSettings.rep_name
   }, L.answers || {});
+
+  for (const [k, fallback] of Object.entries(CC_AUTO_FALLBACK)) {
+    if (v[k] === undefined || v[k] === null || v[k] === '') v[k] = fallback;
+  }
 
   const y = Number(v.years), j = Number(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
@@ -76,10 +90,12 @@ function ccVars() {
 
 function ccFill(text) {
   const v = ccVars();
-  return esc(text).replace(/\{\{(\w+)\}\}/g, (m, k) => {
+  return esc(text).replace(/\{\{(\w+)(?:\|([^}]*))?\}\}/g, (m, k, fallback) => {
     const val = v[k];
-    if (val === undefined || val === null || val === '' || String(val).startsWith('NOT SET'))
+    if (val === undefined || val === null || val === '' || String(val).startsWith('NOT SET')) {
+      if (fallback !== undefined) return esc(fallback);
       return '<span class="cc-var miss">[' + esc(k.replace(/_/g, ' ')) + ']</span>';
+    }
     return '<span class="cc-var">' + esc(val) + '</span>';
   });
 }
@@ -138,7 +154,7 @@ function renderLeadsPane() {
   const p = document.getElementById('pane-leads');
   if (!p.dataset.built) { p.innerHTML = ccShellHTML(); p.dataset.built = '1'; ccWireShell(); }
   ccApplyUI();
-  ccRenderRail(); ccRenderHead(); ccRenderInfo();
+  ccRenderRail(); ccRenderSources(); ccRenderHead(); ccRenderInfo();
   ccRenderScript(); ccRenderObjections(); ccRenderActivity(); ccRenderOutcomes();
 }
 
@@ -151,6 +167,7 @@ function ccShellHTML() {
         <input id="cc-search" class="cc-input" placeholder="Search leads">
         <label class="cc-import" title="Load a CSV or Excel file">Import<input type="file" id="cc-csv" accept=".csv,.xlsx,.xls,.xlsm" hidden></label>
       </div>
+      <div class="cc-sources" id="cc-sources"></div>
       <div class="cc-chips" id="cc-filters">
         <button class="cc-chip active" data-f="all">All</button>
         <button class="cc-chip" data-f="new">Not called</button>
@@ -188,9 +205,8 @@ function ccShellHTML() {
         <section class="cc-panel cc-objpanel">
           <div class="cc-panelhead">
             <h4>Objections</h4>
-            <span class="cc-hint">first line is already on screen, just read it</span>
+            <span class="cc-hint">tap a word to see the answer</span>
           </div>
-          <input id="cc-objsearch" class="cc-input" placeholder="Type what they said, e.g. busy, expensive, someone">
           <div class="cc-objlist" id="cc-objlist"></div>
         </section>
       </div>
@@ -222,7 +238,6 @@ function ccShellHTML() {
 
 function ccWireShell() {
   document.getElementById('cc-search').oninput = e => { ccQuery = e.target.value; ccRenderRail(); };
-  document.getElementById('cc-objsearch').oninput = e => { ccObjQuery = e.target.value; ccRenderObjections(); };
   document.querySelectorAll('#cc-filters .cc-chip').forEach(c => c.onclick = () => {
     document.querySelectorAll('#cc-filters .cc-chip').forEach(x => x.classList.remove('active'));
     c.classList.add('active'); ccFilter = c.dataset.f; ccRenderRail();
@@ -295,25 +310,37 @@ function ccSelect(l) {
 
 /* -------------------------------------------------------------- the head */
 
+function ccFormatPhone(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  const digits = s.replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) return digits;
+  const bare = digits.replace(/\D/g, '');
+  if (bare.length === 10) return '+1 ' + bare;
+  if (bare.length === 11 && bare.startsWith('1')) return '+' + bare;
+  return s;
+}
+
 function ccRenderHead() {
   const l = ccLead;
   const h = document.getElementById('cc-head');
   if (!l) { h.innerHTML = '<div class="cc-empty">Pick a lead on the left to start.</div>'; return; }
-  const tel = String(l.phone || '').replace(/[^0-9+]/g, '');
+  const telDisp = ccFormatPhone(l.phone);
+  const tel = telDisp.replace(/[^0-9+]/g, '');
   h.innerHTML = `
     <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">â˜°</button>
     <div class="cc-headname">
       <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
       <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' Â· ' + esc(l.city) : ''}</div>
     </div>
-    <a class="cc-phone" href="tel:${esc(tel)}">${esc(l.phone || 'no number')}</a>
+    <span class="cc-phone-wrap"><span class="cc-phone-tag">PHONE</span><a class="cc-phone" href="tel:${esc(tel)}">${esc(telDisp || 'no number')}</a></span>
     <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
     <div class="cc-timer" id="cc-timer" onclick="ccToggleTimer()">00:00</div>
     <button class="cc-mini focus" onclick="ccFocus()">Focus</button>`;
 }
 
 function ccToggleRail() { ccUI.rail = !ccUI.rail; ccApplyUI(); ccSaveUI(); }
-function ccCopyPhone() { if (ccLead) { navigator.clipboard.writeText(ccLead.phone || ''); toast('Number copied', 'success'); } }
+function ccCopyPhone() { if (ccLead) { navigator.clipboard.writeText(ccFormatPhone(ccLead.phone) || ccLead.phone || ''); toast('Number copied', 'success'); } }
 function ccToggleTimer() {
   if (ccTimer.on) { ccTimer.elapsed += Date.now() - ccTimer.start; ccTimer.on = false; }
   else { ccTimer.start = Date.now(); ccTimer.on = true; }
@@ -345,15 +372,25 @@ function ccRenderInfo() {
       </div>
       <div class="cc-infocard"><h5>Profiles</h5>
         ${row('Google', l.reviews !== '' && l.reviews != null ? ccStars(l.rating) + ' ' + esc(l.reviews) + ' reviews' : '')}
-        ${row('Angi', l.angi_reviews ? esc(l.angi_reviews) + ' reviews' : '')}
-        ${row('Yelp', l.yelp_reviews ? esc(l.yelp_reviews) + ' reviews' : '')}
+        ${row('Facebook', l.fb_reviews ? (l.fb_rating ? esc(l.fb_rating) + ' · ' : '') + esc(l.fb_reviews) + ' reviews' : '')}
+        ${row('BBB', l.bbb_reviews ? (l.bbb_rating ? esc(l.bbb_rating) + ' · ' : '') + esc(l.bbb_reviews) + ' reviews' : '')}
+        ${row('Angi', l.angi_reviews ? (l.angi_rating ? esc(l.angi_rating) + ' · ' : '') + esc(l.angi_reviews) + ' reviews' : '')}
+        ${row('Yelp', l.yelp_reviews ? (l.yelp_rating ? esc(l.yelp_rating) + ' · ' : '') + esc(l.yelp_reviews) + ' reviews' : '')}
+        ${row('Yellow Pages', l.yp_reviews ? (l.yp_rating ? esc(l.yp_rating) + ' · ' : '') + esc(l.yp_reviews) + ' reviews' : '')}
         ${row('Website', l.website ? esc(l.website) : '')}
       </div>
       <div class="cc-infocard hit"><h5>Competitor and rank</h5>
         ${row('Competitor', esc(l.competitor), 'warn')}
         ${row('Their reviews', esc(l.competitor_reviews), 'warn')}
+        ${row('Their rating', esc(l.competitor_rating), 'warn')}
         ${row('Map position', esc(l.map_rank || l.rank), 'warn')}
         ${row('Reviews behind', gap != null ? String(gap) : '', 'warn')}
+      </div>
+      <div class="cc-infocard hit"><h5>Reputation health</h5>
+        ${row('Last review', esc(l.last_review), 'warn')}
+        ${row('Unanswered', esc(l.unanswered_reviews), 'warn')}
+        ${row('Negative reviews', esc(l.negative_reviews), 'warn')}
+        ${row('A bad one said', esc(l.bad_review), 'warn')}
       </div>
     </div>`;
 }
@@ -425,33 +462,16 @@ function ccFlatObj() {
 }
 
 function ccRenderObjections() {
-  const q = ccObjQuery.toLowerCase().trim();
-  let items = ccFlatObj();
+  const items = ccFlatObj();
   const pinned = items.filter(i => i._pinned);
-  items = items.filter(i => !i._pinned);
+  const rest = items.filter(i => !i._pinned);
 
-  if (q) {
-    items = items.map(it => {
-      const trig = it.trigger.toLowerCase();
-      const vars = (it.variants || []).join(' ').toLowerCase();
-      const all = (trig + ' ' + vars + ' ' + it.means + ' ' + it.say.join(' ')).toLowerCase();
-      let score = -1;
-      if (trig.includes(q)) score = 0; else if (vars.includes(q)) score = 1; else if (all.includes(q)) score = 2;
-      return { it, score };
-    }).filter(x => x.score >= 0).sort((a, b) => a.score - b.score).map(x => x.it);
-  }
-
-  const auto = q && items.length ? items[0].trigger : ccOpenObj;
-  const none = q && !items.length
-    ? '<div class="cc-empty">Nothing matches. Use "What else?" above and let them give you a different one.</div>' : '';
-
-  document.getElementById('cc-objlist').innerHTML = none + pinned.concat(items).map(it => `
-    <div class="cc-obj ${it._pinned ? 'pin' : ''} ${auto === it.trigger ? 'open' : ''}" data-t="${esc(it.trigger)}">
-      ${it._pinned ? '' : `<button class="cc-log ${ccHeard.has(it.trigger) ? 'done' : ''}" data-log="${esc(it.trigger)}">${ccHeard.has(it.trigger) ? 'logged' : 'they said this'}</button>`}
-      <div class="cc-trig">${esc(it.trigger)}</div>
-      <div class="cc-first">${ccFill(it.say[0] || '')}</div>
+  document.getElementById('cc-objlist').innerHTML = pinned.concat(rest).map(it => `
+    <div class="cc-obj ${it._pinned ? 'pin' : ''} ${ccOpenObj === it.trigger ? 'open' : ''}" data-t="${esc(it.trigger)}">
+      <span class="cc-trig">${esc(it.trigger)}</span>
       <div class="cc-rest">
-        ${it.say.slice(1).map(s => '<p>' + ccFill(s) + '</p>').join('')}
+        ${it._pinned ? '' : `<button class="cc-log ${ccHeard.has(it.trigger) ? 'done' : ''}" data-log="${esc(it.trigger)}">${ccHeard.has(it.trigger) ? 'logged' : 'they said this'}</button>`}
+        ${it.say.map(s => '<p>' + ccFill(s) + '</p>').join('')}
         <div class="cc-then"><b>Then:</b> ${esc(it.then)}</div>
         <div class="cc-means">${esc(it.means)}</div>
       </div>
@@ -617,16 +637,26 @@ const CC_ALIAS = {
   city: ['city','town','locality'], state: ['state','region','province'],
   address: ['address','full_address','street','street_address'],
   website: ['website','url','site','domain'],
-  reviews: ['reviews','review_count','reviews_count','total_reviews','user_ratings_total'],
-  rating: ['rating','stars','avg_rating','total_score','score'],
+  reviews: ['reviews','review_count','reviews_count','total_reviews','user_ratings_total','google_reviews'],
+  rating: ['rating','stars','avg_rating','total_score','score','google_rating'],
   category: ['category','industry','type','categoryname'],
   business_type: ['business_type','primary_category'],
   map_rank: ['map_rank','rank','maps_position','google_rank','position'],
   web_rank: ['web_rank','organic_rank','google_page'],
   competitor: ['competitor','top_competitor','top_competitor_name'],
   competitor_reviews: ['competitor_reviews','top_competitor_reviews'],
-  competitor_rating: ['competitor_rating'],
-  angi_reviews: ['angi_reviews'], yelp_reviews: ['yelp_reviews'], bbb_reviews: ['bbb_reviews'],
+  competitor_rating: ['competitor_rating','top_competitor_rating'],
+  competitor_platform: ['competitor_platform','competitor_source'],
+  angi_reviews: ['angi_reviews','angie_reviews','angieslist_reviews'],
+  angi_rating: ['angi_rating','angie_rating','angieslist_rating'],
+  yelp_reviews: ['yelp_reviews'], yelp_rating: ['yelp_rating'],
+  bbb_reviews: ['bbb_reviews'], bbb_rating: ['bbb_rating','bbb_score'],
+  yp_reviews: ['yp_reviews','yellowpages_reviews'], yp_rating: ['yp_rating','yellowpages_rating'],
+  fb_reviews: ['fb_reviews','facebook_reviews'], fb_rating: ['fb_rating','facebook_rating','facebook_recommendation'],
+  bad_review: ['bad_review','worst_review','negative_review_text','bad_review_quote'],
+  last_review: ['last_review','last_review_date','most_recent_review','days_since_review'],
+  unanswered_reviews: ['unanswered_reviews','unresponded_reviews','no_owner_response'],
+  negative_reviews: ['negative_reviews','one_star_reviews','low_star_reviews'],
   established: ['established','established_since','year_founded'],
   years: ['years','years_in_business'], jobs_month: ['jobs_month','jobs_per_month','monthly_jobs'],
   avg_job: ['avg_job','avg_job_value','job_value'],
@@ -654,9 +684,10 @@ async function ccImportCSV(e) {
   if (rows.length < 2) return toast(isExcel ? 'That sheet looks empty' : 'That CSV looks empty', 'error');
   const heads = rows[0].map(h => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
 
-  ccLeads = rows.slice(1).map((r, i) => {
+  const sourceId = 'src-' + Date.now();
+  const added = rows.slice(1).filter(r => r.some(c => String(c || '').trim())).map((r, i) => {
     const raw = {}; heads.forEach((h, j) => raw[h] = (r[j] || '').trim());
-    const o = { id: 'lead-' + i };
+    const o = { id: sourceId + '-' + i, sourceId };
     for (const [key, list] of Object.entries(CC_ALIAS)) {
       for (const a of list) if (raw[a]) { o[key] = raw[a]; break; }
       if (o[key] === undefined) o[key] = '';
@@ -666,11 +697,44 @@ async function ccImportCSV(e) {
     }
     return o;
   });
+
+  if (!added.length) return toast(isExcel ? 'That sheet looks empty' : 'That CSV looks empty', 'error');
+
+  ccLeads = ccLeads.concat(added);
+  ccSources.push({ id: sourceId, name: f.name, count: added.length, at: new Date().toISOString() });
   await ccSaveLeads();
+  await ccSaveSources();
   ccRenderRail();
-  if (ccLeads.length) ccSelect(ccLeads[0]);
-  toast(ccLeads.length + ' leads loaded', 'success');
+  ccRenderSources();
+  if (!ccLead) ccSelect(added[0]);
+  toast(added.length + ' leads added from ' + f.name, 'success');
   e.target.value = '';
+}
+
+function ccRemoveSource(id) {
+  const src = ccSources.find(s => s.id === id); if (!src) return;
+  if (!confirm('Remove "' + src.name + '" and its ' + src.count + ' lead' + (src.count === 1 ? '' : 's') + '? This can\'t be undone.')) return;
+  const removedIds = new Set(ccLeads.filter(l => l.sourceId === id).map(l => l.id));
+  ccLeads = ccLeads.filter(l => l.sourceId !== id);
+  ccSources = ccSources.filter(s => s.id !== id);
+  if (ccLead && removedIds.has(ccLead.id)) { ccLead = null; if (ccLeads.length) ccSelect(ccLeads[0]); }
+  ccSaveLeads();
+  ccSaveSources();
+  ccRenderRail();
+  ccRenderSources();
+  if (!ccLeads.length) { ccRenderHead(); ccRenderInfo(); ccRenderScript(); ccRenderObjections(); }
+  toast('Removed', 'success');
+}
+
+function ccRenderSources() {
+  const el = document.getElementById('cc-sources'); if (!el) return;
+  if (!ccSources.length) { el.innerHTML = ''; return; }
+  el.innerHTML = ccSources.map(s => `
+    <span class="cc-src" title="${esc(s.name)}">
+      ${esc(s.name)} <b>${s.count}</b>
+      <button class="cc-src-x" data-src="${esc(s.id)}" title="Remove this file">&times;</button>
+    </span>`).join('');
+  el.querySelectorAll('.cc-src-x').forEach(b => b.onclick = ev => { ev.stopPropagation(); ccRemoveSource(b.dataset.src); });
 }
 
 /* ------------------------------------------------------------- reports */
