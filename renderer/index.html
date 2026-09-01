@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
   /* ============================================================
-     LYCORE Invoicing â€” premium navy/orange design system
+     LYCORE Invoicing — premium navy/orange design system
      Palette: deep navy sidebar, indigo/purple secondary accents,
      orange as the one primary action color, warm off-white ground,
      white floating cards with soft shadows and rounded corners.
@@ -44,7 +44,7 @@
   :focus{outline:none}
   :focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px;border-radius:6px}
 
-  /* â€” motion system â€” */
+  /* — motion system — */
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
   @keyframes floaty{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-6px) rotate(-2deg)}}
@@ -56,7 +56,7 @@
   .floaty{animation:floaty 5s ease-in-out infinite}
   .pop-in{animation:popIn .3s var(--ease) both}
 
-  /* â€” buttons â€” */
+  /* — buttons — */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;text-decoration:none;font-weight:600;font-size:13.5px;color:var(--text-soft);background:#fff;border:1.5px solid var(--border);padding:9px 16px;border-radius:var(--r-pill);transition:all .18s var(--ease)}
   .btn:hover{border-color:var(--indigo-400);color:var(--indigo-600);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
   .btn:active{transform:translateY(0)}
@@ -66,7 +66,7 @@
   .btn.ghost{border-color:transparent;background:transparent;color:var(--indigo-600);padding-inline:8px;box-shadow:none}
   .btn.ghost:hover{background:var(--indigo-50);transform:none;box-shadow:none}
 
-  /* â€” inputs â€” */
+  /* — inputs — */
   .field{margin-bottom:12px;max-width:640px}
   .row2 .field,.row3 .field{max-width:none}
   .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--text-mute);margin-bottom:6px}
@@ -79,13 +79,13 @@
   .check{display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:12px;cursor:pointer;color:var(--text-soft)}
   .check input{width:auto;accent-color:var(--indigo-500)}
 
-  /* â€” floating cards â€” */
+  /* — floating cards — */
   .card{position:relative;background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);transition:box-shadow .25s var(--ease), transform .25s var(--ease)}
   .card.hoverable:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
   .card.money{background:linear-gradient(160deg,#fff 0%,var(--orange-50) 130%)}
   .card.indigo-tint{background:linear-gradient(160deg,#fff 0%,var(--indigo-50) 130%)}
 
-  /* â€” tables â€” */
+  /* — tables — */
   table.list{width:100%;border-collapse:collapse;font-size:13.5px}
   table.list th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute);padding:12px 20px;border-bottom:1.5px solid var(--border-soft)}
   table.list td{padding:12px 20px;border-bottom:1px solid var(--border-soft)}
@@ -101,19 +101,19 @@
   .tagpill{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.02em;padding:3px 9px;margin-left:6px;background:var(--indigo-100);color:var(--indigo-700);border-radius:var(--r-pill)}
   .empty{padding:30px 20px;color:var(--text-mute);font-size:13.5px;text-align:center}
 
-  /* â€” labels, notes â€” */
+  /* — labels, notes — */
   .sec{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--indigo-600);margin:22px 0 11px}
   .sec:first-child{margin-top:0}
   .note{font-size:12px;color:var(--text-mute);line-height:1.55;margin-top:6px}
   .sectionhd{font-size:15px;font-weight:700;margin:0;padding:16px 20px;border-bottom:1.5px solid var(--border-soft);display:flex;align-items:baseline;gap:10px}
   .sectionhd .cnt{font-weight:500;color:var(--text-mute);font-size:11.5px}
 
-  /* â€” decorative illustrations (subtle, muted, low-opacity) â€” */
+  /* — decorative illustrations (subtle, muted, low-opacity) — */
   .deco{position:absolute;pointer-events:none;opacity:.9}
   .deco svg{display:block}
   .blob{position:absolute;border-radius:50%;filter:blur(0px);opacity:.5;pointer-events:none}
 
-  /* â€” app shell â€” */
+  /* — app shell — */
   .app-shell{display:flex;height:100vh;width:100%;overflow:hidden}
   nav.sidebar{width:222px;flex:0 0 222px;background:linear-gradient(180deg,var(--navy-900) 0%,#111a2e 100%);display:flex;flex-direction:column;overflow:hidden;position:relative;box-shadow:var(--shadow-navy)}
   nav.sidebar .brand{padding:22px 20px 16px;position:relative;z-index:1}
@@ -158,7 +158,7 @@
   .app-shell.split-view aside.docpane{display:block}
   #pane-new{max-width:660px}
 
-  /* â€” invoice document: unchanged formal register, deliberately not navy/orange â€” */
+  /* — invoice document: unchanged formal register, deliberately not navy/orange — */
   .doc-head-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:12px;position:sticky;top:0;z-index:2}
   .doc-head-row .lbl{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft);flex-shrink:0}
   .doc-head-row .cur{margin-left:auto;font-size:11px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
@@ -207,7 +207,7 @@
   .doc .fnotes{margin-top:22px;padding-top:12px;border-top:1px solid #ddd;font-size:12.5px;white-space:pre-line}
   .doc footer{margin-top:34px;padding-top:10px;border-top:1px solid #111;display:flex;justify-content:space-between;font-size:11px;color:#555}
 
-  /* â€” dashboard â€” */
+  /* — dashboard — */
   .revcard{grid-row:span 2;padding:26px 26px 22px;display:flex;flex-direction:column;overflow:hidden}
   .revcard .toprow{display:flex;align-items:baseline;justify-content:space-between}
   .revcard .kicker{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute)}
@@ -236,12 +236,12 @@
   .breakdown-row .track .fill{height:7px;border-radius:var(--r-pill);transition:width .5s var(--ease)}
   .breakdown-row .amt{text-align:right;font-size:12.5px;font-weight:600}
 
-  /* â€” P&L rows â€” */
+  /* — P&L rows — */
   .trow{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px}
   .trow.grand{font-weight:700;border-top:1.5px solid var(--border-soft);margin-top:6px;padding-top:10px;font-size:15.5px}
   .trow.sub{color:var(--text-mute)}
 
-  /* â€” dialog / toast â€” */
+  /* — dialog / toast — */
   .overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:100}
   .overlay.hidden{display:none}
   .modal{background:#fff;padding:28px 30px;width:min(440px,92vw);box-shadow:var(--shadow-lg);position:relative;border-radius:var(--r-lg);animation:popIn .25s var(--ease) both}
@@ -271,7 +271,7 @@
     .doc{box-shadow:none;padding:0;margin:0 auto;border-radius:0;transform:none!important}
   }
 
-  /* â€” splash â€” */
+  /* — splash — */
   #splash{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy-900),#131c33);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;transition:opacity .3s ease}
   #splash.fade{opacity:0;pointer-events:none}
   #splash .mark{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,var(--orange-500),var(--orange-600));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin-bottom:18px;overflow:hidden;box-shadow:0 8px 24px rgba(249,115,22,.4);animation:floaty 3s ease-in-out infinite}
@@ -309,7 +309,7 @@
   <div class="modal" style="text-align:center">
     <h3>Save your recovery code</h3>
     <p>A backup if you forget your passcode and don't have your authenticator app on hand. Write it down or store it somewhere safe. We can't show it to you again.</p>
-    <div class="recoverybox"><div class="code" id="recovery-code-display">â€”</div></div>
+    <div class="recoverybox"><div class="code" id="recovery-code-display">—</div></div>
     <button class="btn orange" style="width:100%" onclick="closeRecoveryShow()">I've saved it</button>
   </div>
 </div>
@@ -317,11 +317,11 @@
 <div class="overlay hidden" id="totp-setup-overlay">
   <div class="modal" style="text-align:center;max-width:380px">
     <h3>Set up an authenticator app</h3>
-    <p>Scan this with Google Authenticator, Microsoft Authenticator, or any TOTP app. Fully offline â€” nothing sent anywhere.</p>
+    <p>Scan this with Google Authenticator, Microsoft Authenticator, or any TOTP app. Fully offline — nothing sent anywhere.</p>
     <div id="totp-qrbox" style="display:flex;justify-content:center;margin:16px 0"></div>
     <p class="note" style="margin-bottom:10px">Can't scan? Enter this key manually: <span class="mono" id="totp-manual-key" style="word-break:break-all"></span></p>
     <input id="totp-confirm-input" placeholder="Enter the 6-digit code" autocomplete="off" style="text-align:center;font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.1em">
-    <div class="err" id="totp-setup-err">That code didn't match â€” try the newest one shown in your app.</div>
+    <div class="err" id="totp-setup-err">That code didn't match — try the newest one shown in your app.</div>
     <div class="mrow">
       <button class="btn" onclick="cancelTotpSetup()">Cancel</button>
       <button class="btn orange" onclick="confirmTotpSetup()">Confirm</button>
@@ -332,7 +332,7 @@
 <div class="overlay hidden" id="del-overlay">
   <div class="modal card">
     <h3 id="del-title">Archive this invoice?</h3>
-    <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive â€” nothing is lost.</p>
+    <p id="del-text">Type <strong>delete</strong> to confirm. The invoice moves to the Archive — nothing is lost.</p>
     <input id="del-input" placeholder="delete" autocomplete="off">
     <div class="mrow">
       <button class="btn" onclick="closeDelete()">Cancel</button>
@@ -427,11 +427,11 @@
           <div style="display:grid;grid-template-columns:minmax(340px,1.05fr) 1fr 1fr;gap:16px;align-items:stretch">
             <div class="card money hoverable anim-in revcard"><i class="corner tl"></i>
               <div class="toprow"><div class="kicker">Revenue collected</div><div class="period" id="dash-period-label">This month</div></div>
-              <div class="big" id="dash-revenue-big">â€”</div>
+              <div class="big" id="dash-revenue-big">—</div>
               <div class="sub">Cash in the door. Paid invoices only.</div>
               <div class="split">
-                <div><div class="k">Billed</div><div class="v" id="dash-billed-val">â€”</div></div>
-                <div><div class="k" title="Of everything billed this period, the share that's actually been paid so far">Collection rate</div><div class="v" id="dash-collrate-val">â€”</div></div>
+                <div><div class="k">Billed</div><div class="v" id="dash-billed-val">—</div></div>
+                <div><div class="k" title="Of everything billed this period, the share that's actually been paid so far">Collection rate</div><div class="v" id="dash-collrate-val">—</div></div>
               </div>
               <div class="trendwrap">
                 <div class="trendlbl">Six-month collected trend</div>
@@ -466,7 +466,7 @@
               <button class="btn ghost" style="font-size:12px;padding:4px 10px" onclick="startNewExpense()">Log expense</button>
             </div>
             <table class="list"><tbody id="dash-recent"></tbody></table>
-            <div class="empty" id="dash-empty" style="display:none">No invoices yet â€” create your first one.</div>
+            <div class="empty" id="dash-empty" style="display:none">No invoices yet — create your first one.</div>
           </div>
         </div>
 
@@ -489,9 +489,9 @@
             <div class="row2" style="grid-template-columns:2fr 1.4fr 0.9fr 1fr;margin-top:12px">
               <div class="field"><label>Street</label><input id="f-street"></div>
               <div class="field"><label>City</label>
-                <select id="f-city"><option value="">â€” Select state first â€”</option></select>
+                <select id="f-city"><option value="">— Select state first —</option></select>
               </div>
-              <div class="field"><label>State</label><select id="f-state"><option value="">â€” Select â€”</option></select></div>
+              <div class="field"><label>State</label><select id="f-state"><option value="">— Select —</option></select></div>
               <div class="field"><label>ZIP</label><input id="f-zip"></div>
             </div>
             <div class="field" id="f-cityother-wrap" style="display:none"><label>City (type it)</label><input id="f-cityother"></div>
@@ -501,7 +501,7 @@
                 <select id="f-industry" onchange="industryChanged()">
                   <option value="Bail Bonds">Bail Bonds</option><option value="Restoration">Restoration</option>
                   <option value="Auto Detailing">Auto Detailing</option><option value="Plumbing">Plumbing</option>
-                  <option value="__other">Otherâ€¦</option>
+                  <option value="__other">Other…</option>
                 </select>
               </div>
               <div class="field"><label>Currency</label>
@@ -523,7 +523,7 @@
           <div class="card anim-in anim-in-3" style="padding:18px 20px;margin-bottom:16px">
             <div class="row2" style="grid-template-columns:120px 1fr">
               <div class="field"><label>Tax rate %</label><input id="f-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
-              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/â€¦"></div>
+              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/…"></div>
             </div>
             <div class="field" style="max-width:none;margin-top:12px"><label>Notes on the invoice</label><textarea id="f-notes"></textarea></div>
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft)">
@@ -551,9 +551,9 @@
           <div class="card money" style="padding:18px 22px;margin-bottom:16px;display:flex;align-items:baseline;gap:14px">
             <div>
               <div class="lbl" style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute)">Monthly recurring</div>
-              <div style="font-weight:800;font-size:28px;color:var(--money);margin-top:3px" id="ex-recurring-total">â€”</div>
+              <div style="font-weight:800;font-size:28px;color:var(--money);margin-top:3px" id="ex-recurring-total">—</div>
             </div>
-            <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses â€” the ongoing cost of running the business, separate from one-off spending.</div>
+            <div class="note" style="margin:0" id="ex-recurring-note">What you're paying every month across all recurring expenses — the ongoing cost of running the business, separate from one-off spending.</div>
           </div>
           <div style="display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start">
             <div class="card" style="padding:18px 20px">
@@ -595,7 +595,7 @@
                   <option value="year">This year</option><option value="all">All time</option>
                 </select>
               </div>
-              <div class="note" style="margin:0 0 16px">Cash basis â€” revenue counts when an invoice is marked paid.</div>
+              <div class="note" style="margin:0 0 16px">Cash basis — revenue counts when an invoice is marked paid.</div>
               <div id="rep-pl"></div>
               <div style="display:flex;gap:10px;margin-top:18px;align-items:center">
                 <button class="btn ghost" style="font-size:12.5px" onclick="exportCSV()">Export CSV</button>
@@ -605,18 +605,18 @@
             <div style="display:grid;gap:16px">
               <div class="card indigo-tint" style="padding:20px 22px">
                 <h3 style="font-size:16px;margin-bottom:4px">Quarterly estimated tax</h3>
-                <div class="note" style="margin:0 0 14px" id="tax-est-note">Based on this calendar yearâ€™s net profit, converted to USD.</div>
+                <div class="note" style="margin:0 0 14px" id="tax-est-note">Based on this calendar year’s net profit, converted to USD.</div>
                 <div id="tax-est-body"></div>
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft)">
                   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
                     <label for="rep-tax-rate" style="font-size:12px;font-weight:600;color:var(--text-mute)">Estimated federal income tax rate</label>
                     <span style="font-weight:700;font-size:15px;color:var(--indigo-700)" id="rep-tax-rate-label">12%</span>
                   </div>
-                  <input type="range" min="0" max="37" step="1" id="rep-tax-rate" value="12" oninput="renderTaxEstimate()" title="This depends on your total income, filing status, and deductions â€” adjust to match your own situation or a number from your accountant. Self-employment tax below is calculated precisely; this part is a planning estimate only." style="width:100%;accent-color:var(--indigo-500)">
+                  <input type="range" min="0" max="37" step="1" id="rep-tax-rate" value="12" oninput="renderTaxEstimate()" title="This depends on your total income, filing status, and deductions — adjust to match your own situation or a number from your accountant. Self-employment tax below is calculated precisely; this part is a planning estimate only." style="width:100%;accent-color:var(--indigo-500)">
                 </div>
                 <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-soft);display:flex;justify-content:space-between;align-items:baseline">
                   <span style="font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute)" id="tax-est-due-label">Set aside per quarter</span>
-                  <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">â€”</span>
+                  <span style="font-weight:800;font-size:28px;color:var(--money)" id="rep-reserve-amt">—</span>
                 </div>
                 <div class="note" style="margin-top:10px">Self-employment tax is calculated precisely from 2026 IRS figures. The income tax portion is a rough planning estimate, not a substitute for a CPA or Form 1040-ES.</div>
               </div>
@@ -678,8 +678,8 @@
         <div class="doc-head-row">
           <span class="lbl">Printed document</span>
           <span class="cur" id="doc-currency-note"></span>
-          <div class="zoom-ctrl" title="Adjust how large the invoice preview appears â€” doesn't affect the printed size">
-            <button onclick="docZoom(-1)" title="Zoom out">âˆ’</button>
+          <div class="zoom-ctrl" title="Adjust how large the invoice preview appears — doesn't affect the printed size">
+            <button onclick="docZoom(-1)" title="Zoom out">−</button>
             <span id="doc-zoom-pct" class="mono">100%</span>
             <button onclick="docZoom(1)" title="Zoom in">+</button>
             <button onclick="docZoom(0)" class="zoom-reset" title="Back to 100%">Reset</button>

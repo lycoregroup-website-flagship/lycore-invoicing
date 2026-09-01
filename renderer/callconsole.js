@@ -79,6 +79,7 @@ function ccVars() {
   for (const [k, fallback] of Object.entries(CC_AUTO_FALLBACK)) {
     if (v[k] === undefined || v[k] === null || v[k] === '') v[k] = fallback;
   }
+  if (!v.rank) v.rank = v.map_rank || v.google_places_rank || v.web_rank || '';
 
   const y = Number(v.years), j = Number(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
@@ -269,8 +270,8 @@ function ccFocus() {
 
 function ccStars(r) {
   const n = Math.round(Number(r) || 0);
-  return '<span class="cc-stars">' + 'â˜…'.repeat(Math.min(5, n)) +
-         '<span class="off">' + 'â˜…'.repeat(Math.max(0, 5 - n)) + '</span></span>';
+  return '<span class="cc-stars">' + '★'.repeat(Math.min(5, n)) +
+         '<span class="off">' + '★'.repeat(Math.max(0, 5 - n)) + '</span></span>';
 }
 
 function ccRenderRail() {
@@ -292,8 +293,8 @@ function ccRenderRail() {
       <div class="cc-tag">${l.last_called ? 'Called ' + esc(l.last_called) : 'Not called yet'}</div>
       <div class="cc-name">${esc(l.business || 'Unnamed')}</div>
       ${ccStars(l.rating)}
-      <div class="cc-sub">${l.reviews === '' || l.reviews == null ? 'no review data' : esc(l.reviews) + ' reviews'}${l.city ? ' Â· ' + esc(l.city) : ''}</div>
-      ${s ? `<div class="cc-state t-${s.tone}">${esc(l.status)}${l.attempts ? ' Â· ' + esc(l.attempts) + ' tries' : ''}</div>` : ''}
+      <div class="cc-sub">${l.reviews === '' || l.reviews == null ? 'no review data' : esc(l.reviews) + ' reviews'}${l.city ? ' · ' + esc(l.city) : ''}</div>
+      ${s ? `<div class="cc-state t-${s.tone}">${esc(l.status)}${l.attempts ? ' · ' + esc(l.attempts) + ' tries' : ''}</div>` : ''}
     </div>`;
   }).join('') : '<div class="cc-empty">No leads. Use the CSV button above, or add them in the invoicing Clients tab.</div>';
 
@@ -328,10 +329,10 @@ function ccRenderHead() {
   const telDisp = ccFormatPhone(l.phone);
   const tel = telDisp.replace(/[^0-9+]/g, '');
   h.innerHTML = `
-    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">â˜°</button>
+    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">☰</button>
     <div class="cc-headname">
       <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
-      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' Â· ' + esc(l.city) : ''}</div>
+      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' · ' + esc(l.city) : ''}</div>
     </div>
     <span class="cc-phone-wrap"><span class="cc-phone-tag">PHONE</span><a class="cc-phone" href="tel:${esc(tel)}">${esc(telDisp || 'no number')}</a></span>
     <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
@@ -357,7 +358,12 @@ setInterval(() => {
 function ccRenderInfo() {
   const l = ccLead, el = document.getElementById('cc-info');
   if (!l) { el.innerHTML = ''; return; }
-  const row = (k, v, cls) => `<div class="cc-row"><span>${k}</span><b class="${v ? (cls || '') : 'gap'}">${v || 'not pulled'}</b></div>`;
+  // row() quietly omits a line when there is nothing to show, so a sparsely
+  // populated lead does not turn into a wall of "not pulled" placeholders.
+  const row = (k, v, cls) => v ? `<div class="cc-row"><span>${k}</span><b class="${cls || ''}">${v}</b></div>` : '';
+  // rowGap() always shows, styled as a gap when empty - reserved for the
+  // Competitor & rank card, where an empty field is itself the sales signal.
+  const rowGap = (k, v, cls) => `<div class="cc-row"><span>${k}</span><b class="${v ? (cls || '') : 'gap'}">${v || 'not pulled'}</b></div>`;
   const gap = (l.competitor_reviews && l.reviews !== '') ? (Number(l.competitor_reviews) - Number(l.reviews)) : null;
   const revGap = (l.review_gap !== undefined && l.review_gap !== '') ? l.review_gap : (gap != null ? String(gap) : '');
   const ready = l.competitor && l.competitor_reviews && l.reviews !== '' && l.reviews != null;
@@ -375,21 +381,21 @@ function ccRenderInfo() {
       </div>
       <div class="cc-infocard"><h5>Profiles</h5>
         ${row('Google', l.reviews !== '' && l.reviews != null ? ccStars(l.rating) + ' ' + esc(l.reviews) + ' reviews' : '')}
-        ${row('Facebook', l.fb_reviews ? (l.fb_rating ? esc(l.fb_rating) + ' · ' : '') + esc(l.fb_reviews) + ' reviews' : '')}
-        ${row('BBB', l.bbb_reviews ? (l.bbb_rating ? esc(l.bbb_rating) + ' · ' : '') + esc(l.bbb_reviews) + ' reviews' : '')}
-        ${row('Angi', l.angi_reviews ? (l.angi_rating ? esc(l.angi_rating) + ' · ' : '') + esc(l.angi_reviews) + ' reviews' : '')}
-        ${row('Yelp', l.yelp_reviews ? (l.yelp_rating ? esc(l.yelp_rating) + ' · ' : '') + esc(l.yelp_reviews) + ' reviews' : '')}
-        ${row('Yellow Pages', l.yp_reviews ? (l.yp_rating ? esc(l.yp_rating) + ' · ' : '') + esc(l.yp_reviews) + ' reviews' : '')}
+        ${row('Facebook', l.fb_reviews ? (l.fb_rating ? esc(l.fb_rating) + ' &middot; ' : '') + esc(l.fb_reviews) + ' reviews' : '')}
+        ${row('BBB', l.bbb_reviews ? (l.bbb_rating ? esc(l.bbb_rating) + ' &middot; ' : '') + esc(l.bbb_reviews) + ' reviews' : '')}
+        ${row('Angi', l.angi_reviews ? (l.angi_rating ? esc(l.angi_rating) + ' &middot; ' : '') + esc(l.angi_reviews) + ' reviews' : '')}
+        ${row('Yelp', l.yelp_reviews ? (l.yelp_rating ? esc(l.yelp_rating) + ' &middot; ' : '') + esc(l.yelp_reviews) + ' reviews' : '')}
+        ${row('Yellow Pages', l.yp_reviews ? (l.yp_rating ? esc(l.yp_rating) + ' &middot; ' : '') + esc(l.yp_reviews) + ' reviews' : '')}
         ${row('Bing', l.bing_reviews ? (l.bing_rating ? esc(l.bing_rating) + ' &middot; ' : '') + esc(l.bing_reviews) + ' reviews' : '')}
         ${row('Website', l.website ? esc(l.website) : '')}
         ${row('Social', social)}
       </div>
       <div class="cc-infocard hit"><h5>Competitor and rank</h5>
-        ${row('Competitor', esc(l.competitor), 'warn')}
-        ${row('Their reviews', esc(l.competitor_reviews), 'warn')}
-        ${row('Their rating', esc(l.competitor_rating), 'warn')}
-        ${row('Map position', esc(l.map_rank || l.rank), 'warn')}
-        ${row('Reviews behind', revGap, 'warn')}
+        ${rowGap('Competitor', esc(l.competitor), 'warn')}
+        ${rowGap('Their reviews', esc(l.competitor_reviews), 'warn')}
+        ${rowGap('Their rating', esc(l.competitor_rating), 'warn')}
+        ${rowGap('Map position', esc(l.map_rank || l.rank), 'warn')}
+        ${rowGap('Reviews behind', revGap, 'warn')}
       </div>
       <div class="cc-infocard hit"><h5>Reputation health</h5>
         ${row('Last review', esc(l.last_review), 'warn')}
@@ -756,6 +762,38 @@ function ccRowsToLeads(rows, sourceId) {
   });
 }
 
+function ccShowSheetPicker(fileName, sheetInfos) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cc-modal-overlay';
+    overlay.innerHTML = `
+      <div class="cc-modal">
+        <h4>Which sheet${sheetInfos.length > 1 ? 's' : ''} from "${esc(fileName)}"?</h4>
+        <p class="cc-modal-sub">${sheetInfos.length} sheet${sheetInfos.length === 1 ? '' : 's'} in this file look${sheetInfos.length === 1 ? 's' : ''} like a lead list. Pick which to bring in now — you can come back and import a different one later the same way.</p>
+        <div class="cc-modal-list">
+          ${sheetInfos.map((s, i) => `
+            <label class="cc-modal-row">
+              <input type="checkbox" data-idx="${i}" checked>
+              <span>${esc(s.name)}</span>
+              <b>${s.count} lead${s.count === 1 ? '' : 's'}</b>
+            </label>`).join('')}
+        </div>
+        <div class="cc-modal-actions">
+          <button class="cc-mini" id="cc-modal-cancel">Cancel</button>
+          <button class="cc-mini focus" id="cc-modal-ok">Import selected</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = result => { overlay.remove(); resolve(result); };
+    overlay.querySelector('#cc-modal-cancel').onclick = () => close(null);
+    overlay.querySelector('#cc-modal-ok').onclick = () => {
+      const checked = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map(c => Number(c.dataset.idx));
+      close(checked);
+    };
+    overlay.onclick = ev => { if (ev.target === overlay) close(null); };
+  });
+}
+
 async function ccImportCSV(e) {
   const f = e.target.files[0]; if (!f) return;
   const isExcel = /\.(xlsx|xls|xlsm)$/i.test(f.name);
@@ -766,7 +804,16 @@ async function ccImportCSV(e) {
     const sheets = await ccReadWorkbook(f);
     const usable = sheets.filter(s => s.rows.length > 1 && ccSheetLooksLikeLeads(ccNormHeads(s.rows[0])));
     if (!usable.length) return toast('No sheet in that file looks like a lead list (need a business name + phone column)', 'error');
-    usable.forEach(s => {
+
+    let chosen = usable;
+    if (usable.length > 1) {
+      const preview = usable.map(s => ({ name: s.name, count: s.rows.length - 1 }));
+      const pickedIdx = await ccShowSheetPicker(f.name, preview);
+      if (!pickedIdx || !pickedIdx.length) { e.target.value = ''; return; }
+      chosen = pickedIdx.map(i => usable[i]);
+    }
+
+    chosen.forEach(s => {
       const sourceId = 'src-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
       const added = ccRowsToLeads(s.rows, sourceId);
       if (!added.length) return;
@@ -819,10 +866,11 @@ function ccRenderSources() {
   const el = document.getElementById('cc-sources'); if (!el) return;
   if (!ccSources.length) { el.innerHTML = ''; return; }
   el.innerHTML = ccSources.map(s => `
-    <span class="cc-src" title="${esc(s.name)}">
-      ${esc(s.name)} <b>${s.count}</b>
+    <div class="cc-src" title="${esc(s.name)}">
+      <span class="cc-src-name">${esc(s.name)}</span>
+      <b>${s.count}</b>
       <button class="cc-src-x" data-src="${esc(s.id)}" title="Remove this file">&times;</button>
-    </span>`).join('');
+    </div>`).join('');
   el.querySelectorAll('.cc-src-x').forEach(b => b.onclick = ev => { ev.stopPropagation(); ccRemoveSource(b.dataset.src); });
 }
 
