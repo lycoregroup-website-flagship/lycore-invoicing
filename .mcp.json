@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aiooutreach": {
+      "type": "http",
+      "url": "https://api.aiooutreach.com/mcp/outreach/${AIOOUTREACH_TOKEN}/"
+    }
+  }
+}
