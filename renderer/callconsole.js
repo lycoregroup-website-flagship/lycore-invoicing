@@ -81,6 +81,24 @@ function ccVars() {
   }
   if (!v.rank) v.rank = v.map_rank || v.google_places_rank || v.web_rank || '';
 
+  /* Pest-control work-first script fields, mapped onto the existing lead
+     schema the same way {{rank}} falls back above: prefer a directly
+     imported value, then the closest existing field, never a fabricated one. */
+  if (!v.owner_name) v.owner_name = v.owner || '';
+  if (!v.company_name) v.company_name = v.business || '';
+  if (!v.google_rating) v.google_rating = v.rating || '';
+  if (!v.google_review_count) v.google_review_count = v.reviews || '';
+  if (!v.google_unanswered_count) v.google_unanswered_count = v.unanswered_reviews || '';
+  if (!v.negative_unanswered_count) v.negative_unanswered_count = v.negative_unanswered_reviews || v.negative_reviews || '';
+  if (!v.positive_unanswered_count) v.positive_unanswered_count = v.positive_unanswered_reviews || '';
+  if (!v.other_platform) v.other_platform = v.other_platforms || '';
+  if (!v.other_platform_review_count) {
+    const CC_PLATFORM_REVIEW_MAP = { yelp: 'yelp_reviews', bbb: 'bbb_reviews', angi: 'angi_reviews', angie: 'angi_reviews', facebook: 'fb_reviews', fb: 'fb_reviews', 'yellow pages': 'yp_reviews', yellowpages: 'yp_reviews', bing: 'bing_reviews' };
+    const opName = String(v.other_platform || '').toLowerCase();
+    const platKey = Object.keys(CC_PLATFORM_REVIEW_MAP).find(name => opName.includes(name));
+    v.other_platform_review_count = platKey ? (v[CC_PLATFORM_REVIEW_MAP[platKey]] || '') : '';
+  }
+
   const y = Number(v.years), j = Number(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
@@ -691,7 +709,11 @@ const CC_ALIAS = {
   owner_replied: ['owner_replied'],
   sales_implication: ['review_summary_sales_implication'],
   rank_signal: ['local_visibility_rank_signal'],
-  other_platforms: ['bbb_other_platforms'],
+  other_platforms: ['bbb_other_platforms','other_platform','other_platforms'],
+  positive_unanswered_reviews: ['positive_unanswered_reviews','positive_unanswered_count','unanswered_positive_reviews','positive_reviews_unanswered'],
+  negative_unanswered_reviews: ['negative_unanswered_reviews','negative_unanswered_count','unanswered_negative_reviews','negative_reviews_unanswered'],
+  facebook_verified: ['facebook_verified','fb_verified','facebook_confirmed'],
+  other_platform_review_count: ['other_platform_review_count','other_platform_reviews'],
   bad_review: ['exact_review_excerpt_25_words','bad_review','worst_review','negative_review_text','bad_review_quote'],
   last_review: ['review_date_relative','last_review_date_relative','last_review','last_review_date','most_recent_review','exact_days_since_last_review','days_since_review'],
   unanswered_reviews: ['unanswered_reviews','unresponded_reviews','no_owner_response'],
