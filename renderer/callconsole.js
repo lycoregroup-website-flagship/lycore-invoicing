@@ -32,7 +32,34 @@ const CC_STATUSES = [
 ];
 const CC_NOANS = ["Didn't Answer", 'Voicemail', 'Bad number'];
 const CC_ALIVE = ['On Hold', 'Audit sent'];
+// Statuses that mean she actually got someone on the line and talked to them.
+const CC_ANSWERED = ['Sold', 'On Hold', 'Audit sent', "Didn't Buy", 'Not interested'];
+// "Do not call" is tracked on its own -- it can get set without ever dialling
+// (a bad number, a request carried over from an earlier call), so it isn't
+// counted as a real conversation either way.
+const CC_CONTACT_EXCLUDED = ['Do not call'];
 const ccStatus = l => CC_STATUSES.find(s => s.label === l);
+
+/* ------------------------------------------------------- contacted stats */
+
+function ccContactStats(leads) {
+  const byStatus = {};
+  let attempted = 0, answered = 0, noAnswer = 0, excluded = 0;
+  leads.forEach(l => {
+    if (!l.status) return;
+    attempted++;
+    byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+    if (CC_CONTACT_EXCLUDED.includes(l.status)) excluded++;
+    else if (CC_NOANS.includes(l.status)) noAnswer++;
+    else if (CC_ANSWERED.includes(l.status)) answered++;
+  });
+  return {
+    total: leads.length, attempted, unworked: leads.length - attempted,
+    answered, noAnswer, excluded, byStatus
+  };
+}
+
+function ccSourceLeads(id) { return ccLeads.filter(l => l.sourceId === id); }
 
 /* ------------------------------------------------------------- load/save */
 
@@ -590,6 +617,7 @@ function ccShellHTML() {
         <input id="cc-search" class="cc-input" placeholder="Search leads">
         <label class="cc-import" title="Load a CSV or Excel file">Import<input type="file" id="cc-csv" accept=".csv,.xlsx,.xls,.xlsm" hidden></label>
       </div>
+      <button class="cc-quickstats" id="cc-quickstats" onclick="ccOpenStats()" title="How many leads you've actually reached out to"></button>
       <div class="cc-sources" id="cc-sources"></div>
       <div class="cc-chips" id="cc-filters">
         <button class="cc-chip active" data-f="all">All</button>
@@ -700,7 +728,12 @@ function ccStars(r) {
 
 function ccRenderRail() {
   const q = ccQuery.toLowerCase();
+  const archivedIds = new Set(ccSources.filter(s => s.archived).map(s => s.id));
   const list = ccLeads.filter(l => {
+    // Closed-out lists stay out of the working rail so it doesn't fill up
+    // with lists she's already finished -- but they're never hidden from a
+    // search, so a lead is still findable if she needs it.
+    if (!q && archivedIds.has(l.sourceId)) return false;
     const s = ccStatus(l.status);
     const bucket = !s ? 'new'
       : s.tone === 'green' ? 'done'
@@ -710,6 +743,7 @@ function ccRenderRail() {
     if (!q) return true;
     return [l.business, l.first_name, l.city, l.phone].join(' ').toLowerCase().includes(q);
   });
+  ccRenderQuickStats();
 
   document.getElementById('cc-list').innerHTML = list.length ? list.map(l => {
     const s = ccStatus(l.status);
@@ -761,6 +795,8 @@ function ccRenderHead() {
     <span class="cc-phone-wrap"><span class="cc-phone-tag">PHONE</span><a class="cc-phone" href="tel:${esc(tel)}">${esc(telDisp || 'no number')}</a></span>
     <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
     <div class="cc-timer" id="cc-timer" onclick="ccToggleTimer()">00:00</div>
+    <button class="cc-mini" onclick="ccOpenStats()" title="How many leads you've actually reached out to">Contacted</button>
+    <button class="cc-mini" onclick="ccOpenLookup()" title="Quick phone lookup (Ctrl+K)">Lookup</button>
     <button class="cc-mini focus" onclick="ccFocus()">Focus</button>`;
 }
 
@@ -1295,15 +1331,178 @@ function ccRemoveSource(id) {
 
 function ccRenderSources() {
   const el = document.getElementById('cc-sources'); if (!el) return;
-  if (!ccSources.length) { el.innerHTML = ''; return; }
-  el.innerHTML = ccSources.map(s => `
-    <div class="cc-src" title="${esc(s.name)}">
+  const visible  = ccSources.filter(s => !s.archived);
+  const archived = ccSources.filter(s => s.archived);
+  if (!visible.length && !archived.length) { el.innerHTML = ''; return; }
+
+  const srcRow = (s, isArchived) => {
+    const leads = ccSourceLeads(s.id);
+    const worked = leads.filter(l => l.status).length;
+    const total = leads.length;
+    const complete = !isArchived && total > 0 && worked === total;
+    return `
+    <div class="cc-src ${isArchived ? 'archived' : ''}" title="${esc(s.name)}">
       <span class="cc-src-name">${esc(s.name)}</span>
       <b>${s.count}</b>
+      ${isArchived
+        ? `<button class="cc-src-restore" data-src="${esc(s.id)}" title="Bring this list back into your active view">Restore</button>`
+        : complete
+          ? `<button class="cc-src-close" data-src="${esc(s.id)}" title="Every lead in this list has an outcome logged">${worked}/${total} \u2014 close out?</button>`
+          : `<span class="cc-src-worked">${worked}/${total} worked</span>`}
       <button class="cc-src-x" data-src="${esc(s.id)}" title="Remove this file">&times;</button>
-    </div>`).join('');
+    </div>`;
+  };
+
+  el.innerHTML =
+    visible.map(s => srcRow(s, false)).join('') +
+    (archived.length
+      ? `<button class="cc-src-arch-toggle" id="cc-src-arch-toggle" type="button">Closed-out lists (${archived.length}) \u25B8</button>
+         <div class="cc-src-archived" id="cc-src-archived">${archived.map(s => srcRow(s, true)).join('')}</div>`
+      : '');
+
   el.querySelectorAll('.cc-src-x').forEach(b => b.onclick = ev => { ev.stopPropagation(); ccRemoveSource(b.dataset.src); });
+  el.querySelectorAll('.cc-src-close').forEach(b => b.onclick = ev => { ev.stopPropagation(); ccCloseOutSource(b.dataset.src); });
+  el.querySelectorAll('.cc-src-restore').forEach(b => b.onclick = ev => { ev.stopPropagation(); ccRestoreSource(b.dataset.src); });
+  const toggle = document.getElementById('cc-src-arch-toggle');
+  const box = document.getElementById('cc-src-archived');
+  if (toggle && box) toggle.onclick = () => box.classList.toggle('open');
 }
+
+/* Closing out a list never touches the leads or their call history -- it
+   only flips a flag so the list stops showing up in the working views. */
+function ccCloseOutSource(id) {
+  const src = ccSources.find(s => s.id === id); if (!src) return;
+  const leads = ccSourceLeads(id);
+  const worked = leads.filter(l => l.status).length;
+  if (!confirm('Close out "' + src.name + '"?\n\nAll ' + worked + ' of ' + leads.length + ' leads have an outcome logged. Closing out just moves the list out of your active view -- the leads and everything you logged on them stay exactly as they are, searchable any time, and you can restore the list whenever you want.')) return;
+  src.archived = true;
+  src.archivedAt = new Date().toISOString();
+  ccSaveSources();
+  ccRenderSources();
+  ccRenderRail();
+  toast('Closed out "' + src.name + '"', 'success');
+}
+
+function ccRestoreSource(id) {
+  const src = ccSources.find(s => s.id === id); if (!src) return;
+  delete src.archived; delete src.archivedAt;
+  ccSaveSources();
+  ccRenderSources();
+  ccRenderRail();
+  toast('Restored to your active lists', 'success');
+}
+
+/* ------------------------------------------------------------ dashboard */
+
+function ccRenderQuickStats() {
+  const el = document.getElementById('cc-quickstats'); if (!el) return;
+  if (!ccLeads.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+  const s = ccContactStats(ccLeads);
+  el.innerHTML = `<b>${s.answered}</b> reached <span>\u00b7</span> <b>${s.noAnswer}</b> no answer <span>\u00b7</span> <b>${s.attempted}</b>/${s.total} worked`;
+}
+
+function ccOpenStats() {
+  const overall = ccContactStats(ccLeads);
+  const bySource = ccSources.map(s => Object.assign({ name: s.name, archived: !!s.archived }, ccContactStats(ccSourceLeads(s.id))));
+
+  const statCard = (n, l) => `<div class="cc-stat"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const statusRows = CC_STATUSES.filter(s => overall.byStatus[s.label]).map(s =>
+    `<div class="cc-row"><span>${esc(s.label)}</span><b>${overall.byStatus[s.label]}</b></div>`).join('');
+
+  const sourceRows = bySource.length ? bySource.map(s => `
+    <div class="cc-modal-row" style="cursor:default">
+      <span>${esc(s.name)}${s.archived ? ' <i>(closed out)</i>' : ''}</span>
+      <b>${s.answered} reached / ${s.attempted} of ${s.total} worked</b>
+    </div>`).join('') : '<div class="cc-empty">No lists imported yet.</div>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-modal-overlay';
+  overlay.innerHTML = `
+    <div class="cc-modal cc-modal-wide">
+      <h4>Who you've actually reached out to</h4>
+      <p class="cc-modal-sub">Counts every lead with an outcome logged. "Reached" means you had them on the line \u2014 Sold, On Hold, Audit sent, Didn't Buy, or Not interested. "No answer" means you dialled but didn't get a conversation \u2014 Didn't Answer, Voicemail, or Bad number. "Do not call" is kept separate since it isn't always a real dial.</p>
+      <div class="cc-stats" style="margin-bottom:16px">
+        ${statCard(overall.total, 'Leads loaded')}
+        ${statCard(overall.attempted, 'Worked (any status)')}
+        ${statCard(overall.answered, 'Reached / talked to')}
+        ${statCard(overall.noAnswer, 'Dialled, no answer')}
+        ${statCard(overall.excluded, 'Do not call')}
+        ${statCard(overall.unworked, 'Not worked yet')}
+      </div>
+      <div class="sec">By outcome</div>
+      <div class="cc-modal-list" style="margin-bottom:16px">${statusRows || '<div class="cc-empty">No calls logged yet.</div>'}</div>
+      <div class="sec">By list</div>
+      <div class="cc-modal-list">${sourceRows}</div>
+      <div class="cc-modal-actions"><button class="cc-mini focus" id="cc-stats-close">Close</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.onclick = ev => { if (ev.target === overlay) overlay.remove(); };
+  overlay.querySelector('#cc-stats-close').onclick = () => overlay.remove();
+}
+
+/* -------------------------------------------------------- quick lookup */
+
+function ccPhoneDigits(raw) { return String(raw || '').replace(/\D/g, ''); }
+
+function ccOpenLookup() {
+  if (document.getElementById('cc-lookup-overlay')) {
+    document.getElementById('cc-lookup-input').focus();
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.id = 'cc-lookup-overlay';
+  overlay.className = 'cc-modal-overlay';
+  overlay.innerHTML = `
+    <div class="cc-modal cc-lookup-modal">
+      <h4>Who's calling?</h4>
+      <p class="cc-modal-sub">Type the last few digits of the number on your phone. This searches every lead you've ever imported, across every list, not just the one that's open.</p>
+      <input id="cc-lookup-input" class="cc-input" placeholder="e.g. 4521" autocomplete="off" inputmode="numeric">
+      <div class="cc-lookup-results" id="cc-lookup-results"></div>
+      <div class="cc-modal-actions"><button class="cc-mini" id="cc-lookup-close">Close (Esc)</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#cc-lookup-input');
+  const results = overlay.querySelector('#cc-lookup-results');
+
+  const render = () => {
+    const q = ccPhoneDigits(input.value);
+    if (!q) { results.innerHTML = '<div class="cc-empty">Start typing digits from the incoming number.</div>'; return; }
+    const matches = ccLeads.filter(l => ccPhoneDigits(l.phone).includes(q)).slice(0, 8);
+    results.innerHTML = matches.length ? matches.map(l => `
+      <div class="cc-lookup-row" data-id="${esc(l.id)}">
+        <div class="cc-lookup-biz">${esc(l.business || 'Unnamed')}</div>
+        <div class="cc-lookup-sub">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' \u00b7 ' + esc(l.city) : ''}</div>
+        <div class="cc-lookup-phone">${esc(ccFormatPhone(l.phone))}</div>
+        ${l.status ? `<div class="cc-lookup-status">${esc(l.status)}</div>` : ''}
+      </div>`).join('') : '<div class="cc-empty">No lead matches those digits.</div>';
+    results.querySelectorAll('.cc-lookup-row').forEach(row => row.onclick = () => {
+      const lead = ccLeads.find(l => l.id === row.dataset.id);
+      ccCloseLookup();
+      if (lead) { showTab('leads'); ccSelect(lead); }
+    });
+  };
+  input.oninput = render;
+  render();
+  setTimeout(() => input.focus(), 0);
+
+  overlay.onclick = ev => { if (ev.target === overlay) ccCloseLookup(); };
+  overlay.querySelector('#cc-lookup-close').onclick = ccCloseLookup;
+}
+
+function ccCloseLookup() {
+  const overlay = document.getElementById('cc-lookup-overlay');
+  if (overlay) overlay.remove();
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    ccOpenLookup();
+    return;
+  }
+  if (e.key === 'Escape' && document.getElementById('cc-lookup-overlay')) ccCloseLookup();
+});
 
 /* ------------------------------------------------------------- reports */
 
