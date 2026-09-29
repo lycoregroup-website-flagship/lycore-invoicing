@@ -91,6 +91,10 @@ function ccVars() {
   if (!v.google_review_count) v.google_review_count = v.reviews || '';
   if (!v.google_unanswered_count) v.google_unanswered_count = v.unanswered_reviews || '';
   if (!v.negative_unanswered_count) v.negative_unanswered_count = v.negative_unanswered_reviews || v.negative_reviews || '';
+  if (v.negative_unanswered_count !== '' && v.negative_unanswered_count !== undefined && v.negative_unanswered_count !== null) {
+    const negN = Number(v.negative_unanswered_count);
+    if (!isNaN(negN)) v.negative_review_line = negN > 0 ? `about ${negN} negative review${negN === 1 ? '' : 's'} that ${negN === 1 ? "hasn't" : "haven't"} been answered` : 'no negative reviews sitting there unanswered';
+  }
   if (!v.positive_unanswered_count) v.positive_unanswered_count = v.positive_unanswered_reviews || '';
   if (!v.other_platform) v.other_platform = v.other_platforms || '';
   if (!v.other_platform_review_count) {
