@@ -40,6 +40,40 @@ const DEFAULT_OBJECTIONS = {
             "4. Answer that, then go back to the card ask."
           ],
           "then": "Beginners handle zero. Amateurs try once. The money is in the third and fourth attempt on this same call."
+        },
+        {
+          "trigger": "Words that talk you out of the sale",
+          "variants": ["avoid", "never say", "don't ask", "landmines"],
+          "means": "Three questions hand the decision back to them at the exact moment you should be leading. Each one either invites overthinking or sounds like an accusation.",
+          "say": [
+            "Never: \"What do you think?\"",
+            "Never: \"Are you interested?\"",
+            "Never: \"What's holding you back?\"",
+            "(swap any of them for \"What else?\" or a specific either/or question instead)"
+          ],
+          "then": "If you catch yourself about to say one, stop and ask What else? instead."
+        },
+        {
+          "trigger": "The objection is vague, you need the real shape of it",
+          "variants": ["vague", "not specific", "probe deeper", "what do you mean"],
+          "means": "Don't argue with a vague objection, get curious about it. Let their own answer do the persuading instead of you pushing back.",
+          "say": [
+            "What makes you say that?",
+            "(stay quiet after you ask it, let the silence sit)",
+            "When you say [repeat their word back], what do you mean by that exactly?"
+          ],
+          "then": "Whatever they unpack is sharper than what they opened with. That's the one you actually handle."
+        },
+        {
+          "trigger": "You're feeling rattled by the pushback",
+          "variants": ["rattled", "off my game", "losing control", "flustered"],
+          "means": "An objection means they're still listening and working it out loud, it isn't you losing. Rattled reps go quiet or over-explain. Calm reps get curious.",
+          "say": [
+            "(slow your pace down half a notch, drop your voice, don't rush to fill the silence)",
+            "Fair enough, let's talk about that.",
+            "(then go to What else? or What makes you say that? to find the real one)"
+          ],
+          "then": "The calmer you sound the more room they give you. Matching their energy up only escalates it."
         }
       ]
     },
@@ -213,13 +247,25 @@ const DEFAULT_OBJECTIONS = {
       "hint": "A real money objection comes after they see value. An early one is a brush-off.",
       "items": [
         {
+          "trigger": "Just give me a number",
+          "variants": ["Just tell me the price", "How much is it", "Skip to the price", "What's this gonna cost me"],
+          "means": "They're trying to control the call before you've earned the right to quote anything. A cold number either scares them off with no context, or lets them end the call the second they hear it.",
+          "say": [
+            "I could, and honestly most people ask me that before I've even said what it does.",
+            "Give me twenty seconds so the number actually means something when you hear it, that's fair, right?",
+            "Quick thing first, where do you think you rank on Google right now?"
+          ],
+          "then": "You bought the room back without dodging the question. Now go into the real questions before any number comes out."
+        },
+        {
           "trigger": "That's too expensive",
           "variants": ["That's a lot", "I can't justify that", "More than I thought"],
           "means": "It costs more than they think the problem costs. Your job is the second number.",
           "say": [
+            "Fair, and that's the kind of question the owners who end up doing well with this always ask first.",
             "Compared to what, though?",
             "You told me a job's worth {{avg_job}} to you. So this is less than one job.",
-            "The question isn't whether it's cheap. It's whether it brings you more than one."
+            "The question isn't whether it's cheap, it's whether it brings you more than one."
           ],
           "then": "Straight back to the ask. Do not start knocking your own price down."
         },
@@ -228,9 +274,9 @@ const DEFAULT_OBJECTIONS = {
           "variants": ["Cash is tight", "Not this quarter", "Money's thin right now"],
           "means": "She said she doesn't have it. She didn't say the business doesn't, and she didn't say no. Do not pour attention on it.",
           "say": [
-            "No worries at all, and there's usually a way to sort that out later anyway.",
-            "But I wouldn't want you doing this in a month's time still half unsure about it. I'd rather you were certain.",
-            "So while the money's sorting itself out, what were you still a bit unsure about today? Is it whether it actually works, or whether it works for your kind of business?"
+            "No worries at all, there's usually a way to sort that out later anyway.",
+            "Here's the thing though, that money gets spent one way or another over the next year. It either goes toward fixing this or toward staying exactly where you are.",
+            "So while the budget's sorting itself out, is it the price that's the sticking point, or are you still not sure this actually works for a business like yours?"
           ],
           "then": "The objection almost always moves off money here. Handle whatever replaces it."
         },
