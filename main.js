@@ -17,7 +17,7 @@ const pkg = require('./package.json');
 const updateConfigPath = app.isPackaged ? path.join(process.resourcesPath, 'app-update.yml') : null;
 const updatesConfigured = !!(updateConfigPath && fs.existsSync(updateConfigPath));
 
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;
 autoUpdater.on('update-available', (info) => {
   if (mainWin) mainWin.webContents.send('update:available', { version: info.version });
   manualUpdateCheck = false;
