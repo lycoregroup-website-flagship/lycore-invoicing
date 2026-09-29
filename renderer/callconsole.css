@@ -57,6 +57,38 @@
 .cc-sf-preview{font-size:11.5px;margin-bottom:12px;color:var(--text-mute)}
 .cc-sf-preview.ok{color:var(--tone-green)}
 .cc-sf-preview.warn{color:var(--tone-yellow)}
+
+/* ------------------------------------------------- structured script editor
+   Same house language as the rest of the modal family (.cc-modal, .cc-mini,
+   .cc-input) -- no new visual system, just friendly labels standing in for
+   the >/~/?/!/+ prefixes she used to have to read and type. */
+.cc-modal-blocks{max-width:820px}
+.cc-sf-blocks{display:flex;flex-direction:column;gap:14px;max-height:52vh;overflow-y:auto;padding-right:4px;margin-bottom:10px}
+.cc-sfsec{background:var(--card-alt);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 13px}
+.cc-sfsec-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cc-sfsec-head .cc-sfsec-title{flex:1;font-weight:650}
+.cc-sfsec-items{display:flex;flex-direction:column;gap:9px}
+.cc-sfitem{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:9px 11px}
+.cc-sfitem-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.cc-sfitem-row label{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-mute);font-weight:650}
+.cc-sfitem-row .cc-mini{margin-left:auto;padding:3px 10px;font-size:10.5px}
+.cc-sfitem-row .cc-mini.danger{color:var(--tone-red);border-color:#FECACA}
+.cc-sfitem-row .cc-mini.danger:hover{background:#FEF2F2;border-color:var(--tone-red)}
+.cc-sfline.say{border-left:3px solid var(--say-bar)}
+.cc-sfline.do{border-left:3px solid #C7CAD8}
+.cc-sfline.stop{border-left:3px solid var(--stop-bar)}
+.cc-sfline.why{border-left:3px solid var(--indigo-400)}
+.cc-sfline-text{width:100%;box-sizing:border-box;resize:vertical;font-size:13.5px;line-height:1.5}
+input.cc-sfline-text{resize:none}
+.cc-sfvar{background:var(--card-alt);border:1px solid var(--border);border-radius:var(--r-pill);padding:3px 9px;font:inherit;font-size:10.5px;color:var(--text-mute);outline:none}
+.cc-sfcap-row{display:flex;gap:8px}
+.cc-sfcap-row input{flex:1}
+.cc-sfbranch{border-left:3px solid var(--stop-bar);background:var(--stop-bg)}
+.cc-sfbranch-children{display:flex;flex-direction:column;gap:8px;margin-top:9px;padding-left:12px;border-left:2px dashed #FECACA}
+.cc-sfempty{font-size:11.5px;color:var(--text-mute);font-style:italic;padding:4px 2px}
+.cc-sfsec-add{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.cc-sfsec-add.nested{margin-top:8px}
+.cc-sfsec-add .cc-mini{padding:4px 10px;font-size:11px}
 .cc-chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
 .cc-chip{border:1px solid transparent;background:none;border-radius:var(--r-pill);padding:4px 10px;font:inherit;font-size:11.5px;color:var(--text-mute);cursor:pointer}
 .cc-chip.active{border-color:var(--indigo-600);color:var(--indigo-600);font-weight:600}

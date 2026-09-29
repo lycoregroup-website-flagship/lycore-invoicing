@@ -142,7 +142,8 @@ function ccParse(raw) {
   body.split('\n').forEach(rawLine => {
     const line = rawLine.trimEnd();
     if (line.startsWith('## ')) { cur = { title: line.slice(3).trim(), lines: [], caps: [] }; steps.push(cur); return; }
-    if (!cur || !line.trim() || /^badge:/i.test(line)) return;
+    if (!cur || !line.trim()) return;
+    if (/^badge:/i.test(line)) { cur.badge = line.slice(line.indexOf(':') + 1).trim(); return; }
     const k = line[0], text = line.slice(2).trim();
     if (k === '>') cur.lines.push({ t: 'say', text });
     else if (k === '~') cur.lines.push({ t: 'do', text });
@@ -190,8 +191,13 @@ function ccScriptMeta(body) {
 }
 
 function ccScriptFrontmatterFields(body) {
+  // Keeps any custom frontmatter keys a script defines beyond the three the
+  // form edits directly (e.g. some scripts add their own {{panic}}-style
+  // variables up there) so saving through the editor never silently drops them.
   const meta = ccScriptMeta(body);
-  return { name: meta.name || '', noun: meta.noun || 'business', search: meta.search || '{{category}} {{city}}' };
+  return Object.assign({}, meta, {
+    name: meta.name || '', noun: meta.noun || 'business', search: meta.search || '{{category}} {{city}}'
+  });
 }
 
 function ccScriptBodyAfterFrontmatter(body) {
@@ -200,7 +206,10 @@ function ccScriptBodyAfterFrontmatter(body) {
 }
 
 function ccRebuildScriptRaw(fields, bodyText) {
-  return '---\nname: ' + fields.name + '\nnoun: ' + fields.noun + '\nsearch: ' + fields.search + '\n---\n\n' + bodyText.replace(/^\n+/, '');
+  const order = ['name', 'noun', 'search'];
+  const keys = order.concat(Object.keys(fields).filter(k => !order.includes(k)));
+  const fm = keys.map(k => k + ': ' + (fields[k] == null ? '' : fields[k])).join('\n');
+  return '---\n' + fm + '\n---\n\n' + bodyText.replace(/^\n+/, '');
 }
 
 function ccOpenScriptManager() {
@@ -264,6 +273,151 @@ function ccDeleteScript(id) {
   toast('Script deleted', 'success');
 }
 
+/* --------------------------------------------------- variable helper */
+
+function ccKnownVarTokens(bodyText) {
+  const found = new Set();
+  const re = /\{\{(\w+)(?:\|[^}]*)?\}\}/g;
+  let m;
+  while ((m = re.exec(bodyText))) found.add(m[1]);
+  ['first_name', 'last_name', 'business', 'company_name', 'owner_name', 'city', 'state',
+   'rep_name', 'offer_line', 'discount_line', 'rank', 'competitor', 'competitor_reviews',
+   'competitor_rating', 'reviews', 'rating', 'next_month'].forEach(c => found.add(c));
+  return [...found].sort();
+}
+
+/* -------------------------------------------------- block grouping/DSL
+   The flat lines array (from ccParse) stays the single source of truth
+   while the form is open -- grouping is only computed for display, and a
+   branch's "children" are simply whatever say/note/etc lines follow its
+   `?` line up until the next `?` or the end of the section. Saving just
+   walks the same flat array back out to text, so nothing added by
+   ccParse (or dropped by it) surprises the editor. */
+
+function ccGroupLines(lines) {
+  const items = [];
+  let branch = null;
+  lines.forEach((line, li) => {
+    if (line.t === 'if') { branch = { type: 'branch', li, headerLine: line, children: [] }; items.push(branch); }
+    else if (branch) branch.children.push({ type: 'line', li, line });
+    else items.push({ type: 'line', li, line });
+  });
+  return items;
+}
+
+function ccBranchInsertIndex(lines, headerLi) {
+  let idx = headerLi + 1;
+  while (idx < lines.length && lines[idx].t !== 'if') idx++;
+  return idx;
+}
+
+function ccLineToDsl(line) {
+  switch (line.t) {
+    case 'say':  return '> ' + (line.text || '').trim() + '\n\n';
+    case 'do':   return '~ ' + (line.text || '').trim() + '\n\n';
+    case 'if':   return '? ' + (line.text || '').trim() + '\n\n';
+    case 'stop': return '! ' + (line.text || '').trim() + '\n\n';
+    case 'why':  return '= ' + (line.text || '').trim() + '\n\n';
+    case 'cap':  return '+ ' + (line.cap.key || '').trim() + ' | ' + (line.cap.label || line.cap.key || '').trim() + '\n\n';
+    default:     return '';
+  }
+}
+
+function ccSerializeSections(sections) {
+  return sections.map(sec => {
+    const title = (sec.title || 'SECTION').trim() || 'SECTION';
+    let head = '## ' + title + '\n';
+    if (sec.badge && sec.badge.trim()) head += 'badge: ' + sec.badge.trim() + '\n';
+    head += '\n';
+    const body = sec.lines
+      .filter(l => l.t === 'cap' ? (l.cap.key || '').trim() : (l.text || '').trim())
+      .map(ccLineToDsl).join('');
+    return head + body;
+  }).join('');
+}
+
+/* ------------------------------------------------------- block editor
+   Replaces the old raw-DSL textarea. She sees "Say:" boxes and "Note to
+   rep:" boxes, not `>` and `~` -- the same underlying script format is
+   still what gets saved, just built up from friendly pieces instead of
+   typed by hand. */
+
+const CC_LINE_LABEL = { say: 'Say:', do: 'Note to rep:', stop: 'Pause / stop beat:', why: 'Why this works (optional aside):' };
+
+function ccLineItemHTML(it, si, knownVars) {
+  const line = it.line, li = it.li;
+  if (line.t === 'cap') {
+    return `
+      <div class="cc-sfitem cc-sfline cap">
+        <div class="cc-sfitem-row">
+          <label>Ask &amp; save as:</label>
+          <button class="cc-mini danger" data-act="del-line" data-si="${si}" data-li="${li}" title="Delete this field">Delete</button>
+        </div>
+        <div class="cc-sfcap-row">
+          <input class="cc-input cc-sfcap-key" data-si="${si}" data-li="${li}" value="${esc(line.cap.key)}" placeholder="field name, e.g. best_time">
+          <input class="cc-input cc-sfcap-label" data-si="${si}" data-li="${li}" value="${esc(line.cap.label)}" placeholder="prompt shown on the box, e.g. Best time to call">
+        </div>
+      </div>`;
+  }
+  const label = CC_LINE_LABEL[line.t] || 'Line:';
+  const varPicker = line.t === 'say' ? `
+        <select class="cc-sfvar" data-si="${si}" data-li="${li}">
+          <option value="">Insert variable…</option>
+          ${knownVars.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+        </select>` : '';
+  return `
+    <div class="cc-sfitem cc-sfline ${esc(line.t)}">
+      <div class="cc-sfitem-row">
+        <label>${label}</label>
+        ${varPicker}
+        <button class="cc-mini danger" data-act="del-line" data-si="${si}" data-li="${li}" title="Delete this line">Delete</button>
+      </div>
+      <textarea class="cc-input cc-sfline-text" rows="2" data-si="${si}" data-li="${li}" placeholder="${line.t === 'say' ? 'What you say, word for word' : 'A direction for the rep, never read out loud'}">${esc(line.text)}</textarea>
+    </div>`;
+}
+
+function ccItemHTML(it, si, knownVars) {
+  if (it.type === 'branch') {
+    return `
+      <div class="cc-sfitem cc-sfbranch">
+        <div class="cc-sfitem-row">
+          <label>If they say / objection:</label>
+          <button class="cc-mini danger" data-act="del-line" data-si="${si}" data-li="${it.li}" title="Delete this objection and its response">Delete</button>
+        </div>
+        <input class="cc-input cc-sfline-text" data-si="${si}" data-li="${it.li}" value="${esc(it.headerLine.text)}" placeholder="e.g. NOT INTERESTED">
+        <div class="cc-sfbranch-children">
+          ${it.children.map(c => ccLineItemHTML(c, si, knownVars)).join('') || '<div class="cc-sfempty">No response lines yet -- add one below.</div>'}
+        </div>
+        <div class="cc-sfsec-add nested">
+          <button class="cc-mini" data-act="add-say" data-si="${si}" data-header="${it.li}">+ Say</button>
+          <button class="cc-mini" data-act="add-note" data-si="${si}" data-header="${it.li}">+ Note</button>
+        </div>
+      </div>`;
+  }
+  return ccLineItemHTML(it, si, knownVars);
+}
+
+function ccSectionBlockHTML(sec, si, knownVars) {
+  const items = ccGroupLines(sec.lines);
+  return `
+    <div class="cc-sfsec">
+      <div class="cc-sfsec-head">
+        <input class="cc-input cc-sfsec-title" data-si="${si}" value="${esc(sec.title)}" placeholder="Section name, e.g. Opener">
+        <button class="cc-mini danger" data-act="del-section" data-si="${si}" title="Delete this whole section">Delete section</button>
+      </div>
+      <div class="cc-sfsec-items">
+        ${items.map(it => ccItemHTML(it, si, knownVars)).join('') || '<div class="cc-sfempty">Nothing in this section yet -- add a line below.</div>'}
+      </div>
+      <div class="cc-sfsec-add">
+        <button class="cc-mini" data-act="add-say" data-si="${si}">+ Say</button>
+        <button class="cc-mini" data-act="add-note" data-si="${si}">+ Note</button>
+        <button class="cc-mini" data-act="add-branch" data-si="${si}">+ Branch / objection</button>
+        <button class="cc-mini" data-act="add-pause" data-si="${si}">+ Pause</button>
+        <button class="cc-mini" data-act="add-cap" data-si="${si}">+ Capture field</button>
+      </div>
+    </div>`;
+}
+
 function ccOpenScriptForm(id) {
   const isNew = !id;
   const existing = isNew ? null : ccScripts.find(x => x.id === id);
@@ -275,35 +429,30 @@ function ccOpenScriptForm(id) {
     ? '## OPENER\n\n> Hey {{first_name}}, how\'s it going?\n\n~ Wait for them to answer before you go on.\n'
     : ccScriptBodyAfterFrontmatter(existing.body);
 
+  const parsed = ccParse('---\nname: x\n---\n' + bodyText);
+  let sections = parsed.steps.map(s => ({
+    title: s.title,
+    badge: s.badge || '',
+    lines: s.lines.map(l => l.t === 'cap' ? { t: 'cap', cap: { key: l.cap.key, label: l.cap.label } } : { t: l.t, text: l.text })
+  }));
+  if (!sections.length) sections = [{ title: 'OPENER', badge: '', lines: [] }];
+
+  const knownVars = ccKnownVarTokens(bodyText);
+
   const overlay = document.createElement('div');
   overlay.className = 'cc-modal-overlay';
   overlay.innerHTML = `
-    <div class="cc-modal cc-modal-edit">
+    <div class="cc-modal cc-modal-edit cc-modal-blocks">
       <h4>${isNew ? 'New script' : 'Edit script'}</h4>
+      <p class="cc-modal-sub">Build it out of Say and Note lines -- no code, no symbols to remember. Add a branch when you want a ready answer for something they might say.</p>
       <div class="cc-field">
         <label>Name (shown in the Script dropdown)</label>
         <input id="cc-sf-name" class="cc-input" style="width:100%" value="${esc(fields.name)}" placeholder="e.g. Pest control - work first">
       </div>
-      <details class="cc-sf-help">
-        <summary>How this script format works</summary>
-        <div class="cc-sf-helpbody">
-          <p>Every line starts with one of these:</p>
-          <ul>
-            <li><code>## Section name</code> &mdash; starts a new step (shown as a heading)</li>
-            <li><code>&gt; a line</code> &mdash; something you say out loud, word for word (shown green)</li>
-            <li><code>~ a line</code> &mdash; a direction for you, never read out loud (shown grey)</li>
-            <li><code>? a line</code> &mdash; what to do if they say something specific (a branch)</li>
-            <li><code>! a line</code> &mdash; a hard stop or warning</li>
-            <li><code>+ varname | Label</code> &mdash; adds a box to type in their answer, saved to the lead</li>
-          </ul>
-          <p><code>{{first_name}}</code> pulls in the lead's info automatically. Add <code>{{first_name|there}}</code> to show "there" instead of a blank when nothing is on file for that lead.</p>
-        </div>
-      </details>
       <div class="cc-field">
-        <label>Script body</label>
-        <textarea id="cc-sf-body" class="cc-sf-textarea" spellcheck="false">${esc(bodyText)}</textarea>
+        <div id="cc-sf-blocks" class="cc-sf-blocks"></div>
+        <button class="cc-mini focus" id="cc-sf-addsection">+ Add section</button>
       </div>
-      <div class="cc-sf-preview" id="cc-sf-preview"></div>
       <div class="cc-modal-actions">
         <button class="cc-mini" id="cc-sf-cancel">Cancel</button>
         <button class="cc-mini focus" id="cc-sf-save">Save</button>
@@ -312,28 +461,98 @@ function ccOpenScriptForm(id) {
   document.body.appendChild(overlay);
 
   const nameEl = overlay.querySelector('#cc-sf-name');
-  const bodyEl = overlay.querySelector('#cc-sf-body');
-  const previewEl = overlay.querySelector('#cc-sf-preview');
-  const updatePreview = () => {
-    const parsed = ccParse('---\nname: ' + (nameEl.value || 'Untitled') + '\n---\n' + bodyEl.value);
-    const n = parsed.steps.length;
-    previewEl.textContent = n
-      ? 'Looks good -- ' + n + ' section' + (n === 1 ? '' : 's') + ' detected: ' + parsed.steps.map(s => s.title).join(', ')
-      : 'No sections detected yet -- start one with a line like "## Opener" before adding say/do lines.';
-    previewEl.className = 'cc-sf-preview' + (n ? ' ok' : ' warn');
+  const blocksEl = overlay.querySelector('#cc-sf-blocks');
+
+  function paintBlocks() {
+    blocksEl.innerHTML = sections.map((sec, si) => ccSectionBlockHTML(sec, si, knownVars)).join('');
+  }
+  paintBlocks();
+
+  blocksEl.addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset.si === undefined) return;
+    const si = +t.dataset.si;
+    if (t.classList.contains('cc-sfsec-title')) { sections[si].title = t.value; return; }
+    if (t.dataset.li === undefined) return;
+    const li = +t.dataset.li;
+    const line = sections[si].lines[li];
+    if (!line) return;
+    if (t.classList.contains('cc-sfline-text')) line.text = t.value;
+    else if (t.classList.contains('cc-sfcap-key')) line.cap.key = t.value;
+    else if (t.classList.contains('cc-sfcap-label')) line.cap.label = t.value;
+  });
+
+  blocksEl.addEventListener('change', e => {
+    const t = e.target;
+    if (!t.classList.contains('cc-sfvar')) return;
+    const si = +t.dataset.si, li = +t.dataset.li, val = t.value;
+    if (!val) return;
+    const line = sections[si].lines[li];
+    line.text = (line.text || '') + '{{' + val + '}}';
+    paintBlocks();
+  });
+
+  blocksEl.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const act = b.dataset.act;
+    const si = b.dataset.si !== undefined ? +b.dataset.si : null;
+
+    if (act === 'del-section') {
+      if (sections.length <= 1) { toast('Keep at least one section', 'error'); return; }
+      if (!confirm('Delete this whole section and everything in it?')) return;
+      sections.splice(si, 1);
+      paintBlocks(); return;
+    }
+    if (act === 'del-line') {
+      const li = +b.dataset.li;
+      const line = sections[si].lines[li];
+      if (!line) return;
+      if (line.t === 'if') {
+        if (!confirm('Delete this objection and its response?')) return;
+        let end = li + 1;
+        while (end < sections[si].lines.length && sections[si].lines[end].t !== 'if') end++;
+        sections[si].lines.splice(li, end - li);
+      } else {
+        if (!confirm('Delete this line?')) return;
+        sections[si].lines.splice(li, 1);
+      }
+      paintBlocks(); return;
+    }
+    if (act === 'add-say' || act === 'add-note' || act === 'add-pause' || act === 'add-cap') {
+      const newLine = act === 'add-say' ? { t: 'say', text: '' }
+        : act === 'add-note' ? { t: 'do', text: '' }
+        : act === 'add-pause' ? { t: 'stop', text: '' }
+        : { t: 'cap', cap: { key: '', label: '' } };
+      const header = b.dataset.header;
+      if (header !== undefined) {
+        const idx = ccBranchInsertIndex(sections[si].lines, +header);
+        sections[si].lines.splice(idx, 0, newLine);
+      } else {
+        sections[si].lines.push(newLine);
+      }
+      paintBlocks(); return;
+    }
+    if (act === 'add-branch') {
+      sections[si].lines.push({ t: 'if', text: '' });
+      paintBlocks(); return;
+    }
+  });
+
+  overlay.querySelector('#cc-sf-addsection').onclick = () => {
+    sections.push({ title: 'NEW SECTION', badge: '', lines: [] });
+    paintBlocks();
   };
-  updatePreview();
-  bodyEl.oninput = updatePreview;
-  nameEl.oninput = updatePreview;
   overlay.querySelector('#cc-sf-cancel').onclick = () => overlay.remove();
   overlay.onclick = ev => { if (ev.target === overlay) overlay.remove(); };
 
   overlay.querySelector('#cc-sf-save').onclick = () => {
     const name = nameEl.value.trim();
     if (!name) { toast('Give the script a name first', 'error'); nameEl.focus(); return; }
-    const rebuilt = ccRebuildScriptRaw(Object.assign({}, fields, { name }), bodyEl.value);
-    const parsed = ccParse(rebuilt);
-    if (!parsed.steps.length) {
+    const bodyOut = ccSerializeSections(sections);
+    const rebuilt = ccRebuildScriptRaw(Object.assign({}, fields, { name }), bodyOut);
+    const parsedCheck = ccParse(rebuilt);
+    if (!parsedCheck.steps.length) {
       if (!confirm('This script has no sections yet, so the call console will show it blank. Save anyway?')) return;
     }
     let savedId;
@@ -776,6 +995,8 @@ function ccRenderOutcomes() {
 function ccSetStatus(label) {
   const l = ccLead; if (!l) return toast('Pick a lead first', 'error');
   const clearing = l.status === label;
+
+  if (clearing && !confirm('Remove the "' + label + '" status from ' + (l.business || 'this lead') + '? This can\'t be undone automatically.')) return;
 
   if (!clearing) {
     ccLogEvent({
