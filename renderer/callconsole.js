@@ -11,6 +11,10 @@
 
 let ccLeads = [], ccEvents = [], ccScripts = [], ccObjections = { groups: [] };
 let ccSources = [];
+// Cross-list "who have I already called" memory. Keyed by normalized phone
+// digits, independent of any one source/list, so it survives a source being
+// removed or a list being re-imported under a new name.
+let ccContactRegistry = {};
 let ccSettings = {};
 let ccLead = null, ccScript = null, ccScriptId = '';
 let ccFilter = 'all', ccQuery = '', ccOpenObj = null;
@@ -66,6 +70,7 @@ function ccSourceLeads(id) { return ccLeads.filter(l => l.sourceId === id); }
 async function ccLoad() {
   ccLeads      = (await sget('lyc-leads')) || [];
   ccSources    = (await sget('lyc-sources')) || [];
+  ccContactRegistry = (await sget('lyc-contact-registry')) || {};
   if (!ccSources.length && ccLeads.length) {
     ccSources = [{ id: 'legacy', name: 'Imported leads', count: ccLeads.length, at: new Date().toISOString() }];
     ccLeads.forEach(l => { if (!l.sourceId) l.sourceId = 'legacy'; });
@@ -82,6 +87,7 @@ async function ccLoad() {
 
 const ccSaveLeads    = () => sset('lyc-leads', ccLeads);
 const ccSaveSources  = () => sset('lyc-sources', ccSources);
+const ccSaveRegistry = () => sset('lyc-contact-registry', ccContactRegistry);
 const ccSaveScripts  = () => sset('lyc-scripts', ccScripts);
 const ccSaveSettings = () => sset('lyc-call-settings', ccSettings);
 
@@ -780,6 +786,16 @@ function ccFormatPhone(raw) {
   return s;
 }
 
+/* Same shape every time regardless of how a number was typed or punctuated,
+   so the contact registry can match "(555) 019-4521", "+15550194521" and
+   "5550194521" as the same person. A US-style leading 1 is dropped; anything
+   else is left as-is rather than guessed at. */
+function ccNormPhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  return d;
+}
+
 function ccRenderHead() {
   const l = ccLead;
   const h = document.getElementById('cc-head');
@@ -815,6 +831,21 @@ setInterval(() => {
 
 /* ------------------------------------------------------------ lead detail */
 
+/* Surfaces contact history from OTHER lists on a lead that was imported (or
+   chosen to be imported anyway) before this list ever ran into it, so the
+   context isn't lost just because the dedupe prompt at import time didn't
+   catch it -- an older import, or a deliberate "include anyway" choice. */
+function ccPriorContactNote(l) {
+  const entry = ccContactRegistry[ccNormPhone(l.phone)];
+  if (!entry) return '';
+  const elsewhere = entry.sourcesContacted.filter(s => s.sourceId !== l.sourceId);
+  if (!elsewhere.length) return '';
+  const latest = elsewhere[elsewhere.length - 1];
+  const when = entry.lastContactedAt ? new Date(entry.lastContactedAt).toLocaleDateString() : '';
+  const outcome = entry.status ? ', outcome: ' + esc(entry.status) : '';
+  return `<div class="cc-note">Also contacted via ${esc(latest.sourceName)}${when ? ' on ' + esc(when) : ''}${outcome}</div>`;
+}
+
 function ccRenderInfo() {
   const l = ccLead, el = document.getElementById('cc-info');
   if (!l) { el.innerHTML = ''; return; }
@@ -830,6 +861,7 @@ function ccRenderInfo() {
   const social = ['fb_url','twitter_url','linkedin_url','instagram_url'].map(k => l[k] ? '<a href="' + esc(l[k]) + '" target="_blank" rel="noopener">' + esc(k.replace('_url','')) + '</a>' : '').filter(Boolean).join(' &middot; ');
 
   el.innerHTML = `
+    ${ccPriorContactNote(l)}
     ${ready ? '' : '<div class="cc-warn">Missing competitor or review data. The script names them out loud five times.</div>'}
     <div class="cc-infogrid">
       <div class="cc-infocard"><h5>Business ${l.priority ? '<span class="cc-tag">' + esc(l.priority) + '</span>' : ''}</h5>
@@ -1028,6 +1060,32 @@ function ccRenderOutcomes() {
   document.querySelectorAll('#cc-outcomes .cc-ob').forEach(b => b.onclick = () => ccSetStatus(b.dataset.l));
 }
 
+/* The contact registry only learns about a phone number when a real contact
+   attempt happens -- setting a status is the one place in the app that means
+   "I actually worked this lead," so it's the only place that writes here.
+   Importing a list, or just browsing one, never touches it. */
+function ccUpdateRegistry(l) {
+  const key = ccNormPhone(l.phone);
+  if (!key) return;
+  const src = ccSources.find(s => s.id === l.sourceId);
+  const now = new Date().toISOString();
+  const ownerName = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.owner || '';
+  let entry = ccContactRegistry[key];
+  if (!entry) {
+    entry = { business: l.business || '', owner: ownerName, firstContactedAt: now, lastContactedAt: now, status: l.status || '', sourcesContacted: [] };
+    ccContactRegistry[key] = entry;
+  } else {
+    entry.lastContactedAt = now;
+    if (l.business) entry.business = l.business;
+    if (ownerName) entry.owner = ownerName;
+    entry.status = l.status || '';
+  }
+  if (!entry.sourcesContacted.some(s => s.sourceId === l.sourceId)) {
+    entry.sourcesContacted.push({ sourceId: l.sourceId, sourceName: (src && src.name) || 'Unknown list', importedAt: (src && src.at) || now });
+  }
+  ccSaveRegistry();
+}
+
 function ccSetStatus(label) {
   const l = ccLead; if (!l) return toast('Pick a lead first', 'error');
   const clearing = l.status === label;
@@ -1043,6 +1101,7 @@ function ccSetStatus(label) {
     l.last_called = new Date().toISOString().slice(0, 16).replace('T', ' ');
   }
   l.status = clearing ? '' : label;
+  if (!clearing) ccUpdateRegistry(l);
   ccSaveLeads();
   ccRenderRail(); ccRenderOutcomes(); ccRenderHead();
 
@@ -1261,11 +1320,41 @@ function ccShowSheetPicker(fileName, sheetInfos) {
   });
 }
 
+/* Cross-list duplicate check happens once, after every sheet/file has been
+   turned into candidate leads but before anything is merged into ccLeads --
+   so a multi-sheet Excel import gets one prompt covering the whole file, not
+   one per sheet. Skip is the default action (the focus button) because the
+   whole point of the registry is not calling someone twice; Include is one
+   click away for a deliberate re-approach. */
+function ccShowDupePrompt(dupCount, totalCount, sourceNames) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cc-modal-overlay';
+    const shown = sourceNames.slice(0, 4).join(', ');
+    const namesLine = sourceNames.length > 4 ? shown + ', and ' + (sourceNames.length - 4) + ' more' : shown;
+    overlay.innerHTML = `
+      <div class="cc-modal">
+        <h4>${dupCount} of ${totalCount} number${totalCount === 1 ? '' : 's'} already contacted before</h4>
+        <p class="cc-modal-sub">These show up in your call history already, from: ${esc(namesLine)}. Skipping keeps this import from putting the same person back in front of you under a different list. You can still bring them in if you'd rather re-approach them.</p>
+        <div class="cc-modal-actions">
+          <button class="cc-mini" id="cc-dupe-cancel">Cancel import</button>
+          <button class="cc-mini" id="cc-dupe-include">Include all ${totalCount}</button>
+          <button class="cc-mini focus" id="cc-dupe-skip">Skip the ${dupCount} already contacted</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const close = v => { overlay.remove(); resolve(v); };
+    overlay.querySelector('#cc-dupe-cancel').onclick = () => close(null);
+    overlay.querySelector('#cc-dupe-include').onclick = () => close('include');
+    overlay.querySelector('#cc-dupe-skip').onclick = () => close('skip');
+    overlay.onclick = ev => { if (ev.target === overlay) close(null); };
+  });
+}
+
 async function ccImportCSV(e) {
   const f = e.target.files[0]; if (!f) return;
   const isExcel = /\.(xlsx|xls|xlsm)$/i.test(f.name);
-  const newEntries = [];
-  let addedTotal = 0;
+  const pending = []; // [{ sourceId, label, added }]
 
   if (isExcel) {
     const sheets = await ccReadWorkbook(f);
@@ -1284,33 +1373,55 @@ async function ccImportCSV(e) {
       const sourceId = 'src-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
       const added = ccRowsToLeads(s.rows, sourceId);
       if (!added.length) return;
-      ccLeads = ccLeads.concat(added);
       const label = usable.length > 1 ? f.name + ' — ' + s.name : f.name;
-      ccSources.push({ id: sourceId, name: label, count: added.length, at: new Date().toISOString() });
-      newEntries.push(...added);
-      addedTotal += added.length;
+      pending.push({ sourceId, label, added });
     });
   } else {
     const rows = ccParseCSV(await f.text());
     if (rows.length < 2) return toast('That CSV looks empty', 'error');
     const sourceId = 'src-' + Date.now();
     const added = ccRowsToLeads(rows, sourceId);
-    if (added.length) {
-      ccLeads = ccLeads.concat(added);
-      ccSources.push({ id: sourceId, name: f.name, count: added.length, at: new Date().toISOString() });
-      newEntries.push(...added);
-      addedTotal += added.length;
-    }
+    if (added.length) pending.push({ sourceId, label: f.name, added });
   }
 
-  if (!addedTotal) return toast('No usable rows found in that file', 'error');
+  if (!pending.length) return toast('No usable rows found in that file', 'error');
+
+  // --- cross-list dedupe check against everyone she's already contacted ---
+  const allAdded = pending.flatMap(p => p.added);
+  const dupHits = allAdded
+    .map(l => ({ lead: l, entry: ccContactRegistry[ccNormPhone(l.phone)] }))
+    .filter(x => x.entry);
+  const skipIds = new Set();
+  if (dupHits.length) {
+    const sourceNames = [...new Set(dupHits.flatMap(d => d.entry.sourcesContacted.map(s => s.sourceName)))];
+    const choice = await ccShowDupePrompt(dupHits.length, allAdded.length, sourceNames);
+    if (choice === null) { e.target.value = ''; return; }
+    if (choice === 'skip') dupHits.forEach(d => skipIds.add(d.lead.id));
+  }
+
+  const newEntries = [];
+  let addedTotal = 0;
+  pending.forEach(p => {
+    const keep = p.added.filter(l => !skipIds.has(l.id));
+    if (!keep.length) return;
+    ccLeads = ccLeads.concat(keep);
+    ccSources.push({ id: p.sourceId, name: p.label, count: keep.length, at: new Date().toISOString() });
+    newEntries.push(...keep);
+    addedTotal += keep.length;
+  });
+
+  if (!addedTotal) {
+    e.target.value = '';
+    return toast(skipIds.size ? 'Every number in that list was already contacted before -- nothing new to add' : 'No usable rows found in that file', 'error');
+  }
 
   await ccSaveLeads();
   await ccSaveSources();
   ccRenderRail();
   ccRenderSources();
   if (!ccLead) ccSelect(newEntries[0]);
-  toast(addedTotal + ' leads added from ' + f.name, 'success');
+  const skippedNote = skipIds.size ? (', ' + skipIds.size + ' already-contacted number' + (skipIds.size === 1 ? '' : 's') + ' skipped') : '';
+  toast(addedTotal + ' leads added from ' + f.name + skippedNote, 'success');
   e.target.value = '';
 }
 
@@ -1402,6 +1513,32 @@ function ccRenderQuickStats() {
   el.innerHTML = `<b>${s.answered}</b> reached <span>\u00b7</span> <b>${s.noAnswer}</b> no answer <span>\u00b7</span> <b>${s.attempted}</b>/${s.total} worked`;
 }
 
+/* A simple manual mirror into Notion (or anywhere else): she can drop this
+   CSV into a Notion database import herself, no API keys or OAuth living in
+   the shipped app. Reuses the same csvEscape/Blob download pattern the
+   invoicing CSV export already uses (index.html). */
+function ccExportRegistryCSV() {
+  const keys = Object.keys(ccContactRegistry);
+  if (!keys.length) return toast('No contact history yet to export', 'error');
+  const rows = [['Phone', 'Business', 'Owner', 'Status', 'First contacted', 'Last contacted', 'Lists contacted from']];
+  keys.forEach(k => {
+    const en = ccContactRegistry[k];
+    rows.push([
+      ccFormatPhone(k), en.business || '', en.owner || '', en.status || '',
+      en.firstContactedAt || '', en.lastContactedAt || '',
+      (en.sourcesContacted || []).map(s => s.sourceName).join(' | ')
+    ]);
+  });
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `LYCORE-contact-history-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Contact history exported', 'success');
+}
+
 function ccOpenStats() {
   const overall = ccContactStats(ccLeads);
   const bySource = ccSources.map(s => Object.assign({ name: s.name, archived: !!s.archived }, ccContactStats(ccSourceLeads(s.id))));
@@ -1434,11 +1571,15 @@ function ccOpenStats() {
       <div class="cc-modal-list" style="margin-bottom:16px">${statusRows || '<div class="cc-empty">No calls logged yet.</div>'}</div>
       <div class="sec">By list</div>
       <div class="cc-modal-list">${sourceRows}</div>
-      <div class="cc-modal-actions"><button class="cc-mini focus" id="cc-stats-close">Close</button></div>
+      <div class="cc-modal-actions">
+        <button class="cc-mini" id="cc-stats-export" title="Download a CSV you can import into Notion or anywhere else">Export contact history (CSV)</button>
+        <button class="cc-mini focus" id="cc-stats-close">Close</button>
+      </div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.onclick = ev => { if (ev.target === overlay) overlay.remove(); };
   overlay.querySelector('#cc-stats-close').onclick = () => overlay.remove();
+  overlay.querySelector('#cc-stats-export').onclick = () => ccExportRegistryCSV();
 }
 
 /* -------------------------------------------------------- quick lookup */

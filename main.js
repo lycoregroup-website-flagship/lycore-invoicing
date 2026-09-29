@@ -152,7 +152,7 @@ ipcMain.handle('totp:remove', () => {
 });
 
 // ---- backup / restore (business data only — never the passcode or recovery hash) ----
-const BACKUP_KEYS = ['lyc-settings', 'lyc-invoices', 'lyc-archive', 'lyc-expenses', 'lyc-expense-archive', 'lyc-catalog', 'lyc-scripts'];
+const BACKUP_KEYS = ['lyc-settings', 'lyc-invoices', 'lyc-archive', 'lyc-expenses', 'lyc-expense-archive', 'lyc-catalog', 'lyc-scripts', 'lyc-contact-registry'];
 async function doBackupExport() {
   if (!mainWin) return { success: false };
   const { canceled, filePath } = await dialog.showSaveDialog(mainWin, {
