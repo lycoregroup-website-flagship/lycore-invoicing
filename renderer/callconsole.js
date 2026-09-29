@@ -55,6 +55,7 @@ async function ccLoad() {
 
 const ccSaveLeads    = () => sset('lyc-leads', ccLeads);
 const ccSaveSources  = () => sset('lyc-sources', ccSources);
+const ccSaveScripts  = () => sset('lyc-scripts', ccScripts);
 const ccSaveSettings = () => sset('lyc-call-settings', ccSettings);
 
 function ccLogEvent(e) {
@@ -167,6 +168,186 @@ function ccScriptName(id) {
   return m ? m[1] : id;
 }
 
+/* ------------------------------------------------------- script manager
+   Lets her create, edit, duplicate, and delete call scripts from inside
+   the app -- no more hand-editing calldata.js and shipping a release just
+   to change wording. This reads/writes the same ccScripts array that
+   already persists through sset('lyc-scripts', ...), so a saved edit
+   survives both a restart and a future app update. */
+
+function ccScriptMeta(body) {
+  const fm = body.match(/^---\n([\s\S]*?)\n---\n?/);
+  const meta = {};
+  if (fm) fm[1].split('\n').forEach(l => {
+    const i = l.indexOf(':');
+    if (i > 0) meta[l.slice(0, i).trim()] = l.slice(i + 1).trim();
+  });
+  return meta;
+}
+
+function ccScriptFrontmatterFields(body) {
+  const meta = ccScriptMeta(body);
+  return { name: meta.name || '', noun: meta.noun || 'business', search: meta.search || '{{category}} {{city}}' };
+}
+
+function ccScriptBodyAfterFrontmatter(body) {
+  const fm = body.match(/^---\n[\s\S]*?\n---\n?/);
+  return (fm ? body.slice(fm[0].length) : body).replace(/^\n+/, '');
+}
+
+function ccRebuildScriptRaw(fields, bodyText) {
+  return '---\nname: ' + fields.name + '\nnoun: ' + fields.noun + '\nsearch: ' + fields.search + '\n---\n\n' + bodyText.replace(/^\n+/, '');
+}
+
+function ccOpenScriptManager() {
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-modal-overlay';
+  const paint = () => {
+    overlay.innerHTML = `
+      <div class="cc-modal cc-modal-wide">
+        <h4>Call scripts</h4>
+        <p class="cc-modal-sub">These are the scripts in the Script dropdown. Changes here save immediately and stick around after you close the app -- no new release needed.</p>
+        <div class="cc-modal-list">
+          ${ccScripts.map(s => {
+            const f = ccScriptFrontmatterFields(s.body);
+            return `
+            <div class="cc-modal-row cc-scriptrow">
+              <span>${esc(f.name || s.id)}${s.id === ccScriptId ? ' <b style="color:var(--indigo-600)">(active)</b>' : ''}</span>
+              <button class="cc-mini" data-act="edit" data-id="${esc(s.id)}">Edit</button>
+              <button class="cc-mini" data-act="dup" data-id="${esc(s.id)}">Duplicate</button>
+              <button class="cc-mini" data-act="del" data-id="${esc(s.id)}">Delete</button>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="cc-modal-actions">
+          <button class="cc-mini" id="cc-sm-close">Close</button>
+          <button class="cc-mini focus" id="cc-sm-new">+ New script</button>
+        </div>
+      </div>`;
+    overlay.querySelector('#cc-sm-close').onclick = () => overlay.remove();
+    overlay.querySelector('#cc-sm-new').onclick = () => { overlay.remove(); ccOpenScriptForm(null); };
+    overlay.querySelectorAll('[data-act="edit"]').forEach(b => b.onclick = () => { overlay.remove(); ccOpenScriptForm(b.dataset.id); });
+    overlay.querySelectorAll('[data-act="dup"]').forEach(b => b.onclick = () => { const newId = ccDuplicateScript(b.dataset.id); if (newId) { overlay.remove(); ccOpenScriptForm(newId); } });
+    overlay.querySelectorAll('[data-act="del"]').forEach(b => b.onclick = () => { ccDeleteScript(b.dataset.id); paint(); });
+  };
+  paint();
+  overlay.onclick = ev => { if (ev.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+function ccDuplicateScript(id) {
+  const s = ccScripts.find(x => x.id === id); if (!s) return null;
+  const f = ccScriptFrontmatterFields(s.body);
+  const newId = 'script-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const newFields = Object.assign({}, f, { name: (f.name || 'Untitled') + ' (copy)' });
+  ccScripts.push({ id: newId, body: ccRebuildScriptRaw(newFields, ccScriptBodyAfterFrontmatter(s.body)) });
+  ccSaveScripts();
+  ccRenderScript();
+  return newId;
+}
+
+function ccDeleteScript(id) {
+  if (ccScripts.length <= 1) { toast('Can\'t delete the last script -- keep at least one', 'error'); return; }
+  const s = ccScripts.find(x => x.id === id); if (!s) return;
+  const f = ccScriptFrontmatterFields(s.body);
+  const wasActive = id === ccScriptId;
+  const warn = wasActive ? ' This is the one showing right now -- another script will be selected instead.' : '';
+  if (!confirm('Delete "' + (f.name || id) + '"?' + warn + ' This can\'t be undone.')) return;
+  ccScripts = ccScripts.filter(x => x.id !== id);
+  ccSaveScripts();
+  if (wasActive) ccLoadScript(ccScripts[0].id);
+  ccRenderScript();
+  toast('Script deleted', 'success');
+}
+
+function ccOpenScriptForm(id) {
+  const isNew = !id;
+  const existing = isNew ? null : ccScripts.find(x => x.id === id);
+  if (!isNew && !existing) return;
+  const fields = isNew
+    ? { name: '', noun: 'business', search: '{{category}} {{city}}' }
+    : ccScriptFrontmatterFields(existing.body);
+  const bodyText = isNew
+    ? '## OPENER\n\n> Hey {{first_name}}, how\'s it going?\n\n~ Wait for them to answer before you go on.\n'
+    : ccScriptBodyAfterFrontmatter(existing.body);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-modal-overlay';
+  overlay.innerHTML = `
+    <div class="cc-modal cc-modal-edit">
+      <h4>${isNew ? 'New script' : 'Edit script'}</h4>
+      <div class="cc-field">
+        <label>Name (shown in the Script dropdown)</label>
+        <input id="cc-sf-name" class="cc-input" style="width:100%" value="${esc(fields.name)}" placeholder="e.g. Pest control - work first">
+      </div>
+      <details class="cc-sf-help">
+        <summary>How this script format works</summary>
+        <div class="cc-sf-helpbody">
+          <p>Every line starts with one of these:</p>
+          <ul>
+            <li><code>## Section name</code> &mdash; starts a new step (shown as a heading)</li>
+            <li><code>&gt; a line</code> &mdash; something you say out loud, word for word (shown green)</li>
+            <li><code>~ a line</code> &mdash; a direction for you, never read out loud (shown grey)</li>
+            <li><code>? a line</code> &mdash; what to do if they say something specific (a branch)</li>
+            <li><code>! a line</code> &mdash; a hard stop or warning</li>
+            <li><code>+ varname | Label</code> &mdash; adds a box to type in their answer, saved to the lead</li>
+          </ul>
+          <p><code>{{first_name}}</code> pulls in the lead's info automatically. Add <code>{{first_name|there}}</code> to show "there" instead of a blank when nothing is on file for that lead.</p>
+        </div>
+      </details>
+      <div class="cc-field">
+        <label>Script body</label>
+        <textarea id="cc-sf-body" class="cc-sf-textarea" spellcheck="false">${esc(bodyText)}</textarea>
+      </div>
+      <div class="cc-sf-preview" id="cc-sf-preview"></div>
+      <div class="cc-modal-actions">
+        <button class="cc-mini" id="cc-sf-cancel">Cancel</button>
+        <button class="cc-mini focus" id="cc-sf-save">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const nameEl = overlay.querySelector('#cc-sf-name');
+  const bodyEl = overlay.querySelector('#cc-sf-body');
+  const previewEl = overlay.querySelector('#cc-sf-preview');
+  const updatePreview = () => {
+    const parsed = ccParse('---\nname: ' + (nameEl.value || 'Untitled') + '\n---\n' + bodyEl.value);
+    const n = parsed.steps.length;
+    previewEl.textContent = n
+      ? 'Looks good -- ' + n + ' section' + (n === 1 ? '' : 's') + ' detected: ' + parsed.steps.map(s => s.title).join(', ')
+      : 'No sections detected yet -- start one with a line like "## Opener" before adding say/do lines.';
+    previewEl.className = 'cc-sf-preview' + (n ? ' ok' : ' warn');
+  };
+  updatePreview();
+  bodyEl.oninput = updatePreview;
+  nameEl.oninput = updatePreview;
+  overlay.querySelector('#cc-sf-cancel').onclick = () => overlay.remove();
+  overlay.onclick = ev => { if (ev.target === overlay) overlay.remove(); };
+
+  overlay.querySelector('#cc-sf-save').onclick = () => {
+    const name = nameEl.value.trim();
+    if (!name) { toast('Give the script a name first', 'error'); nameEl.focus(); return; }
+    const rebuilt = ccRebuildScriptRaw(Object.assign({}, fields, { name }), bodyEl.value);
+    const parsed = ccParse(rebuilt);
+    if (!parsed.steps.length) {
+      if (!confirm('This script has no sections yet, so the call console will show it blank. Save anyway?')) return;
+    }
+    let savedId;
+    if (isNew) {
+      savedId = 'script-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      ccScripts.push({ id: savedId, body: rebuilt });
+    } else {
+      existing.body = rebuilt;
+      savedId = existing.id;
+    }
+    ccSaveScripts();
+    if (savedId === ccScriptId) ccLoadScript(savedId);
+    ccRenderScript();
+    overlay.remove();
+    toast(isNew ? 'Script created' : 'Script saved', 'success');
+  };
+}
+
 /* ------------------------------------------------------------ the shell */
 
 function renderLeadsPane() {
@@ -211,6 +392,7 @@ function ccShellHTML() {
           <div class="cc-panelhead">
             <h4>Script</h4>
             <select id="cc-scriptsel" class="cc-select"></select>
+            <button class="cc-mini" id="cc-scriptedit-btn" title="Create, edit, duplicate, or delete call scripts">Edit scripts</button>
           </div>
           <div class="cc-legend">
             <span class="lg say">words you say</span>
@@ -264,6 +446,7 @@ function ccWireShell() {
   document.getElementById('cc-info-btn').onclick = () => { ccUI.info = !ccUI.info; ccApplyUI(); ccSaveUI(); };
   document.getElementById('cc-act-btn').onclick  = () => { ccUI.activity = !ccUI.activity; ccApplyUI(); ccSaveUI(); };
   document.getElementById('cc-scriptsel').onchange = e => { ccLoadScript(e.target.value); ccRenderScript(); };
+  document.getElementById('cc-scriptedit-btn').onclick = ccOpenScriptManager;
   document.getElementById('cc-csv').onchange = ccImportCSV;
   document.getElementById('cc-actadd').onclick = ccAddActivity;
   ccWireMic();
