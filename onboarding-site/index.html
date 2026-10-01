@@ -78,20 +78,27 @@
     .form-card.complete iframe { display: none; }
 
     /* Completion */
-    .done { padding: 44px 24px 40px; max-width: 720px; margin: 0 auto; }
+    .done { padding: 48px 24px 44px; margin: 0 auto; text-align: center; }
     .done[hidden] { display: none; }
-    .done .check { width: 52px; height: 52px; display: block; margin-bottom: 20px; }
-    .done .check circle { fill: none; stroke: var(--orange); stroke-width: 2.5; }
-    .done .check path { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .seal { position: relative; width: 104px; height: 104px; margin: 0 auto 26px; }
+    .seal img { position: absolute; inset: 8px; width: 88px; height: 88px; border-radius: 50%; object-fit: cover; display: block; box-shadow: 0 6px 18px rgba(23,21,19,.18); }
+    .seal .ring { position: absolute; inset: 0; width: 104px; height: 104px; transform: rotate(-90deg); }
+    .seal .ring circle { fill: none; stroke: var(--orange); stroke-width: 2; }
+    .seal .badge { position: absolute; right: -2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); border: 3px solid var(--paper); display: grid; place-items: center; }
+    .seal .badge svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     .done h2 { margin: 0 0 12px; color: var(--ink); font-size: clamp(1.7rem, 6vw, 2.4rem); line-height: 1.1; letter-spacing: -.02em; font-weight: 750; }
-    .done .lead { margin: 0 0 14px; font-size: 1.2rem; line-height: 1.4; color: var(--ink); max-width: 30ch; }
-    .done p { max-width: 44ch; }
-    .signoff { margin-top: 36px; }
-    .signoff p { margin: 0; }
-    .sig { width: 210px; }
+    .done p { margin: 0 auto; max-width: 40ch; }
+    .done .lead { margin-bottom: 14px; font-size: 1.2rem; line-height: 1.4; color: var(--ink); max-width: 28ch; }
+    .signoff { margin-top: 34px; padding-top: 30px; border-top: 1px solid var(--line); max-width: 300px; margin-left: auto; margin-right: auto; }
+    .sig { width: 200px; margin: 0 auto; }
     .sig img { display: block; width: 100%; height: auto; aspect-ratio: 720 / 418; }
     .cursive { font-family: "Allura", "Snell Roundhand", "Segoe Script", "Brush Script MT", cursive; font-size: 2.2rem; line-height: 1.1; color: var(--ink); margin-top: 10px !important; }
     .company { margin-top: 8px !important; font-size: .78rem; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
+
+    /* After submission: the setup intro steps aside and the confirmation stands alone */
+    body.is-complete .hero { display: none; }
+    body.is-complete main { display: flex; align-items: flex-start; justify-content: center; padding-top: 32px; }
+    body.is-complete .form-card { width: 100%; max-width: 640px; }
 
     footer { border-top: 1px solid var(--line); padding-top: 26px; padding-bottom: max(32px, env(safe-area-inset-bottom)); font-size: .9rem; color: var(--muted); }
     footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 32px; justify-content: space-between; align-items: center; }
@@ -110,7 +117,8 @@
       .hero { margin-bottom: 40px; }
       .banner { border-radius: 16px; }
       .form-card { border-radius: 14px; }
-      .done { padding: 64px 32px 56px; }
+      .done { padding: 64px 40px 56px; }
+      body.is-complete main { padding-top: 56px; }
     }
     @media (min-width: 900px) {
       .hero { display: grid; grid-template-columns: minmax(0, 1fr) 500px; align-items: center; gap: 56px; }
@@ -123,8 +131,10 @@
       @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
       .banner.rise { animation-name: rise-in; }
       @keyframes rise-in { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
-      .done:not([hidden]) .check circle { stroke-dasharray: 151; stroke-dashoffset: 151; animation: draw .9s var(--ease) .15s forwards; }
-      .done:not([hidden]) .check path { stroke-dasharray: 34; stroke-dashoffset: 34; animation: draw .5s var(--ease) .75s forwards; }
+      .done:not([hidden]) .seal .ring circle { stroke-dasharray: 358; stroke-dashoffset: 358; animation: draw 1s var(--ease) .1s forwards; }
+      .done:not([hidden]) .seal img { opacity: 0; animation: pop .7s var(--ease) .2s forwards; }
+      .done:not([hidden]) .seal .badge { opacity: 0; animation: pop .5s var(--ease) 1s forwards; }
+      @keyframes pop { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: none; } }
       @keyframes draw { to { stroke-dashoffset: 0; } }
       .done:not([hidden]) .sig { clip-path: inset(0 100% 0 0); animation: sign 1.3s cubic-bezier(.45, .05, .25, 1) 1.1s forwards; }
       @keyframes sign { to { clip-path: inset(0 0 0 0); } }
@@ -176,7 +186,11 @@
       <noscript><p style="padding:20px;position:relative;z-index:2">This form needs JavaScript. <a href="https://tally.so/r/LZRgdj">Open the form directly</a>.</p></noscript>
 
       <div class="done" id="done" role="status" aria-live="polite" tabindex="-1" hidden>
-        <svg class="check" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24"/><path d="M17 29.5l7.5 7.5L39.5 20"/></svg>
+        <div class="seal">
+          <svg class="ring" viewBox="0 0 104 104" aria-hidden="true"><circle cx="52" cy="52" r="51"/></svg>
+          <img src="/assets/logo-240.jpg" width="88" height="88" alt="LYCORE" decoding="async">
+          <span class="badge" aria-hidden="true"><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-6.5"/></svg></span>
+        </div>
         <h2 class="rise" style="--i:0" id="done-title">Thank you.</h2>
         <p class="lead rise" style="--i:1">First step done, and you just hired someone who never calls in sick.</p>
         <p class="rise" style="--i:2">We’ll review your answers and prepare your test setup. Nothing goes live until it’s tested.</p>
@@ -245,6 +259,7 @@
       function complete(name) {
         title.textContent = name ? "Thank you, " + name + "." : "Thank you.";
         card.classList.add("complete");
+        document.body.classList.add("is-complete");
         done.hidden = false;
         document.title = "Thank you | LYCORE GROUP LLC";
         var top = card.getBoundingClientRect().top + window.pageYOffset - 16;
