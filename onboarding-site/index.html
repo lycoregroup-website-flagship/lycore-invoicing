@@ -147,6 +147,8 @@
       .form-card iframe { transition: none; }
     }
   </style>
+  <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <a class="skip" href="#form">Skip to the form</a>
@@ -267,14 +269,30 @@
         done.focus({ preventScroll: true });
       }
 
+      /* Anonymous funnel counts only (Vercel Web Analytics: no cookies, no personal data).
+         Only event names and a page number are sent; form answers and names never are. */
+      var seen = {};
+      function track(name, data) {
+        try { if (window.va) { window.va("event", data ? { name: name, data: data } : { name: name }); } } catch (err) {}
+      }
+      function once(key, name, data) { if (!seen[key]) { seen[key] = 1; track(name, data); } }
+
       window.addEventListener("message", function (e) {
         if (e.source !== frame.contentWindow && e.origin !== "https://tally.so") return;
         var d = e.data;
         if (typeof d === "string") {
-          if (d.indexOf("Tally.FormSubmitted") === -1) return;
+          if (d.indexOf("Tally.") === -1) return;
           try { d = JSON.parse(d); } catch (err) { return; }
         }
-        if (!d || d.event !== "Tally.FormSubmitted") return;
+        if (!d || typeof d.event !== "string") return;
+        if (d.event === "Tally.FormLoaded") { once("loaded", "form_loaded"); return; }
+        if (d.event === "Tally.FormPageView") {
+          var n = d.payload && d.payload.page;
+          if (typeof n === "number" && n > 0 && n < 100) once("page" + n, "form_page", { page: n });
+          return;
+        }
+        if (d.event !== "Tally.FormSubmitted") return;
+        once("done", "form_completed");
         complete(firstName(d.payload));
       });
 
