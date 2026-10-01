@@ -68,7 +68,7 @@
     /* Form card */
     .form-card { position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(23,21,19,.04); }
     .form-card iframe { position: relative; z-index: 1; display: block; width: 100%; min-height: 520px; border: 0; opacity: 0; transition: opacity .45s var(--ease); }
-    .form-card.ready iframe { opacity: 1; }
+    .form-card.ready iframe { opacity: 1; min-height: 0; }
     .loading { position: absolute; inset: 0; z-index: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 72px; color: var(--muted); font-size: .92rem; }
     .loading i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink); animation: spin .8s linear infinite; }
     .form-card.ready .loading, .form-card.complete .loading { display: none; }
