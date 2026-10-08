@@ -4,7 +4,7 @@
 const Lab = (function () {
   'use strict';
 
-  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts', settings: 'lab-settings', sessions: 'lab-sessions' };
+  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts', settings: 'lab-settings', sessions: 'lab-sessions', evidence: 'lab-evidence', panel: 'lab-panel-runs' };
   const EVID = ['Verified fact', 'Reported anecdote', 'Reasonable hypothesis', 'Untested sales assumption', 'Demonstrated LYCORE result'];
   const STATUS = ['proposed', 'testing', 'approved', 'rejected'];
   const STAGES = ['Opening', 'Gatekeeper', 'Discovery', 'Pitch', 'Objection', 'Close', 'Follow-up', 'Other'];
@@ -28,10 +28,10 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'offers', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'offers', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
-      painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '' },
+      painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '', ind: '' }, evId: null, evDraft: null, evSuggest: null, evFilter: { q: '', type: '' },
       personaId: null, personaDraft: null, personaFilter: { q: '' }, reveal: {}, blind: true,
       pbId: null, editCard: null, cardDraft: null, compact: false, open: {},
       filter: { q: '', stage: '', tag: '', fav: false }
@@ -57,6 +57,8 @@ const Lab = (function () {
     S.settings = Object.assign({ provider: 'gemini' }, (await sget(K.settings)) || {});
     S.settings.models = Object.assign({ gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' }, S.settings.models || {});
     S.sessions = (await sget(K.sessions)) || [];
+    S.evidence = (await sget(K.evidence)) || [];
+    S.panelRuns = (await sget(K.panel)) || [];
     const seeded = (await sget('lab-seeded')) || {};
     let changed = false;
     [['offers', LAB_SEED_OFFERS], ['pains', LAB_SEED_PAINS], ['personas', LAB_SEED_PERSONAS]].forEach(([k, seed]) => {
@@ -211,7 +213,7 @@ const Lab = (function () {
   }
 
   function navHtml() {
-    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['practice', 'Practice', S.sessions.length], ['ai', 'AI Settings', '']];
+    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['practice', 'Practice', S.sessions.length], ['evidence', 'Evidence', S.evidence.length], ['panel', 'Panel', S.panelRuns.length], ['stats', 'Analytics', ''], ['ai', 'AI Settings', '']];
     return '<div class="lab-nav">' + tabs.map((t) => '<button class="lab-tab' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '">' + t[1] + '<span>' + t[2] + '</span></button>').join('') + '</div>';
   }
 
@@ -273,13 +275,14 @@ const Lab = (function () {
       fld('pain', 'proofRequired', 'Proof required', d.proofRequired, 'area', { rows: 2 }) + fld('pain', 'analogy', 'Suitable analogy', d.analogy, 'area', { rows: 2 }) +
       fld('pain', 'objections', 'Associated objections', d.objections, 'lines') + fld('pain', 'closing', 'Follow-up and closing approach', d.closing, 'area', { rows: 2 }) +
       '<div class="lab-bar"><span id="lab-dirty" class="lab-dirty">' + (S.ui.dirty ? 'Unsaved changes' : '') + '</span>' +
-      '<button class="btn" data-act="pain-cancel">Cancel</button><button class="btn" data-act="pain-dup">Duplicate</button><button class="btn ghost lab-danger" data-act="pain-del">Delete</button><button class="btn orange" data-act="pain-save">Save</button></div>';
+      '<button class="btn" data-act="pain-cancel">Cancel</button><button class="btn" data-act="pain-dup">Duplicate</button><button class="btn" data-act="pain-copy">Copy to another industry</button><button class="btn ghost lab-danger" data-act="pain-del">Delete</button><button class="btn orange" data-act="pain-save">Save</button></div>';
   }
   function vPains() {
     const u = S.ui, f = u.painFilter, q = f.q.toLowerCase();
-    const list = S.pains.filter((p) => (!f.sev || String(p.severity) === f.sev) && (!f.ev || p.evidenceLevel === f.ev) && (!q || JSON.stringify(p).toLowerCase().includes(q)));
+    const list = S.pains.filter((p) => (!f.sev || String(p.severity) === f.sev) && (!f.ev || p.evidenceLevel === f.ev) && (!f.ind || p.industry === f.ind) && (!q || JSON.stringify(p).toLowerCase().includes(q)));
     const bar = '<div class="lab-filters"><input id="lab-q" data-flt="painFilter" data-fk="q" placeholder="Search pain points" value="' + E(f.q) + '">' +
       '<select data-flt="painFilter" data-fk="sev"><option value="">Any severity</option>' + [1, 2, 3, 4, 5].map((n) => '<option value="' + n + '"' + (f.sev === String(n) ? ' selected' : '') + '>Severity ' + n + '</option>').join('') + '</select>' +
+      '<select data-flt="painFilter" data-fk="ind"><option value="">Any industry</option>' + Array.from(new Set(S.pains.map((p) => p.industry).filter(Boolean))).sort().map((x) => '<option' + (f.ind === x ? ' selected' : '') + '>' + E(x) + '</option>').join('') + '</select>' +
       '<select data-flt="painFilter" data-fk="ev"><option value="">Any evidence level</option>' + EVID.map((x) => '<option' + (f.ev === x ? ' selected' : '') + '>' + E(x) + '</option>').join('') + '</select>' +
       '<button class="btn" data-act="pain-new">+ New pain point</button></div>';
     const grid = list.length ? '<div class="lab-cards3">' + list.map((p) => '<button class="lab-pcard' + (p.id === u.painId ? ' on' : '') + '" data-act="pain-pick" data-id="' + E(p.id) + '"><span class="lab-pcard-t">' + (p.favorite ? '&#9733; ' : '') + E(p.name) + '</span><span class="lab-pcard-s">' + E(p.symptom) + '</span><span class="lab-pcard-m"><span class="lab-pill">Severity ' + E(p.severity) + '</span><span class="lab-pill ev">' + E(p.evidenceLevel) + '</span></span></button>').join('') + '</div>' : '<p class="lab-empty">No pain points match.</p>';
@@ -656,6 +659,195 @@ const Lab = (function () {
     await saveSessions(); render();
   }
 
+  /* ---- Phase 4: Evidence library, adversarial panel, analytics ---- */
+  const SRC_TYPES = ['Call note', 'Prospect reply', 'Article or research', 'Competitor page', 'Own result', 'Other'];
+  const PANEL_ROLES = [
+    ['skeptic', 'Skeptical owner', 'a busy small-business owner who has been burned by vendors and dislikes being sold to'],
+    ['compliance', 'Compliance reviewer', 'a reviewer of US consumer-protection rules: FTC endorsement and review rules, Google review policies, TCPA and A2P messaging consent, CAN-SPAM'],
+    ['competitor', 'Rival vendor', 'a rival vendor hunting for the weakest or least provable claims'],
+    ['finance', 'Price-sensitive buyer', 'an owner or bookkeeper judging whether the economics make sense'],
+    ['delivery', 'Delivery lead', 'the person who must actually deliver this on GoHighLevel with the stated integrations, and who finds what cannot be delivered as promised']
+  ];
+
+  function redact(t) {
+    return String(t || '').replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[email]').replace(/(?:\+?\d{1,2}[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}/g, '[phone]');
+  }
+
+  function newEvidence() {
+    return { id: uid('ev'), title: 'New evidence', sourceType: 'Call note', source: '', date: new Date().toISOString().slice(0, 10), type: 'Reported anecdote', relevance: 3, confidence: 3, text: '', offers: [], pains: [], parent: '', createdAt: now() };
+  }
+
+  /* An evidence item can only be called a demonstrated LYCORE result if it is one of our own results. */
+  function evidenceProblems(e) {
+    const w = [];
+    if (e.type === 'Demonstrated LYCORE result' && e.sourceType !== 'Own result') w.push('"Demonstrated LYCORE result" is only for results LYCORE produced itself. Change the source type to "Own result" or pick a different level.');
+    if (!String(e.text || '').trim()) w.push('Add the actual text or numbers this item rests on.');
+    if (!e.date) w.push('Add a date.');
+    return w;
+  }
+
+  function offerText(o) {
+    const mods = (o.modules || []).map((m) => 'Module ' + m.key + ' - ' + m.name + '\n' + OFFER_FIELDS.map((f) => '  ' + f[1] + ': ' + (m[f[0]] || '(blank)')).join('\n')).join('\n');
+    return 'Offer: ' + o.name + '\nStatus: ' + o.status + '\nIndustry: ' + o.industry + '\nDelivery: ' + o.delivery + '\nPositioning: ' + o.positioning + '\nTerms:\n' + (o.terms || []).map((x) => '  - ' + x).join('\n') + '\n' + mods;
+  }
+
+  function buildPanelPrompt(role, o, ev) {
+    return 'You are ' + role[2] + '. Challenge the offer below. You are a challenger, not a judge of demand.\n\nOFFER\n' + offerText(o) + '\n\nEVIDENCE ATTACHED TO THIS OFFER\n' +
+      (ev.length ? ev.map((e, i) => '[E' + (i + 1) + '] (' + e.type + ', relevance ' + e.relevance + '/5, confidence ' + e.confidence + '/5, ' + e.date + ') ' + e.title + ': ' + String(e.text).slice(0, 700)).join('\n') : '(none attached)') + '\n\n' +
+      'RULES\n- Give 3 to 6 specific challenges from your point of view.\n- For each, say whether the evidence attached supports your concern or the offer\'s claim: "supported" (an attached item backs it, cite its id), "unsupported" (a claim is made with nothing attached to back it), or "missing" (evidence that should exist but does not).\n' +
+      '- Any claim about demand, price acceptance or results is "unsupported" unless a listed item backs it.\n- "quote" must be exact words copied from the offer text above, or empty if the challenge is about something absent.\n- Do not estimate willingness to pay or conversion. Do not invent evidence.\n\n' +
+      'Reply with JSON only: {"challenges":[{"point":"...","quote":"...","status":"supported|unsupported|missing","evidence_ids":["E1"],"what_would_resolve":"..."}],"biggest_risk":"..."}';
+  }
+
+  function validatePanel(raw, o, ev) {
+    if (!raw || !Array.isArray(raw.challenges)) return null;
+    const text = norm(offerText(o)), out = { challenges: [], biggestRisk: String(raw.biggest_risk || '').slice(0, 400), downgraded: 0 };
+    raw.challenges.slice(0, 8).forEach((c) => {
+      if (!c || !c.point) return;
+      const q = String(c.quote || '').trim(), quoted = q.length >= 4 && text.includes(norm(q));
+      const ids = (Array.isArray(c.evidence_ids) ? c.evidence_ids : []).map((x) => /^E(\d+)$/i.exec(String(x))).filter(Boolean).map((m) => Number(m[1])).filter((n) => n >= 1 && n <= ev.length);
+      let status = ['supported', 'unsupported', 'missing'].includes(c.status) ? c.status : 'unsupported';
+      if (status === 'supported' && !ids.length) { status = 'unsupported'; out.downgraded++; }
+      out.challenges.push({ point: String(c.point).slice(0, 500), quote: quoted ? q : '', status, evidence: ids.map((n) => ev[n - 1].title), resolve: String(c.what_would_resolve || '').slice(0, 400) });
+    });
+    return out.challenges.length ? out : null;
+  }
+
+  function evForOffer(oid) { return S.evidence.filter((e) => (e.offers || []).includes(oid)); }
+
+  function computeStats() {
+    const ss = S.sessions, scored = ss.filter((s) => s.score), by = (f) => ss.filter(f).length;
+    const outcomes = {}; Object.keys(OUTCOMES).forEach((k) => { outcomes[k] = scored.filter((s) => s.score.outcome === k).length; });
+    const noFit = scored.filter((s) => s.hiddenSnapshot && !s.hiddenSnapshot.hasLegitimateOpportunity);
+    const fit = scored.filter((s) => s.hiddenSnapshot && s.hiddenSnapshot.hasLegitimateOpportunity);
+    const flags = {}; scored.forEach((s) => s.score.redFlags.forEach((r) => { const k = (r.type || 'other').toLowerCase(); flags[k] = (flags[k] || 0) + 1; }));
+    const levels = {}; EVID.forEach((x) => { levels[x] = S.evidence.filter((e) => e.type === x).length; });
+    const painLevels = {}; EVID.forEach((x) => { painLevels[x] = S.pains.filter((p) => p.evidenceLevel === x).length; });
+    return {
+      calls: ss.length, text: by((s) => s.mode !== 'voice'), voice: by((s) => s.mode === 'voice'), scored: scored.length, outcomes,
+      noFit: noFit.length, noFitClean: noFit.filter((s) => s.score.outcome === 'declined_appropriately' || s.score.outcome === 'ended_early').length, noFitPushed: noFit.filter((s) => s.score.outcome === 'should_have_disqualified').length,
+      fit: fit.length, fitBooked: fit.filter((s) => s.score.outcome === 'booked_next_step').length,
+      flags, recent: scored.slice(-10).map((s) => ({ name: s.personaName, at: s.startedAt, avg: s.score.scores.length ? s.score.scores.reduce((a, b) => a + b.score, 0) / s.score.scores.length : null })),
+      evidence: S.evidence.length, levels, painLevels, panelRuns: S.panelRuns.length, offers: S.offers.length
+    };
+  }
+
+  /* ---- evidence view */
+  function selectEvidence(id) { const e = S.evidence.find((x) => x.id === id), u = S.ui; u.evId = e ? e.id : null; u.evDraft = e ? clone(e) : null; u.dirty = false; u.evSuggest = null; }
+
+  function evEditor(d) {
+    const probs = evidenceProblems(d);
+    return (probs.length ? '<div class="lab-warn">' + probs.map((x) => '<div>' + E(x) + '</div>').join('') + '</div>' : '') +
+      '<div class="lab-note">Only paste what you are allowed to keep. Remove names, phone numbers and emails before using any AI feature. The Redact button masks emails and phone numbers only; it cannot find names.</div>' +
+      fld('ev', 'title', 'Title', d.title) + '<div class="lab-grid2">' + fld('ev', 'sourceType', 'Source type', d.sourceType, 'select', { opts: SRC_TYPES }) + fld('ev', 'source', 'Source (where it came from)', d.source) +
+      fld('ev', 'date', 'Date', d.date) + fld('ev', 'type', 'Evidence level', d.type, 'select', { opts: EVID }) +
+      fld('ev', 'relevance', 'Relevance (1 to 5)', d.relevance, 'range', { min: 1, max: 5, k: 'num' }) + fld('ev', 'confidence', 'Confidence (1 to 5)', d.confidence, 'range', { min: 1, max: 5, k: 'num' }) + '</div>' +
+      fld('ev', 'text', 'Text, quotes or numbers', d.text, 'area', { rows: 8 }) +
+      '<div class="lab-row"><label class="btn">Load a text file<input type="file" accept=".txt,.md,.csv" data-act="ev-file" style="display:none"></label><button class="btn" data-act="ev-redact">Redact emails and phones</button><button class="btn" data-act="ev-suggest">Suggest claims (AI)</button></div>' +
+      (S.ui.evSuggest ? '<h4 class="lab-h">Suggested claims</h4>' + (S.ui.evSuggest.length ? S.ui.evSuggest.map((c, i) => '<div class="lab-ver"><div>' + E(c.claim) + '<div class="lab-ver-d">"' + E(c.quote) + '"</div></div><button class="btn" data-act="ev-claim" data-i="' + i + '">Save as its own item</button></div>').join('') + '<p class="lab-count">Each claim is kept only if its quote appears in your text. Saved items start as "Reported anecdote".</p>' : '<p class="lab-empty">No claim could be tied to a quote in the text.</p>') : '') +
+      '<h4 class="lab-h">Attach to</h4><div class="lab-chips">' + S.offers.map((o) => '<label class="lab-check"><input type="checkbox" data-act="ev-link" data-kind="offers" data-id="' + E(o.id) + '"' + ((d.offers || []).includes(o.id) ? ' checked' : '') + '> Offer: ' + E(o.name) + '</label>').join('') +
+      S.pains.map((p) => '<label class="lab-check"><input type="checkbox" data-act="ev-link" data-kind="pains" data-id="' + E(p.id) + '"' + ((d.pains || []).includes(p.id) ? ' checked' : '') + '> Pain: ' + E(p.name) + '</label>').join('') + '</div>' +
+      '<div class="lab-bar"><span id="lab-dirty" class="lab-dirty">' + (S.ui.dirty ? 'Unsaved changes' : '') + '</span><button class="btn" data-act="ev-cancel">Cancel</button><button class="btn ghost lab-danger" data-act="ev-del">Delete</button><button class="btn orange" data-act="ev-save">Save</button></div>';
+  }
+
+  function vEvidence() {
+    const u = S.ui, f = u.evFilter, q = f.q.toLowerCase();
+    const list = S.evidence.filter((e) => (!f.type || e.type === f.type) && (!q || JSON.stringify(e).toLowerCase().includes(q)));
+    return '<div class="lab-filters"><input id="lab-q" data-flt="evFilter" data-fk="q" placeholder="Search evidence" value="' + E(f.q) + '"><select data-flt="evFilter" data-fk="type"><option value="">Any level</option>' + EVID.map((x) => '<option' + (f.type === x ? ' selected' : '') + '>' + E(x) + '</option>').join('') + '</select><button class="btn" data-act="ev-new">+ New evidence</button></div>' +
+      '<div class="lab-split2"><div>' + (list.length ? '<div class="lab-cards3">' + list.map((e) => '<button class="lab-pcard' + (e.id === u.evId ? ' on' : '') + '" data-act="ev-pick" data-id="' + E(e.id) + '"><span class="lab-pcard-t">' + E(e.title) + '</span><span class="lab-pcard-s">' + E(String(e.text).slice(0, 160)) + '</span><span class="lab-pcard-m"><span class="lab-pill ev">' + E(e.type) + '</span><span class="lab-pill">' + E(e.date) + '</span></span></button>').join('') + '</div>' : '<p class="lab-empty">Nothing here yet. Real call notes, replies and results go in this library. The offer and pain records stay "untested" until something is attached.</p>') + '</div>' +
+      (u.evDraft ? '<div class="lab-detail">' + evEditor(u.evDraft) + '</div>' : '') + '</div>';
+  }
+
+  /* ---- panel view */
+  function vPanel() {
+    const N = S.pn, o = S.offers.find((x) => x.id === N.offerId) || S.offers[0];
+    if (!window.ai) return '<p class="lab-empty">The panel needs the desktop app.</p>';
+    if (o && !N.offerId) N.offerId = o.id;
+    const ready = curModel() && (S.ai[S.settings.provider] || {}).saved, ev = o ? evForOffer(o.id) : [];
+    const runs = S.panelRuns.filter((r) => !o || r.offerId === o.id).slice().reverse();
+    const shown = N.run || runs[0] || null;
+    return '<div class="lab-note">The panel produces challenges to your offer. It is not evidence of demand and it never estimates willingness to pay. Anything it calls "unsupported" is a gap in your own evidence, not a finding about the market.</div>' +
+      '<div class="lab-split2"><div class="lab-detail"><div class="field"><label>Offer to challenge</label><select data-act="pn-offer">' + S.offers.map((x) => '<option value="' + E(x.id) + '"' + (o && x.id === o.id ? ' selected' : '') + '>' + E(x.name) + '</option>').join('') + '</select></div>' +
+      '<p class="lab-count">' + ev.length + ' evidence item(s) attached to this offer.' + (ev.length ? '' : ' With none attached, expect most points to come back unsupported. That is the honest answer.') + '</p>' +
+      '<div class="field"><label>Challengers</label>' + PANEL_ROLES.map((r) => '<label class="lab-check"><input type="checkbox" data-act="pn-role" data-id="' + r[0] + '"' + (N.roles[r[0]] ? ' checked' : '') + '> ' + E(r[1]) + '</label>').join('') + '</div>' +
+      (ready ? '' : '<div class="lab-warn">Set a key and model in AI Settings first.</div>') + (N.err ? '<div class="lab-warn">' + E(N.err) + '</div>' : '') +
+      '<button class="btn orange" data-act="pn-run"' + (ready && !N.busy && o ? '' : ' disabled') + '>' + (N.busy ? E(N.progress || 'Running...') : 'Run the panel') + '</button>' +
+      '<h4 class="lab-h">Earlier runs</h4>' + (runs.length ? runs.map((r) => '<div class="lab-ver"><div>' + E(fmt(r.at)) + ' &middot; offer v' + E(r.offerVersion) + '<div class="lab-ver-d">' + r.results.length + ' challenger(s)</div></div><button class="btn" data-act="pn-open" data-id="' + E(r.id) + '">Open</button></div>').join('') : '<p class="lab-empty">None yet.</p>') + '</div>' +
+      '<div>' + (shown ? vPanelRun(shown) : '<p class="lab-empty">Run the panel to see challenges here.</p>') + '</div></div>';
+  }
+
+  function vPanelRun(r) {
+    return r.results.map((x) => '<div class="lab-detail" style="margin-bottom:10px"><b>' + E(x.roleName) + '</b>' + (x.error ? '<div class="lab-warn">' + E(x.error) + '</div>' : (x.biggestRisk ? '<p class="lab-count">Biggest risk: ' + E(x.biggestRisk) + '</p>' : '') +
+      x.challenges.map((c) => '<div class="lab-ver"><div><span class="lab-pill st-' + (c.status === 'supported' ? 'approved' : c.status === 'missing' ? 'rejected' : 'proposed') + '">' + E(c.status) + '</span> ' + E(c.point) +
+        (c.quote ? '<div class="lab-ver-d">Offer says: "' + E(c.quote) + '"</div>' : '') + (c.evidence.length ? '<div class="lab-ver-d">Evidence: ' + c.evidence.map(E).join('; ') + '</div>' : '') + (c.resolve ? '<div class="lab-ver-d">Would resolve it: ' + E(c.resolve) + '</div>' : '') + '</div></div>').join('') +
+      (x.downgraded ? '<p class="lab-count">' + x.downgraded + ' point(s) claimed support without citing real evidence and were marked unsupported.</p>' : '')) + '</div>').join('');
+  }
+
+  async function runPanel() {
+    const N = S.pn, o = S.offers.find((x) => x.id === N.offerId); if (!o || N.busy) return;
+    const roles = PANEL_ROLES.filter((r) => N.roles[r[0]]); if (!roles.length) { N.err = 'Pick at least one challenger.'; return render(); }
+    const ev = evForOffer(o.id); N.busy = true; N.err = ''; N.run = null;
+    const run = { id: uid('pn'), offerId: o.id, offerVersion: o.vc || 0, at: now(), evidenceCount: ev.length, results: [] };
+    for (let i = 0; i < roles.length; i++) {
+      N.progress = 'Asking ' + roles[i][1] + ' (' + (i + 1) + ' of ' + roles.length + ')...'; render();
+      const r = await callModel('You are a rigorous challenger. Reply with valid JSON only.', [{ role: 'user', content: buildPanelPrompt(roles[i], o, ev) }], true);
+      if (!r.ok) { run.results.push({ roleName: roles[i][1], error: r.error || 'No answer.', challenges: [] }); continue; }
+      const v = validatePanel(parseJsonLoose(r.text), o, ev);
+      run.results.push(v ? Object.assign({ roleName: roles[i][1] }, v) : { roleName: roles[i][1], error: 'The answer could not be read. Try again.', challenges: [] });
+    }
+    N.busy = false; N.progress = '';
+    if (run.results.some((x) => x.challenges.length)) { S.panelRuns.push(run); await sset(K.panel, S.panelRuns); N.run = run; } else N.err = 'Nothing usable came back. ' + (run.results[0] && run.results[0].error || '');
+    render();
+  }
+
+  /* ---- analytics view */
+  function vStats() {
+    const s = computeStats(), pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : 'n/a'), row = (k, v) => '<div class="lab-ver"><span>' + E(k) + '</span><b>' + v + '</b></div>';
+    const low = s.scored < 5;
+    return '<div class="lab-note">Every number here is counted from records in this app. Nothing is estimated. Practice results measure how you perform against synthetic buyers. They say nothing about what the market will pay.</div>' +
+      (low ? '<div class="lab-warn">Only ' + s.scored + ' scored call(s). That is too few to read a pattern into. Treat the figures as a log, not a trend.</div>' : '') +
+      '<div class="lab-split2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">' +
+      '<div class="lab-detail"><h4 class="lab-h" style="margin-top:0">Practice calls</h4>' + row('Calls', s.calls + ' (' + s.text + ' text, ' + s.voice + ' voice)') + row('Scored', s.scored) +
+      Object.keys(OUTCOMES).map((k) => row(OUTCOMES[k], s.outcomes[k])).join('') +
+      row('No-fit buyers where you exited cleanly', s.noFit ? s.noFitClean + ' of ' + s.noFit + ' (' + pct(s.noFitClean, s.noFit) + ')' : 'no data') +
+      row('No-fit buyers you kept pushing', s.noFit ? s.noFitPushed + ' of ' + s.noFit : 'no data') + row('Real-opportunity buyers where a next step was agreed', s.fit ? s.fitBooked + ' of ' + s.fit + ' (' + pct(s.fitBooked, s.fit) + ')' : 'no data') + '</div>' +
+      '<div class="lab-detail"><h4 class="lab-h" style="margin-top:0">Skill averages</h4>' + practiceStats().avg.map((a) => row(a.label, a.avg == null ? 'no data' : a.avg.toFixed(1) + ' / 5 (n=' + a.n + ')')).join('') +
+      '<h4 class="lab-h">Last scored calls</h4>' + (s.recent.length ? s.recent.map((r) => row(r.name + ' - ' + new Date(r.at).toLocaleDateString(), r.avg == null ? 'no score' : r.avg.toFixed(1))).join('') : '<p class="lab-empty">None yet.</p>') +
+      '<h4 class="lab-h">Red flags raised</h4>' + (Object.keys(s.flags).length ? Object.keys(s.flags).map((k) => row(k, s.flags[k])).join('') : '<p class="lab-empty">None recorded.</p>') + '</div>' +
+      '<div class="lab-detail"><h4 class="lab-h" style="margin-top:0">What you actually know</h4>' + row('Evidence items', s.evidence) + EVID.map((x) => row('&nbsp;&nbsp;' + x, s.levels[x])).join('') +
+      '<h4 class="lab-h">Pain points by evidence level</h4>' + EVID.map((x) => row(x, s.painLevels[x])).join('') + row('Offers', s.offers) + row('Panel runs', s.panelRuns) + '</div></div>';
+  }
+
+  async function evAct(act, id, el) {
+    const u = S.ui; const guard = () => !u.dirty || confirm('Discard your unsaved changes?');
+    if (act === 'ev-pick') { if (!guard()) return; selectEvidence(id); return render(); }
+    if (act === 'ev-new') { if (!guard()) return; const e = newEvidence(); S.evidence.push(e); await sset(K.evidence, S.evidence); selectEvidence(e.id); return render(); }
+    if (act === 'ev-save') { const i = S.evidence.findIndex((x) => x.id === u.evDraft.id); S.evidence[i] = clone(u.evDraft); await sset(K.evidence, S.evidence); u.dirty = false; toast('Saved.', 'success'); return render(); }
+    if (act === 'ev-cancel') { if (!guard()) return; u.evDraft = null; u.evId = null; u.dirty = false; return render(); }
+    if (act === 'ev-del') { if (!confirm('Delete this evidence item?')) return; S.evidence = S.evidence.filter((x) => x.id !== u.evId); await sset(K.evidence, S.evidence); u.evDraft = null; u.evId = null; u.dirty = false; return render(); }
+    if (act === 'ev-redact') { u.evDraft.text = redact(u.evDraft.text); markDirty(); return render(); }
+    if (act === 'ev-claim') {
+      const c = (u.evSuggest || [])[Number(el.dataset.i)]; if (!c) return;
+      const e = Object.assign(newEvidence(), { title: c.claim.slice(0, 80), sourceType: u.evDraft.sourceType, source: u.evDraft.source, date: u.evDraft.date, type: 'Reported anecdote', text: c.quote, offers: (u.evDraft.offers || []).slice(), pains: (u.evDraft.pains || []).slice(), parent: u.evDraft.id });
+      S.evidence.push(e); await sset(K.evidence, S.evidence); u.evSuggest.splice(Number(el.dataset.i), 1); toast('Saved as its own item.', 'success'); return render();
+    }
+    if (act === 'ev-suggest') {
+      const t = redact(u.evDraft.text).slice(0, 8000); if (t.trim().length < 40) { toast('Add more text first.', 'error'); return; }
+      if (!curModel() || !(S.ai[S.settings.provider] || {}).saved) { toast('Set a key and model in AI Settings first.', 'error'); return; }
+      toast('Reading...', 'info');
+      const r = await callModel('You extract factual claims from a note. Reply with valid JSON only.', [{ role: 'user', content: 'Extract up to 6 specific factual claims from this note that could matter to a sales offer. Each needs an exact short quote copied from the note.\n\nNOTE\n' + t + '\n\nReply: {"claims":[{"claim":"...","quote":"..."}]}' }], true);
+      if (!r.ok) { toast(r.error || 'The model did not answer.', 'error'); return; }
+      const j = parseJsonLoose(r.text), nt = norm(t);
+      u.evSuggest = ((j && Array.isArray(j.claims)) ? j.claims : []).filter((c) => c && c.claim && String(c.quote || '').length >= 6 && nt.includes(norm(c.quote))).slice(0, 6).map((c) => ({ claim: String(c.claim), quote: String(c.quote) }));
+      return render();
+    }
+  }
+
+  async function panelAct(act, id) {
+    if (act === 'pn-run') return runPanel();
+    if (act === 'pn-open') { S.pn.run = S.panelRuns.find((r) => r.id === id) || null; return render(); }
+  }
+
   /* ---------------------------------------------------------------- render */
   let bound = false;
   async function render(focusId) {
@@ -663,9 +855,9 @@ const Lab = (function () {
     const root = document.getElementById('lab-root'); if (!root) return;
     if (!bound) { bind(root); bound = true; }
     const y = root.scrollTop;
-    if (S.tab === 'ai' || S.tab === 'practice') await refreshAi();
+    if (S.tab === 'ai' || S.tab === 'practice' || S.tab === 'panel' || S.tab === 'evidence') await refreshAi();
     if (S.tab === 'practice' && !S.practice.personaId && S.personas[0]) S.practice.personaId = S.personas[0].id;
-    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : vScripts()) + '</div>';
+    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : S.tab === 'evidence' ? vEvidence() : S.tab === 'panel' ? vPanel() : S.tab === 'stats' ? vStats() : vScripts()) + '</div>';
     root.scrollTop = y;
     if (S.tab === 'practice') { const tx = document.getElementById('lab-tx'); if (tx) tx.scrollTop = tx.scrollHeight; const pin = document.getElementById('lab-pin'); if (pin && !S.practice.busy) pin.focus(); }
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* not a text input */ } } }
@@ -683,6 +875,7 @@ const Lab = (function () {
     else if (s === 'pain' && u.painDraft) u.painDraft[f] = v;
     else if (s === 'persona' && u.personaDraft) { if (t.dataset.h) u.personaDraft.hidden[f] = v; else u.personaDraft[f] = v; }
     else if (s === 'card' && u.cardDraft) u.cardDraft[f] = v;
+    else if (s === 'ev' && u.evDraft) u.evDraft[f] = v;
     markDirty();
   }
 
@@ -740,6 +933,8 @@ const Lab = (function () {
       if (act === 'tab') { if (!guard()) return; if (S.practice.ctl) S.practice.ctl.stop(); u.dirty = false; S.tab = id; return render(); }
 
       if (act.startsWith('pr-')) return practiceAct(act, id);
+      if (act.startsWith('ev-')) return evAct(act, id, el);
+      if (act.startsWith('pn-')) return panelAct(act, id);
 
       /* ai settings */
       if (act === 'ai-save' || act === 'ai-test' || act === 'ai-clear') {
@@ -774,6 +969,7 @@ const Lab = (function () {
       if (act === 'pain-new') { if (!guard()) return; const p = newPain(); S.pains.push(p); await save('pains'); u.painId = p.id; u.painDraft = clone(p); u.dirty = false; return render(); }
       if (act === 'pain-save') { const i = S.pains.findIndex((x) => x.id === u.painDraft.id); S.pains[i] = clone(u.painDraft); await save('pains'); u.dirty = false; toast('Saved.', 'success'); return render(); }
       if (act === 'pain-cancel') { if (!guard()) return; u.painDraft = null; u.painId = null; u.dirty = false; return render(); }
+      if (act === 'pain-copy') { const ind = await ask('Copy to another industry', 'Industry name', ''); if (!ind) return; const c = clone(S.pains.find((x) => x.id === u.painId) || u.painDraft); c.id = uid('pain'); c.industry = ind; c.name += ' (' + ind + ')'; c.evidenceLevel = 'Untested sales assumption'; c.severity = 3; c.willingnessToPay = ''; S.pains.push(c); await save('pains'); u.painId = c.id; u.painDraft = clone(c); u.dirty = false; toast('Copied. Evidence level reset: nothing from the old industry counts as proof here.', 'success'); return render(); }
       if (act === 'pain-dup') { const c = clone(S.pains.find((x) => x.id === u.painId) || u.painDraft); c.id = uid('pain'); c.name += ' (copy)'; S.pains.push(c); await save('pains'); u.painId = c.id; u.painDraft = clone(c); u.dirty = false; return render(); }
       if (act === 'pain-del') { if (!confirm('Delete this pain point?')) return; S.pains = S.pains.filter((x) => x.id !== u.painId); await save('pains'); u.painDraft = null; u.painId = null; u.dirty = false; return render(); }
 
@@ -848,6 +1044,10 @@ const Lab = (function () {
     root.addEventListener('change', (e) => {
       const t = e.target;
       if (t.dataset.act === 'pr-persona') { S.practice.personaId = t.value; return; }
+      if (t.dataset.act === 'ev-link') { const arr = S.ui.evDraft[t.dataset.kind], i = arr.indexOf(t.dataset.id); if (t.checked && i < 0) arr.push(t.dataset.id); if (!t.checked && i >= 0) arr.splice(i, 1); markDirty(); return; }
+      if (t.dataset.act === 'ev-file') { const f = t.files && t.files[0]; if (!f) return; if (f.size > 200000) { toast('That file is too large (200 KB max).', 'error'); return; } const rd = new FileReader(); rd.onload = () => { S.ui.evDraft.text = String(rd.result || '').slice(0, 50000); markDirty(); render(); }; rd.readAsText(f); return; }
+      if (t.dataset.act === 'pn-offer') { S.pn.offerId = t.value; S.pn.run = null; render(); return; }
+      if (t.dataset.act === 'pn-role') { S.pn.roles[t.dataset.id] = t.checked; return; }
       if (t.dataset.act === 'pr-mode') { S.practice.mode = t.value; render(); return; }
       if (t.dataset.act === 'ai-live-model') { S.settings.models.live = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-model') { S.settings.models[S.settings.provider] = t.value.trim(); sset(K.settings, S.settings); return; }
@@ -879,6 +1079,6 @@ const Lab = (function () {
 
   return {
     render,
-    _t: { buildPersonaPrompt, buildScorePrompt, validateScore, parseJsonLoose, practiceStats, S, load, saveOffer, diffOffer, personaWarnings, diffLines, guessStage, parseScript, buildBody, importScript, reorder, pushUndo, undo }
+    _t: { redact, validatePanel, computeStats, evidenceProblems, buildPanelPrompt, evForOffer, newEvidence, buildPersonaPrompt, buildScorePrompt, validateScore, parseJsonLoose, practiceStats, S, load, saveOffer, diffOffer, personaWarnings, diffLines, guessStage, parseScript, buildBody, importScript, reorder, pushUndo, undo }
   };
 })();
