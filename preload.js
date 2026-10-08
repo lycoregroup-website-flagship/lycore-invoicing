@@ -37,3 +37,11 @@ contextBridge.exposeInMainWorld('totp', {
   verify: (code) => ipcRenderer.invoke('totp:verify', code),
   remove: () => ipcRenderer.invoke('totp:remove')
 });
+
+// API keys: write-only from the renderer. The key itself is never returned.
+contextBridge.exposeInMainWorld('secrets', {
+  set: (provider, value) => ipcRenderer.invoke('secret:set', provider, value),
+  status: (provider) => ipcRenderer.invoke('secret:status', provider),
+  clear: (provider) => ipcRenderer.invoke('secret:clear', provider),
+  test: (provider) => ipcRenderer.invoke('secret:test', provider)
+});

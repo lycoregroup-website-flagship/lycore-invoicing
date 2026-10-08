@@ -4,7 +4,7 @@
 const Lab = (function () {
   'use strict';
 
-  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts' };
+  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts', settings: 'lab-settings' };
   const EVID = ['Verified fact', 'Reported anecdote', 'Reasonable hypothesis', 'Untested sales assumption', 'Demonstrated LYCORE result'];
   const STATUS = ['proposed', 'testing', 'approved', 'rejected'];
   const STAGES = ['Opening', 'Gatekeeper', 'Discovery', 'Pitch', 'Objection', 'Close', 'Follow-up', 'Other'];
@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, tab: 'offers', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini' }, ai: {}, tab: 'offers', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '' },
@@ -54,6 +54,7 @@ const Lab = (function () {
     S.pains = (await sget(K.pains)) || [];
     S.personas = (await sget(K.personas)) || [];
     S.scripts = (await sget(K.scripts)) || { playbooks: [], cards: [] };
+    S.settings = Object.assign({ provider: 'gemini' }, (await sget(K.settings)) || {});
     const seeded = (await sget('lab-seeded')) || {};
     let changed = false;
     [['offers', LAB_SEED_OFFERS], ['pains', LAB_SEED_PAINS], ['personas', LAB_SEED_PERSONAS]].forEach(([k, seed]) => {
@@ -208,7 +209,7 @@ const Lab = (function () {
   }
 
   function navHtml() {
-    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length]];
+    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['ai', 'AI Settings', '']];
     return '<div class="lab-nav">' + tabs.map((t) => '<button class="lab-tab' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '">' + t[1] + '<span>' + t[2] + '</span></button>').join('') + '</div>';
   }
 
@@ -388,6 +389,23 @@ const Lab = (function () {
       '<div class="lab-sb' + (panel ? ' with-panel' : '') + '"><div class="lab-cards" id="lab-cards">' + (cards.length ? cards.map((c) => cardRow(c, pb, filtering)).join('') : '<p class="lab-empty">No cards match.</p>') + '</div>' + panel + '</div>';
   }
 
+  /* ---- AI settings (keys are write-only; they live in the main process) */
+  const PROV = [['gemini', 'Google Gemini', 'Create a key in Google AI Studio.'], ['huggingface', 'Hugging Face', 'Create an access token in your Hugging Face account settings.']];
+  async function refreshAi() {
+    for (const p of PROV) {
+      try { S.ai[p[0]] = (window.secrets ? await window.secrets.status(p[0]) : null) || { saved: false, last4: '' }; } catch (e) { S.ai[p[0]] = { saved: false, last4: '' }; }
+    }
+  }
+  function vAi() {
+    if (!window.secrets) return '<p class="lab-empty">Key storage is only available inside the desktop app.</p>';
+    const cur = S.settings.provider, info = PROV.find((p) => p[0] === cur) || PROV[0], st = S.ai[cur] || {};
+    return '<div class="lab-detail" style="max-width:640px"><div class="lab-note">Your key is encrypted on this computer and stays inside the app\'s private process. It is never shown again, never written to backups, and never sent anywhere except the provider you pick. Nothing uses it until Phase 2 adds role-play.</div>' +
+      '<div class="field"><label>Provider for practice and scoring</label><select data-act="ai-provider">' + PROV.map((p) => '<option value="' + p[0] + '"' + (p[0] === cur ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></div>' +
+      '<p class="lab-count">' + E(info[2]) + ' Status: <b>' + (st.saved ? 'key saved (ends in ' + E(st.last4) + ')' : 'no key saved') + '</b></p>' +
+      '<div class="field"><label>' + (st.saved ? 'Replace key' : 'Paste key') + '</label><input id="lab-aikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste here, then press Save"></div>' +
+      '<div class="lab-bar" style="justify-content:flex-start"><button class="btn orange" data-act="ai-save">Save key</button><button class="btn"' + (st.saved ? '' : ' disabled') + ' data-act="ai-test">Test key</button><button class="btn ghost lab-danger"' + (st.saved ? '' : ' disabled') + ' data-act="ai-clear">Remove key</button><span id="lab-aimsg" class="lab-count"></span></div></div>';
+  }
+
   /* ---------------------------------------------------------------- render */
   let bound = false;
   async function render(focusId) {
@@ -395,7 +413,8 @@ const Lab = (function () {
     const root = document.getElementById('lab-root'); if (!root) return;
     if (!bound) { bind(root); bound = true; }
     const y = root.scrollTop;
-    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : vScripts()) + '</div>';
+    if (S.tab === 'ai') await refreshAi();
+    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : vScripts()) + '</div>';
     root.scrollTop = y;
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* not a text input */ } } }
   }
@@ -467,6 +486,19 @@ const Lab = (function () {
     const guard = () => !u.dirty || confirm('Discard your unsaved changes?');
     try {
       if (act === 'tab') { if (!guard()) return; u.dirty = false; S.tab = id; return render(); }
+
+      /* ai settings */
+      if (act === 'ai-save' || act === 'ai-test' || act === 'ai-clear') {
+        const msg = document.getElementById('lab-aimsg'), prov = S.settings.provider, say = (t) => { if (msg) msg.textContent = t; };
+        if (act === 'ai-save') {
+          const inp = document.getElementById('lab-aikey'), val = inp ? inp.value : '';
+          const r = await window.secrets.set(prov, val); if (inp) inp.value = '';
+          if (!r.success) { say(r.error || 'Could not save.'); return; }
+          toast('Key saved securely.', 'success'); return render();
+        }
+        if (act === 'ai-clear') { if (!confirm('Remove the saved key?')) return; await window.secrets.clear(prov); toast('Key removed.', 'success'); return render(); }
+        say('Testing...'); const r = await window.secrets.test(prov); say(r.ok ? 'The provider accepted this key.' : r.error); return;
+      }
 
       /* offers */
       if (act === 'offer-pick') { if (!guard()) return; selectOffer(id); return render(); }
@@ -559,6 +591,7 @@ const Lab = (function () {
     });
     root.addEventListener('change', (e) => {
       const t = e.target;
+      if (t.dataset.act === 'ai-provider') { S.settings.provider = t.value; sset(K.settings, S.settings); render(); return; }
       if (t.dataset.act === 'pb-pick') { S.ui.pbId = t.value; S.ui.editCard = null; S.ui.cardDraft = null; render(); return; }
       if (t.dataset.flt && (t.tagName === 'SELECT' || t.type === 'checkbox')) { S.ui[t.dataset.flt][t.dataset.fk] = t.type === 'checkbox' ? t.checked : t.value; render(); return; }
       if (t.dataset.s && t.tagName === 'SELECT') setField(t);

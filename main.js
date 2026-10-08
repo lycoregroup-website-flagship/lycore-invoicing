@@ -94,13 +94,16 @@ function saveDB() {
 
 // ---- IPC: mirrors a simple key/value store the renderer already understands ----
 ipcMain.handle('storage:get', (e, key) => {
+  if (String(key).startsWith('secret:')) return null; // secrets never leave the main process
   const db = loadDB();
   return Object.prototype.hasOwnProperty.call(db, key) ? { value: db[key] } : null;
 });
 ipcMain.handle('storage:set', (e, key, value) => {
+  if (String(key).startsWith('secret:')) return false;
   const db = loadDB(); db[key] = value; saveDB(); return true;
 });
 ipcMain.handle('storage:delete', (e, key) => {
+  if (String(key).startsWith('secret:')) return false;
   const db = loadDB(); delete db[key]; saveDB(); return true;
 });
 ipcMain.handle('app:openExternal', (e, url) => {
@@ -192,6 +195,39 @@ async function doBackupImport() {
 }
 ipcMain.handle('backup:export', () => doBackupExport());
 ipcMain.handle('backup:import', () => doBackupImport());
+
+// ---- API keys: encrypted with safeStorage, kept in the main process, never returned to the renderer ----
+const SECRET_PROVIDERS = ['gemini', 'huggingface'];
+function secretSlot(p) { return SECRET_PROVIDERS.includes(p) ? 'secret:' + p : null; }
+function getSecret(p) {
+  const slot = secretSlot(p); if (!slot) return null;
+  const v = loadDB()[slot]; if (!v || !safeStorage.isEncryptionAvailable()) return null;
+  try { return safeStorage.decryptString(Buffer.from(v, 'base64')); } catch (e) { return null; }
+}
+ipcMain.handle('secret:set', (e, p, value) => {
+  const slot = secretSlot(p), v = String(value || '').trim();
+  if (!slot || v.length < 8 || /\s/.test(v)) return { success: false, error: 'That does not look like an API key.' };
+  if (!safeStorage.isEncryptionAvailable()) return { success: false, error: 'Secure storage is not available on this computer, so the key was not saved.' };
+  const db = loadDB(); db[slot] = safeStorage.encryptString(v).toString('base64'); saveDB();
+  return { success: true, last4: v.slice(-4) };
+});
+ipcMain.handle('secret:status', (e, p) => {
+  const v = getSecret(p); return { saved: !!v, last4: v ? v.slice(-4) : '' };
+});
+ipcMain.handle('secret:clear', (e, p) => {
+  const slot = secretSlot(p); if (!slot) return false;
+  const db = loadDB(); delete db[slot]; saveDB(); return true;
+});
+ipcMain.handle('secret:test', async (e, p) => {
+  const v = getSecret(p); if (!v) return { ok: false, error: 'No key saved yet.' };
+  const req = p === 'gemini'
+    ? ['https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': v } }]
+    : ['https://huggingface.co/api/whoami-v2', { headers: { Authorization: 'Bearer ' + v } }];
+  try {
+    const r = await fetch(req[0], Object.assign({ signal: AbortSignal.timeout(15000) }, req[1]));
+    return r.ok ? { ok: true } : { ok: false, error: 'The provider rejected the key (HTTP ' + r.status + ').' };
+  } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
+});
 
 function buildMenu() {
   const template = [
