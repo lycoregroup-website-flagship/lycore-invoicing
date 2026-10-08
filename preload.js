@@ -45,3 +45,7 @@ contextBridge.exposeInMainWorld('secrets', {
   clear: (provider) => ipcRenderer.invoke('secret:clear', provider),
   test: (provider) => ipcRenderer.invoke('secret:test', provider)
 });
+
+contextBridge.exposeInMainWorld('ai', {
+  chat: (opts) => ipcRenderer.invoke('ai:chat', opts)
+});

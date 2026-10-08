@@ -229,6 +229,37 @@ ipcMain.handle('secret:test', async (e, p) => {
   } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
 });
 
+// ---- AI chat: runs here so the key never reaches the page. One adapter per provider. ----
+ipcMain.handle('ai:chat', async (e, opts) => {
+  const o = opts || {}, provider = o.provider, model = String(o.model || '').trim();
+  const key = getSecret(provider);
+  if (!key) return { ok: false, error: 'No key saved for this provider. Add one in AI Settings.' };
+  if (!model || model.length > 120 || /[\s/?#]/.test(model.replace(/^[^/]+\//, ''))) return { ok: false, error: 'Enter a valid model name in AI Settings.' };
+  const msgs = (Array.isArray(o.messages) ? o.messages : []).slice(-60).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 12000) }));
+  if (!msgs.length) return { ok: false, error: 'Nothing to send.' };
+  const system = String(o.system || '').slice(0, 20000), json = !!o.json;
+  try {
+    if (provider === 'gemini') {
+      const body = { contents: msgs.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { temperature: json ? 0.2 : 0.9 } };
+      if (system) body.systemInstruction = { parts: [{ text: system }] };
+      if (json) body.generationConfig.responseMimeType = 'application/json';
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', { method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(90000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) return { ok: false, error: (j && j.error && j.error.message) || ('The provider returned HTTP ' + r.status + '.') };
+      const parts = (((j || {}).candidates || [])[0] || {}).content; const text = ((parts && parts.parts) || []).map((x) => x.text || '').join('');
+      return text ? { ok: true, text } : { ok: false, error: 'The model returned no text (it may have been blocked).' };
+    }
+    if (provider === 'huggingface') {
+      const body = { model, temperature: json ? 0.2 : 0.9, messages: (system ? [{ role: 'system', content: system }] : []).concat(msgs) };
+      const r = await fetch('https://router.huggingface.co/v1/chat/completions', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(90000) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) return { ok: false, error: (j && (j.error && (j.error.message || j.error))) ? String(j.error.message || j.error) : ('The provider returned HTTP ' + r.status + '.') };
+      const text = (((j || {}).choices || [])[0] || {}).message; return text && text.content ? { ok: true, text: String(text.content) } : { ok: false, error: 'The model returned no text.' };
+    }
+    return { ok: false, error: 'Unknown provider.' };
+  } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
+});
+
 function buildMenu() {
   const template = [
     {

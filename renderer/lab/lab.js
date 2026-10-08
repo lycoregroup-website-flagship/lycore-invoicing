@@ -4,7 +4,7 @@
 const Lab = (function () {
   'use strict';
 
-  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts', settings: 'lab-settings' };
+  const K = { offers: 'lab-offers', pains: 'lab-pains', personas: 'lab-personas', scripts: 'lab-scripts', settings: 'lab-settings', sessions: 'lab-sessions' };
   const EVID = ['Verified fact', 'Reported anecdote', 'Reasonable hypothesis', 'Untested sales assumption', 'Demonstrated LYCORE result'];
   const STATUS = ['proposed', 'testing', 'approved', 'rejected'];
   const STAGES = ['Opening', 'Gatekeeper', 'Discovery', 'Pitch', 'Objection', 'Close', 'Follow-up', 'Other'];
@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini' }, ai: {}, tab: 'offers', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '' } }, ai: {}, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '' }, tab: 'offers', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '' },
@@ -55,6 +55,8 @@ const Lab = (function () {
     S.personas = (await sget(K.personas)) || [];
     S.scripts = (await sget(K.scripts)) || { playbooks: [], cards: [] };
     S.settings = Object.assign({ provider: 'gemini' }, (await sget(K.settings)) || {});
+    S.settings.models = Object.assign({ gemini: 'gemini-3.8-flash', huggingface: '' }, S.settings.models || {});
+    S.sessions = (await sget(K.sessions)) || [];
     const seeded = (await sget('lab-seeded')) || {};
     let changed = false;
     [['offers', LAB_SEED_OFFERS], ['pains', LAB_SEED_PAINS], ['personas', LAB_SEED_PERSONAS]].forEach(([k, seed]) => {
@@ -209,7 +211,7 @@ const Lab = (function () {
   }
 
   function navHtml() {
-    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['ai', 'AI Settings', '']];
+    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['practice', 'Practice', S.sessions.length], ['ai', 'AI Settings', '']];
     return '<div class="lab-nav">' + tabs.map((t) => '<button class="lab-tab' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '">' + t[1] + '<span>' + t[2] + '</span></button>').join('') + '</div>';
   }
 
@@ -402,8 +404,205 @@ const Lab = (function () {
     return '<div class="lab-detail" style="max-width:640px"><div class="lab-note">Your key is encrypted on this computer and stays inside the app\'s private process. It is never shown again, never written to backups, and never sent anywhere except the provider you pick. Nothing uses it until Phase 2 adds role-play.</div>' +
       '<div class="field"><label>Provider for practice and scoring</label><select data-act="ai-provider">' + PROV.map((p) => '<option value="' + p[0] + '"' + (p[0] === cur ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></div>' +
       '<p class="lab-count">' + E(info[2]) + ' Status: <b>' + (st.saved ? 'key saved (ends in ' + E(st.last4) + ')' : 'no key saved') + '</b></p>' +
+      '<div class="field"><label>Model name' + (cur === 'huggingface' ? ' (required; copy it from the model page on Hugging Face)' : '') + '</label><input data-act="ai-model" value="' + E((S.settings.models || {})[cur] || '') + '" placeholder="model id"></div>' +
       '<div class="field"><label>' + (st.saved ? 'Replace key' : 'Paste key') + '</label><input id="lab-aikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste here, then press Save"></div>' +
       '<div class="lab-bar" style="justify-content:flex-start"><button class="btn orange" data-act="ai-save">Save key</button><button class="btn"' + (st.saved ? '' : ' disabled') + ' data-act="ai-test">Test key</button><button class="btn ghost lab-danger"' + (st.saved ? '' : ' disabled') + ' data-act="ai-clear">Remove key</button><span id="lab-aimsg" class="lab-count"></span></div></div>';
+  }
+
+  /* ---- Practice (Phase 2): text role-play against a synthetic buyer, then transcript-cited scoring */
+  const RUBRIC = [
+    ['discovery', 'Discovery', 'Asked questions that surfaced the buyer\'s real situation instead of pitching first.'],
+    ['listening', 'Listening', 'Used what the buyer actually said; did not talk over or ignore it.'],
+    ['honesty', 'Honesty and pressure', 'No fake urgency, no unsupported claims, no steering around the buyer\'s concerns.'],
+    ['objections', 'Objection handling', 'Treated objections as information; answered only what was raised.'],
+    ['fit', 'Fit judgment', 'Recognised whether there was a real opportunity and acted accordingly, including stopping when there was not.'],
+    ['nextstep', 'Next step', 'Ended with a clear, proportionate next step, or a clean exit when appropriate.']
+  ];
+  const OUTCOMES = {
+    booked_next_step: 'A real next step was agreed',
+    declined_appropriately: 'Buyer declined and the rep handled it well',
+    should_have_disqualified: 'No real fit, and the rep kept pushing',
+    ended_early: 'Call ended before there was enough to judge',
+    unclear: 'Unclear'
+  };
+
+  function hiddenSummary(h) {
+    h = h || {};
+    const l = (a) => (a && a.length ? a.join('; ') : 'none');
+    return [
+      'Company size: ' + (h.companySize || 'unspecified'), 'Service lines: ' + l(h.serviceLines), 'Job volume: ' + (h.jobVolume || 'unspecified'),
+      'Software already used: ' + (h.existingSoftware || 'unspecified'), 'Who decides: ' + (h.decisionAuthority || 'unspecified'),
+      'Genuine operational problems: ' + l(h.genuineProblems), 'Problems already solved: ' + l(h.problemsSolved),
+      'Recent events: ' + (h.recentEvents || 'none'), 'Past vendor experience: ' + (h.previousVendors || 'none'),
+      'Time available: ' + (h.timeAvailability || 'unspecified'), 'Budget sensitivity (1 low to 5 high): ' + h.budgetSensitivity,
+      'Trust level toward strangers (1 low to 5 high): ' + h.trustLevel, 'How you like to be contacted: ' + (h.responsePreference || 'unspecified'),
+      'Willingness to buy (0 to 100): ' + h.willingnessToBuy, 'Objections you are likely to raise: ' + l(h.likelyObjections),
+      'What would change your mind: ' + (h.evidenceThatChangesView || 'nothing in particular'),
+      'There is a legitimate opportunity for the caller: ' + (h.hasLegitimateOpportunity ? 'yes' : 'NO')
+    ].join('\n');
+  }
+
+  function buildPersonaPrompt(p) {
+    return 'You are role-playing a small business owner or manager who receives an unsolicited sales phone call, for sales training. Stay in character the whole time. You are not a salesperson and you never coach the caller.\n\n' +
+      'WHO YOU ARE\nName: ' + p.name + '\nRole: ' + p.role + '\nHow you come across: ' + (p.mood || 'ordinary') + '\n\n' +
+      'YOUR PRIVATE SITUATION (the caller knows none of this; never recite it as a list; let pieces out only when the caller earns them with good questions)\n' + hiddenSummary(p.hidden) + '\n\n' +
+      'RULES\n- Talk like a real person on the phone: plain words, one to three short sentences, no stage directions.\n' +
+      '- Stay consistent with your private situation. Do not invent facts that contradict it.\n- Do not volunteer your problems. Mention one only when a question would naturally bring it up.\n' +
+      '- Your willingness to buy, trust and budget sensitivity above are real. Pressure, vague claims and flattery lower your willingness. Genuine relevance can raise it, but only as far as your situation justifies.\n' +
+      '- If there is NO legitimate opportunity for the caller, you must not be talked into buying. Decline politely or firmly, and do not pretend to have problems you do not have.\n' +
+      '- If the caller uses fake urgency, guarantees, or avoids answering how something works, react the way a skeptical owner would.\n' +
+      '- Real owners hang up sometimes. If you would, say your last line and end the message with [HANGUP].\n- Never say you are an AI or that this is a simulation. Do not break character for any reason.';
+  }
+
+  function transcriptText(turns) {
+    return turns.map((t, i) => '[' + (i + 1) + '] ' + (t.role === 'rep' ? 'REP' : 'BUYER') + ': ' + t.text).join('\n');
+  }
+
+  function buildScorePrompt(p, turns) {
+    return 'You are a strict, fair sales coach reviewing a practice cold call. The BUYER is a synthetic persona whose private situation is below. The REP is the trainee. Judge only what is in the transcript.\n\n' +
+      'BUYER PRIVATE SITUATION\n' + hiddenSummary(p.hidden) + '\n\nTRANSCRIPT (numbered lines)\n' + transcriptText(turns) + '\n\n' +
+      'RUBRIC (score each 0 to 5)\n' + RUBRIC.map((r) => '- ' + r[0] + ': ' + r[2]).join('\n') + '\n\n' +
+      'SCORING RULES\n- Every score must cite 1 to 3 evidence items: the line number and a SHORT exact quote copied from that line. If you cannot cite evidence, give score null.\n' +
+      '- Penalise fake urgency, unsupported claims, pressure after a clear no, and any attempt to steer unhappy customers away from public reviews.\n' +
+      '- If the buyer had no legitimate opportunity, the best outcome is a clean, respectful exit. Reward that. Do not reward a sale that should not have happened.\n- Do not invent lines that are not in the transcript.\n\n' +
+      'Reply with JSON only, in exactly this shape:\n{"outcome":"booked_next_step|declined_appropriately|should_have_disqualified|ended_early|unclear","fit_was_real":true,' +
+      '"scores":[{"category":"discovery","score":0,"evidence":[{"line":1,"quote":"..."}],"comment":"..."}],' +
+      '"missed":[{"what":"...","line":1}],"red_flags":[{"type":"...","line":1,"quote":"..."}],"summary":"two or three sentences"}';
+  }
+
+  function parseJsonLoose(text) {
+    let s = String(text || '').trim();
+    s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try { return JSON.parse(s); } catch (e) { /* fall through */ }
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { /* give up */ } }
+    return null;
+  }
+
+  const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9' ]/g, '').trim();
+  function quoteOk(turns, line, quote) {
+    const t = turns[Number(line) - 1]; const q = norm(quote);
+    return !!(t && q.length >= 4 && norm(t.text).includes(q));
+  }
+
+  /* Keeps only claims the transcript supports. A score with no verifiable evidence is dropped, not guessed. */
+  function validateScore(raw, turns) {
+    if (!raw || typeof raw !== 'object') return null;
+    const out = { outcome: OUTCOMES[raw.outcome] ? raw.outcome : 'unclear', fitWasReal: raw.fit_was_real === true, scores: [], missed: [], redFlags: [], summary: String(raw.summary || '').slice(0, 800), dropped: 0 };
+    (Array.isArray(raw.scores) ? raw.scores : []).forEach((s) => {
+      const cat = RUBRIC.find((r) => r[0] === s.category); if (!cat) return;
+      const ev = (Array.isArray(s.evidence) ? s.evidence : []).filter((e) => quoteOk(turns, e.line, e.quote)).map((e) => ({ line: Number(e.line), quote: String(e.quote) }));
+      const n = Number(s.score);
+      if (!ev.length || !(n >= 0 && n <= 5)) { out.dropped++; return; }
+      out.scores.push({ category: cat[0], label: cat[1], score: Math.round(n), evidence: ev, comment: String(s.comment || '').slice(0, 500) });
+    });
+    (Array.isArray(raw.missed) ? raw.missed : []).forEach((m) => { if (m && m.what) out.missed.push({ what: String(m.what).slice(0, 300), line: turns[Number(m.line) - 1] ? Number(m.line) : null }); });
+    (Array.isArray(raw.red_flags) ? raw.red_flags : []).forEach((r) => { if (r && quoteOk(turns, r.line, r.quote)) out.redFlags.push({ type: String(r.type || '').slice(0, 80), line: Number(r.line), quote: String(r.quote) }); else out.dropped++; });
+    return out;
+  }
+
+  function practiceStats() {
+    const done = S.sessions.filter((s) => s.score);
+    const by = {}; RUBRIC.forEach((r) => { by[r[0]] = []; });
+    done.forEach((s) => s.score.scores.forEach((x) => { if (by[x.category]) by[x.category].push(x.score); }));
+    return { total: S.sessions.length, scored: done.length, avg: RUBRIC.map((r) => ({ label: r[1], n: by[r[0]].length, avg: by[r[0]].length ? by[r[0]].reduce((a, b) => a + b, 0) / by[r[0]].length : null })) };
+  }
+
+  function curModel() { const m = (S.settings.models || {})[S.settings.provider]; return m ? m.trim() : ''; }
+
+  async function callModel(system, turnsOrMsgs, json) {
+    if (!window.ai) return { ok: false, error: 'AI calls only work inside the desktop app.' };
+    return window.ai.chat({ provider: S.settings.provider, model: curModel(), system, messages: turnsOrMsgs, json: !!json });
+  }
+
+  function vPractice() {
+    const P = S.practice, ses = P.session;
+    if (!window.ai) return '<p class="lab-empty">Practice calls need the desktop app.</p>';
+    if (ses && ses.score) return vDebrief(ses);
+    if (ses) {
+      const bubbles = ses.turns.map((t) => '<div class="lab-b ' + t.role + '"><i>' + (t.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(t.text) + '</div>').join('') ||
+        '<p class="lab-empty">The phone is ringing. They pick up. You speak first.</p>';
+      return '<div class="lab-detail"><div class="lab-ch"><b>Calling a synthetic buyer</b><span class="lab-pill">Hidden state stays hidden until you finish</span><span class="lab-ca"><button class="btn orange" data-act="pr-end"' + (P.busy ? ' disabled' : '') + '>End call and score</button><button class="btn ghost lab-danger" data-act="pr-abandon">Discard</button></span></div>' +
+        '<div class="lab-tx" id="lab-tx">' + bubbles + (P.busy ? '<div class="lab-b prospect"><i>' + E(ses.personaName) + '</i>...</div>' : '') + '</div>' +
+        (P.err ? '<div class="lab-warn">' + E(P.err) + '</div>' : '') +
+        (ses.hungUp ? '<div class="lab-note">They hung up. End the call to see how it went.</div>' :
+          '<div class="lab-row"><textarea id="lab-pin" rows="2" placeholder="Say your line. Enter sends, Shift+Enter makes a new line."' + (P.busy ? ' disabled' : '') + '>' + E(P.draft) + '</textarea><button class="btn orange" data-act="pr-send"' + (P.busy ? ' disabled' : '') + '>Send</button></div>') + '</div>';
+    }
+    const st = practiceStats();
+    const prov = PROV.find((p) => p[0] === S.settings.provider)[1], ready = curModel() && (S.ai[S.settings.provider] || {}).saved;
+    const done = S.sessions.slice().reverse();
+    return '<div class="lab-split2"><div class="lab-detail"><h4 class="lab-h" style="margin-top:0">New practice call</h4>' +
+      (ready ? '' : '<div class="lab-warn">Set a key and a model in AI Settings first (provider: ' + E(prov) + ').</div>') +
+      '<div class="field"><label>Buyer</label><select data-act="pr-persona">' + S.personas.map((p) => '<option value="' + E(p.id) + '"' + (p.id === P.personaId ? ' selected' : '') + '>' + E(p.name) + ' - ' + E(p.role) + '</option>').join('') + '</select></div>' +
+      '<p class="lab-count">Some buyers have no real need for what you sell. Part of the skill is noticing that and leaving cleanly. You will not be told which kind you have drawn.</p>' +
+      '<button class="btn" data-act="pr-random">Pick one at random</button> <button class="btn orange" data-act="pr-start"' + (ready ? '' : ' disabled') + '>Start call</button></div>' +
+      '<div><div class="lab-detail"><h4 class="lab-h" style="margin-top:0">Your record</h4>' +
+      (st.scored ? '<p class="lab-count">' + st.scored + ' scored of ' + st.total + ' calls. Averages are only from lines the transcript supports.</p>' + st.avg.map((a) => '<div class="lab-ver"><span>' + E(a.label) + '</span><b>' + (a.avg == null ? 'no data' : a.avg.toFixed(1) + ' / 5 (' + a.n + ')') + '</b></div>').join('') : '<p class="lab-empty">No scored calls yet. Nothing here is estimated.</p>') +
+      '</div><div class="lab-detail" style="margin-top:12px"><h4 class="lab-h" style="margin-top:0">Past calls</h4>' +
+      (done.length ? done.map((s) => '<div class="lab-ver"><div><b>' + E(s.personaName) + '</b> &middot; ' + E(fmt(s.startedAt)) + '<div class="lab-ver-d">' + (s.score ? E(OUTCOMES[s.score.outcome]) : 'Not scored') + '</div></div><button class="btn" data-act="pr-open" data-id="' + E(s.id) + '">Open</button></div>').join('') : '<p class="lab-empty">None yet.</p>') + '</div></div></div>';
+  }
+
+  function vDebrief(ses) {
+    const sc = ses.score, p = S.personas.find((x) => x.id === ses.personaId), h = (p && p.hidden) || ses.hiddenSnapshot || {};
+    return '<div class="lab-detail"><div class="lab-ch"><b>Debrief: ' + E(ses.personaName) + '</b><span class="lab-ca"><button class="btn" data-act="pr-close">Back</button><button class="btn ghost lab-danger" data-act="pr-delete" data-id="' + E(ses.id) + '">Delete this call</button></span></div>' +
+      '<div class="lab-note">These scores come from an AI model reading the transcript. Only points backed by a real quote from the call are kept. Treat it as a second opinion, not a verdict.</div>' +
+      '<p><b>Outcome:</b> ' + E(OUTCOMES[sc.outcome]) + '. <b>There was ' + (h.hasLegitimateOpportunity ? 'a real opportunity' : 'no real opportunity') + ' here</b>' + (sc.fitWasReal !== !!h.hasLegitimateOpportunity ? ' (the reviewer read it differently)' : '') + '.</p>' +
+      (sc.summary ? '<p>' + E(sc.summary) + '</p>' : '') +
+      '<h4 class="lab-h">Scores</h4>' + (sc.scores.length ? sc.scores.map((x) => '<div class="lab-ver"><div><b>' + E(x.label) + ': ' + x.score + ' / 5</b><div class="lab-ver-d">' + E(x.comment) + '</div>' + x.evidence.map((e) => '<div class="lab-ver-d">Line ' + e.line + ': "' + E(e.quote) + '"</div>').join('') + '</div></div>').join('') : '<p class="lab-empty">No score could be backed by the transcript.</p>') +
+      (sc.dropped ? '<p class="lab-count">' + sc.dropped + ' item(s) were dropped because their quotes were not found in the call.</p>' : '') +
+      (sc.redFlags.length ? '<h4 class="lab-h">Red flags</h4>' + sc.redFlags.map((r) => '<div class="lab-warn">' + E(r.type) + ' - line ' + r.line + ': "' + E(r.quote) + '"</div>').join('') : '') +
+      (sc.missed.length ? '<h4 class="lab-h">Missed chances</h4>' + sc.missed.map((m) => '<div class="lab-ver-d">' + E(m.what) + (m.line ? ' (line ' + m.line + ')' : '') + '</div>').join('') : '') +
+      '<h4 class="lab-h">What the buyer was hiding</h4><pre class="lab-pre">' + E(hiddenSummary(h)) + '</pre>' +
+      '<h4 class="lab-h">Transcript</h4><div class="lab-tx">' + ses.turns.map((t, i) => '<div class="lab-b ' + t.role + '"><i>[' + (i + 1) + '] ' + (t.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(t.text) + '</div>').join('') + '</div></div>';
+  }
+
+  async function saveSessions() { await sset(K.sessions, S.sessions); }
+
+  async function practiceAct(act, id) {
+    const P = S.practice;
+    if (act === 'pr-random') { P.personaId = S.personas[Math.floor(Math.random() * S.personas.length)].id; return render(); }
+    if (act === 'pr-start') {
+      const p = S.personas.find((x) => x.id === P.personaId) || S.personas[0]; if (!p) return;
+      P.session = { id: uid('ses'), personaId: p.id, personaName: p.name, startedAt: now(), turns: [], hiddenSnapshot: clone(p.hidden), provider: S.settings.provider, model: curModel(), score: null, hungUp: false };
+      P.err = ''; P.draft = ''; return render();
+    }
+    if (act === 'pr-abandon') { if (!confirm('Discard this call?')) return; P.session = null; P.err = ''; return render(); }
+    if (act === 'pr-open') { P.session = S.sessions.find((s) => s.id === id) || null; return render(); }
+    if (act === 'pr-close') { P.session = null; return render(); }
+    if (act === 'pr-delete') { if (!confirm('Delete this call record?')) return; S.sessions = S.sessions.filter((s) => s.id !== id); await saveSessions(); P.session = null; return render(); }
+    if (act === 'pr-send') return practiceSend();
+    if (act === 'pr-end') return practiceEnd();
+  }
+
+  async function practiceSend() {
+    const P = S.practice, ses = P.session, box = document.getElementById('lab-pin');
+    const text = ((box && box.value) || P.draft || '').trim(); if (!text || P.busy || !ses) return;
+    const p = S.personas.find((x) => x.id === ses.personaId); if (!p) return;
+    ses.turns.push({ role: 'rep', text }); P.draft = ''; P.busy = true; P.err = ''; render();
+    const system = buildPersonaPrompt(Object.assign({}, p, { hidden: ses.hiddenSnapshot || p.hidden }));
+    const r = await callModel(system, ses.turns.map((t) => ({ role: t.role === 'rep' ? 'user' : 'assistant', content: t.text })), false);
+    P.busy = false;
+    if (!r.ok) { ses.turns.pop(); P.draft = text; P.err = r.error || 'The model did not answer. Your line was kept; try sending again.'; return render(); }
+    let reply = String(r.text || '').trim(), hang = /\[HANGUP\]/i.test(reply);
+    reply = reply.replace(/\[HANGUP\]/ig, '').trim() || '(hangs up)';
+    ses.turns.push({ role: 'prospect', text: reply }); if (hang) ses.hungUp = true;
+    if (!S.sessions.some((s) => s.id === ses.id)) S.sessions.push(ses);
+    await saveSessions(); render();
+  }
+
+  async function practiceEnd() {
+    const P = S.practice, ses = P.session; if (!ses || P.busy) return;
+    if (ses.turns.filter((t) => t.role === 'rep').length < 2) { toast('Say at least two lines before scoring.', 'error'); return; }
+    P.busy = true; P.err = ''; render();
+    const p = { name: ses.personaName, hidden: ses.hiddenSnapshot };
+    const r = await callModel('You are a careful sales coach. Reply with valid JSON only.', [{ role: 'user', content: buildScorePrompt(p, ses.turns) }], true);
+    P.busy = false;
+    if (!r.ok) { P.err = (r.error || 'Scoring failed.') + ' The call is saved; press End call and score to retry.'; if (!S.sessions.some((s) => s.id === ses.id)) S.sessions.push(ses); await saveSessions(); return render(); }
+    const v = validateScore(parseJsonLoose(r.text), ses.turns);
+    if (!v) { P.err = 'The reviewer did not return a usable score. Press End call and score to try again.'; return render(); }
+    ses.score = v; ses.endedAt = now();
+    if (!S.sessions.some((s) => s.id === ses.id)) S.sessions.push(ses);
+    await saveSessions(); render();
   }
 
   /* ---------------------------------------------------------------- render */
@@ -413,9 +612,11 @@ const Lab = (function () {
     const root = document.getElementById('lab-root'); if (!root) return;
     if (!bound) { bind(root); bound = true; }
     const y = root.scrollTop;
-    if (S.tab === 'ai') await refreshAi();
-    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : vScripts()) + '</div>';
+    if (S.tab === 'ai' || S.tab === 'practice') await refreshAi();
+    if (S.tab === 'practice' && !S.practice.personaId && S.personas[0]) S.practice.personaId = S.personas[0].id;
+    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : vScripts()) + '</div>';
     root.scrollTop = y;
+    if (S.tab === 'practice') { const tx = document.getElementById('lab-tx'); if (tx) tx.scrollTop = tx.scrollHeight; const pin = document.getElementById('lab-pin'); if (pin && !S.practice.busy) pin.focus(); }
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* not a text input */ } } }
   }
 
@@ -486,6 +687,8 @@ const Lab = (function () {
     const guard = () => !u.dirty || confirm('Discard your unsaved changes?');
     try {
       if (act === 'tab') { if (!guard()) return; u.dirty = false; S.tab = id; return render(); }
+
+      if (act.startsWith('pr-')) return practiceAct(act, id);
 
       /* ai settings */
       if (act === 'ai-save' || act === 'ai-test' || act === 'ai-clear') {
@@ -588,9 +791,13 @@ const Lab = (function () {
       const t = e.target;
       if (t.dataset.flt) { S.ui[t.dataset.flt][t.dataset.fk] = t.type === 'checkbox' ? t.checked : t.value; if (t.type === 'text' || t.tagName === 'INPUT' && t.type !== 'checkbox') render(t.id || null); return; }
       if (t.dataset.s) setField(t);
+      if (t.id === 'lab-pin') S.practice.draft = t.value;
     });
+    root.addEventListener('keydown', (e) => { if (e.target.id === 'lab-pin' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); S.practice.draft = e.target.value; practiceSend(); } });
     root.addEventListener('change', (e) => {
       const t = e.target;
+      if (t.dataset.act === 'pr-persona') { S.practice.personaId = t.value; return; }
+      if (t.dataset.act === 'ai-model') { S.settings.models[S.settings.provider] = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-provider') { S.settings.provider = t.value; sset(K.settings, S.settings); render(); return; }
       if (t.dataset.act === 'pb-pick') { S.ui.pbId = t.value; S.ui.editCard = null; S.ui.cardDraft = null; render(); return; }
       if (t.dataset.flt && (t.tagName === 'SELECT' || t.type === 'checkbox')) { S.ui[t.dataset.flt][t.dataset.fk] = t.type === 'checkbox' ? t.checked : t.value; render(); return; }
@@ -619,6 +826,6 @@ const Lab = (function () {
 
   return {
     render,
-    _t: { S, load, saveOffer, diffOffer, personaWarnings, diffLines, guessStage, parseScript, buildBody, importScript, reorder, pushUndo, undo }
+    _t: { buildPersonaPrompt, buildScorePrompt, validateScore, parseJsonLoose, practiceStats, S, load, saveOffer, diffOffer, personaWarnings, diffLines, guessStage, parseScript, buildBody, importScript, reorder, pushUndo, undo }
   };
 })();

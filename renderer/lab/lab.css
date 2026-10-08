@@ -81,3 +81,12 @@
 .lab-diff{font-family:var(--mono,monospace);font-size:12px;max-height:50vh;overflow:auto;border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:6px}
 .lab-diff .d-del{background:#fdeaea}.lab-diff .d-add{background:#e6f7ec}.lab-diff div{padding:1px 4px;white-space:pre-wrap}
 @media(max-width:1000px){.lab-split,.lab-split2:has(.lab-detail),.lab-sb.with-panel,.lab-grid2{grid-template-columns:1fr}}
+
+/* practice */
+.lab-tx{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;padding:10px;margin:10px 0;background:var(--card-alt);border:1px solid var(--border-soft);border-radius:var(--r-md)}
+.lab-b{max-width:82%;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.45;white-space:pre-wrap}
+.lab-b i{display:block;font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text-mute);margin-bottom:2px}
+.lab-b.rep{align-self:flex-end;background:var(--indigo-50);border:1px solid var(--border-soft)}
+.lab-b.prospect{align-self:flex-start;background:var(--card);border:1px solid var(--border)}
+.lab-row textarea{flex:1}
+.lab-pre{white-space:pre-wrap;font-size:12px;background:var(--card-alt);border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:10px}
