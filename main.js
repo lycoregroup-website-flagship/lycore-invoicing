@@ -260,6 +260,19 @@ ipcMain.handle('ai:chat', async (e, opts) => {
   } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
 });
 
+// ---- Live voice: mint a one-use, short-lived token so the page never holds the real key ----
+ipcMain.handle('ai:liveToken', async () => {
+  const key = getSecret('gemini');
+  if (!key) return { ok: false, error: 'No Gemini key saved. Add one in AI Settings.' };
+  const t = Date.now();
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/auth_tokens', { method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ uses: 1, expireTime: new Date(t + 15 * 60000).toISOString(), newSessionExpireTime: new Date(t + 60000).toISOString() }), signal: AbortSignal.timeout(15000) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) return { ok: false, error: (j && j.error && j.error.message) || ('The provider returned HTTP ' + r.status + '.') };
+    return j && j.name ? { ok: true, token: j.name } : { ok: false, error: 'The provider did not return a token.' };
+  } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
+});
+
 function buildMenu() {
   const template = [
     {

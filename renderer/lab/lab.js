@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '' } }, ai: {}, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '' }, tab: 'offers', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'offers', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '' },
@@ -55,7 +55,7 @@ const Lab = (function () {
     S.personas = (await sget(K.personas)) || [];
     S.scripts = (await sget(K.scripts)) || { playbooks: [], cards: [] };
     S.settings = Object.assign({ provider: 'gemini' }, (await sget(K.settings)) || {});
-    S.settings.models = Object.assign({ gemini: 'gemini-3.8-flash', huggingface: '' }, S.settings.models || {});
+    S.settings.models = Object.assign({ gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' }, S.settings.models || {});
     S.sessions = (await sget(K.sessions)) || [];
     const seeded = (await sget('lab-seeded')) || {};
     let changed = false;
@@ -405,6 +405,7 @@ const Lab = (function () {
       '<div class="field"><label>Provider for practice and scoring</label><select data-act="ai-provider">' + PROV.map((p) => '<option value="' + p[0] + '"' + (p[0] === cur ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></div>' +
       '<p class="lab-count">' + E(info[2]) + ' Status: <b>' + (st.saved ? 'key saved (ends in ' + E(st.last4) + ')' : 'no key saved') + '</b></p>' +
       '<div class="field"><label>Model name' + (cur === 'huggingface' ? ' (required; copy it from the model page on Hugging Face)' : '') + '</label><input data-act="ai-model" value="' + E((S.settings.models || {})[cur] || '') + '" placeholder="model id"></div>' +
+      (cur === 'gemini' ? '<div class="field"><label>Voice model name</label><input data-act="ai-live-model" value="' + E((S.settings.models || {}).live || '') + '"></div>' : '') +
       '<div class="field"><label>' + (st.saved ? 'Replace key' : 'Paste key') + '</label><input id="lab-aikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste here, then press Save"></div>' +
       '<div class="lab-bar" style="justify-content:flex-start"><button class="btn orange" data-act="ai-save">Save key</button><button class="btn"' + (st.saved ? '' : ' disabled') + ' data-act="ai-test">Test key</button><button class="btn ghost lab-danger"' + (st.saved ? '' : ' disabled') + ' data-act="ai-clear">Remove key</button><span id="lab-aimsg" class="lab-count"></span></div></div>';
   }
@@ -442,7 +443,7 @@ const Lab = (function () {
     ].join('\n');
   }
 
-  function buildPersonaPrompt(p) {
+  function buildPersonaPromptBase(p) {
     return 'You are role-playing a small business owner or manager who receives an unsolicited sales phone call, for sales training. Stay in character the whole time. You are not a salesperson and you never coach the caller.\n\n' +
       'WHO YOU ARE\nName: ' + p.name + '\nRole: ' + p.role + '\nHow you come across: ' + (p.mood || 'ordinary') + '\n\n' +
       'YOUR PRIVATE SITUATION (the caller knows none of this; never recite it as a list; let pieces out only when the caller earns them with good questions)\n' + hiddenSummary(p.hidden) + '\n\n' +
@@ -452,6 +453,12 @@ const Lab = (function () {
       '- If there is NO legitimate opportunity for the caller, you must not be talked into buying. Decline politely or firmly, and do not pretend to have problems you do not have.\n' +
       '- If the caller uses fake urgency, guarantees, or avoids answering how something works, react the way a skeptical owner would.\n' +
       '- Real owners hang up sometimes. If you would, say your last line and end the message with [HANGUP].\n- Never say you are an AI or that this is a simulation. Do not break character for any reason.';
+  }
+
+  function buildPersonaPrompt(p, opts) {
+    let s = buildPersonaPromptBase(p);
+    if (opts && opts.voice) s = s.replace('- Real owners hang up sometimes. If you would, say your last line and end the message with [HANGUP].', '- This is a live phone call. Speak naturally and briefly. Real owners end calls sometimes; if you would, say a short goodbye and stop talking.');
+    return s;
   }
 
   function transcriptText(turns) {
@@ -519,6 +526,7 @@ const Lab = (function () {
     const P = S.practice, ses = P.session;
     if (!window.ai) return '<p class="lab-empty">Practice calls need the desktop app.</p>';
     if (ses && ses.score) return vDebrief(ses);
+    if (ses && ses.mode === 'voice') return vVoice(ses);
     if (ses) {
       const bubbles = ses.turns.map((t) => '<div class="lab-b ' + t.role + '"><i>' + (t.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(t.text) + '</div>').join('') ||
         '<p class="lab-empty">The phone is ringing. They pick up. You speak first.</p>';
@@ -529,13 +537,15 @@ const Lab = (function () {
           '<div class="lab-row"><textarea id="lab-pin" rows="2" placeholder="Say your line. Enter sends, Shift+Enter makes a new line."' + (P.busy ? ' disabled' : '') + '>' + E(P.draft) + '</textarea><button class="btn orange" data-act="pr-send"' + (P.busy ? ' disabled' : '') + '>Send</button></div>') + '</div>';
     }
     const st = practiceStats();
-    const prov = PROV.find((p) => p[0] === S.settings.provider)[1], ready = curModel() && (S.ai[S.settings.provider] || {}).saved;
+    const prov = PROV.find((p) => p[0] === S.settings.provider)[1], ready = curModel() && (S.ai[S.settings.provider] || {}).saved, voiceReady = S.settings.provider === 'gemini' && (S.ai.gemini || {}).saved && liveModel();
     const done = S.sessions.slice().reverse();
     return '<div class="lab-split2"><div class="lab-detail"><h4 class="lab-h" style="margin-top:0">New practice call</h4>' +
       (ready ? '' : '<div class="lab-warn">Set a key and a model in AI Settings first (provider: ' + E(prov) + ').</div>') +
+      '<div class="field"><label>Type of call</label><select data-act="pr-mode"><option value="text"' + (P.mode === 'text' ? ' selected' : '') + '>Text (type your lines)</option><option value="voice"' + (P.mode === 'voice' ? ' selected' : '') + '>Voice (speak out loud)</option></select></div>' +
+      (P.mode === 'voice' ? (voiceReady ? '<div class="lab-note">Voice uses your microphone and sends your audio to Google while the call runs. Audio is not saved; only the transcript is. Use headphones so the buyer\'s voice does not feed back. Calls stop after 8 minutes.</div>' : '<div class="lab-warn">Voice needs Gemini selected as the provider, a saved Gemini key, and a voice model name in AI Settings.</div>') : '') +
       '<div class="field"><label>Buyer</label><select data-act="pr-persona">' + S.personas.map((p) => '<option value="' + E(p.id) + '"' + (p.id === P.personaId ? ' selected' : '') + '>' + E(p.name) + ' - ' + E(p.role) + '</option>').join('') + '</select></div>' +
       '<p class="lab-count">Some buyers have no real need for what you sell. Part of the skill is noticing that and leaving cleanly. You will not be told which kind you have drawn.</p>' +
-      '<button class="btn" data-act="pr-random">Pick one at random</button> <button class="btn orange" data-act="pr-start"' + (ready ? '' : ' disabled') + '>Start call</button></div>' +
+      '<button class="btn" data-act="pr-random">Pick one at random</button> <button class="btn orange" data-act="pr-start"' + ((P.mode === 'voice' ? voiceReady : ready) ? '' : ' disabled') + '>Start call</button></div>' +
       '<div><div class="lab-detail"><h4 class="lab-h" style="margin-top:0">Your record</h4>' +
       (st.scored ? '<p class="lab-count">' + st.scored + ' scored of ' + st.total + ' calls. Averages are only from lines the transcript supports.</p>' + st.avg.map((a) => '<div class="lab-ver"><span>' + E(a.label) + '</span><b>' + (a.avg == null ? 'no data' : a.avg.toFixed(1) + ' / 5 (' + a.n + ')') + '</b></div>').join('') : '<p class="lab-empty">No scored calls yet. Nothing here is estimated.</p>') +
       '</div><div class="lab-detail" style="margin-top:12px"><h4 class="lab-h" style="margin-top:0">Past calls</h4>' +
@@ -545,7 +555,7 @@ const Lab = (function () {
   function vDebrief(ses) {
     const sc = ses.score, p = S.personas.find((x) => x.id === ses.personaId), h = (p && p.hidden) || ses.hiddenSnapshot || {};
     return '<div class="lab-detail"><div class="lab-ch"><b>Debrief: ' + E(ses.personaName) + '</b><span class="lab-ca"><button class="btn" data-act="pr-close">Back</button><button class="btn ghost lab-danger" data-act="pr-delete" data-id="' + E(ses.id) + '">Delete this call</button></span></div>' +
-      '<div class="lab-note">These scores come from an AI model reading the transcript. Only points backed by a real quote from the call are kept. Treat it as a second opinion, not a verdict.</div>' +
+      (ses.mode === 'voice' ? '<div class="lab-note">This was a voice call. The transcript was produced automatically, so wording may differ slightly from what was said. No audio was saved.</div>' : '') + '<div class="lab-note">These scores come from an AI model reading the transcript. Only points backed by a real quote from the call are kept. Treat it as a second opinion, not a verdict.</div>' +
       '<p><b>Outcome:</b> ' + E(OUTCOMES[sc.outcome]) + '. <b>There was ' + (h.hasLegitimateOpportunity ? 'a real opportunity' : 'no real opportunity') + ' here</b>' + (sc.fitWasReal !== !!h.hasLegitimateOpportunity ? ' (the reviewer read it differently)' : '') + '.</p>' +
       (sc.summary ? '<p>' + E(sc.summary) + '</p>' : '') +
       '<h4 class="lab-h">Scores</h4>' + (sc.scores.length ? sc.scores.map((x) => '<div class="lab-ver"><div><b>' + E(x.label) + ': ' + x.score + ' / 5</b><div class="lab-ver-d">' + E(x.comment) + '</div>' + x.evidence.map((e) => '<div class="lab-ver-d">Line ' + e.line + ': "' + E(e.quote) + '"</div>').join('') + '</div></div>').join('') : '<p class="lab-empty">No score could be backed by the transcript.</p>') +
@@ -556,17 +566,57 @@ const Lab = (function () {
       '<h4 class="lab-h">Transcript</h4><div class="lab-tx">' + ses.turns.map((t, i) => '<div class="lab-b ' + t.role + '"><i>[' + (i + 1) + '] ' + (t.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(t.text) + '</div>').join('') + '</div></div>';
   }
 
+  function liveModel() { const m = (S.settings.models || {}).live; return m ? m.trim() : ''; }
+
+  function vVoice(ses) {
+    const P = S.practice, live = P.live;
+    const label = { connecting: 'Connecting...', listening: 'Listening. Talk normally.', speaking: ses.personaName + ' is talking. You can interrupt.', ended: 'Call ended. Press End call and score.' }[P.vstate] || '';
+    const bubbles = ses.turns.map((t) => '<div class="lab-b ' + t.role + '"><i>' + (t.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(t.text) + '</div>').join('') +
+      (live ? '<div class="lab-b ' + live.role + '"><i>' + (live.role === 'rep' ? 'You' : E(ses.personaName)) + '</i>' + E(live.text) + ' ...</div>' : '');
+    return '<div class="lab-detail"><div class="lab-ch"><b>Voice call with a synthetic buyer</b><span class="lab-pill">' + E(label) + '</span><span class="lab-ca"><button class="btn orange" data-act="pr-end"' + (P.busy ? ' disabled' : '') + '>End call and score</button><button class="btn ghost lab-danger" data-act="pr-abandon">Discard</button></span></div>' +
+      '<div class="lab-tx" id="lab-tx">' + (bubbles || '<p class="lab-empty">Start talking when it says Listening. Your words appear here as the call is transcribed.</p>') + '</div>' +
+      (P.notice ? '<div class="lab-note">' + E(P.notice) + '</div>' : '') + (P.err ? '<div class="lab-warn">' + E(P.err) + '</div>' : '') + '</div>';
+  }
+
+  async function startVoice() {
+    const P = S.practice, p = S.personas.find((x) => x.id === P.personaId) || S.personas[0]; if (!p) return;
+    if (!window.ai || !window.ai.liveToken || typeof LabVoice === 'undefined') { toast('Voice needs the desktop app.', 'error'); return; }
+    const ses = { id: uid('ses'), personaId: p.id, personaName: p.name, startedAt: now(), turns: [], hiddenSnapshot: clone(p.hidden), provider: 'gemini', model: liveModel(), mode: 'voice', score: null };
+    P.session = ses; P.err = ''; P.notice = ''; P.live = null; P.vstate = 'connecting'; render();
+    const tk = await window.ai.liveToken();
+    if (!tk.ok) { P.err = tk.error; P.session = null; P.vstate = ''; return render(); }
+    let pending = false;
+    const repaint = () => { if (pending) return; pending = true; setTimeout(() => { pending = false; if (S.practice.session === ses && S.tab === 'practice') render(); }, 120); };
+    const ctl = LabVoice.create({
+      onTurn: (role, text) => { ses.turns.push({ role, text }); repaint(); },
+      onLive: (l) => { P.live = l; repaint(); },
+      onState: (s) => { P.vstate = s; repaint(); },
+      onNotice: (m) => { P.notice = m; repaint(); },
+      onError: (m) => { P.err = m; repaint(); },
+      onClosed: (why) => { P.ctl = null; P.vstate = 'ended'; P.live = null; if (why) P.notice = 'Call closed: ' + why; repaint(); }
+    });
+    P.ctl = ctl;
+    try { await ctl.start(tk.token, liveModel(), buildPersonaPrompt(Object.assign({}, p, { hidden: ses.hiddenSnapshot }), { voice: true })); }
+    catch (e) {
+      const denied = e && (e.name === 'NotAllowedError' || e.name === 'NotFoundError');
+      ctl.stop(); P.ctl = null; P.session = null; P.vstate = '';
+      P.err = denied ? 'The microphone is blocked or missing. Allow it in Windows privacy settings, or use a text call.' : 'Could not start the voice call. Text calls still work.';
+      render();
+    }
+  }
+
   async function saveSessions() { await sset(K.sessions, S.sessions); }
 
   async function practiceAct(act, id) {
     const P = S.practice;
     if (act === 'pr-random') { P.personaId = S.personas[Math.floor(Math.random() * S.personas.length)].id; return render(); }
+    if (act === 'pr-start' && P.mode === 'voice') return startVoice();
     if (act === 'pr-start') {
       const p = S.personas.find((x) => x.id === P.personaId) || S.personas[0]; if (!p) return;
       P.session = { id: uid('ses'), personaId: p.id, personaName: p.name, startedAt: now(), turns: [], hiddenSnapshot: clone(p.hidden), provider: S.settings.provider, model: curModel(), score: null, hungUp: false };
       P.err = ''; P.draft = ''; return render();
     }
-    if (act === 'pr-abandon') { if (!confirm('Discard this call?')) return; P.session = null; P.err = ''; return render(); }
+    if (act === 'pr-abandon') { if (!confirm('Discard this call?')) return; if (P.ctl) P.ctl.stop(); P.session = null; P.err = ''; return render(); }
     if (act === 'pr-open') { P.session = S.sessions.find((s) => s.id === id) || null; return render(); }
     if (act === 'pr-close') { P.session = null; return render(); }
     if (act === 'pr-delete') { if (!confirm('Delete this call record?')) return; S.sessions = S.sessions.filter((s) => s.id !== id); await saveSessions(); P.session = null; return render(); }
@@ -592,6 +642,7 @@ const Lab = (function () {
 
   async function practiceEnd() {
     const P = S.practice, ses = P.session; if (!ses || P.busy) return;
+    if (ses.mode === 'voice' && P.ctl) { P.ctl.stop(); await new Promise((r) => setTimeout(r, 60)); }
     if (ses.turns.filter((t) => t.role === 'rep').length < 2) { toast('Say at least two lines before scoring.', 'error'); return; }
     P.busy = true; P.err = ''; render();
     const p = { name: ses.personaName, hidden: ses.hiddenSnapshot };
@@ -686,7 +737,7 @@ const Lab = (function () {
     if (el.tagName === 'SELECT' || (el.tagName === 'INPUT' && el.type === 'checkbox' && act !== 'blind-toggle')) return;
     const guard = () => !u.dirty || confirm('Discard your unsaved changes?');
     try {
-      if (act === 'tab') { if (!guard()) return; u.dirty = false; S.tab = id; return render(); }
+      if (act === 'tab') { if (!guard()) return; if (S.practice.ctl) S.practice.ctl.stop(); u.dirty = false; S.tab = id; return render(); }
 
       if (act.startsWith('pr-')) return practiceAct(act, id);
 
@@ -797,6 +848,8 @@ const Lab = (function () {
     root.addEventListener('change', (e) => {
       const t = e.target;
       if (t.dataset.act === 'pr-persona') { S.practice.personaId = t.value; return; }
+      if (t.dataset.act === 'pr-mode') { S.practice.mode = t.value; render(); return; }
+      if (t.dataset.act === 'ai-live-model') { S.settings.models.live = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-model') { S.settings.models[S.settings.provider] = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-provider') { S.settings.provider = t.value; sset(K.settings, S.settings); render(); return; }
       if (t.dataset.act === 'pb-pick') { S.ui.pbId = t.value; S.ui.editCard = null; S.ui.cardDraft = null; render(); return; }
