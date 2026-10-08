@@ -280,6 +280,7 @@
   #splash .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid rgba(255,255,255,.2);border-top-color:var(--orange-500);animation:spin .8s linear infinite}
 </style>
 <link rel="stylesheet" href="callconsole.css">
+<link rel="stylesheet" href="lab/lab.css">
 </head>
 <body>
 
@@ -383,6 +384,9 @@
       <button class="navbtn" id="tab-reference" onclick="showTab('reference')">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H11v18H5.5A1.5 1.5 0 0 1 4 19.5z"></path><path d="M20 4.5A1.5 1.5 0 0 0 18.5 3H13v18h5.5a1.5 1.5 0 0 0 1.5-1.5z"></path></svg>
         <span>Reference</span></button>
+      <button class="navbtn" id="tab-lab" onclick="showTab('lab')">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"></path><path d="M10 3v6.5L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9.5V3"></path><line x1="7.5" y1="15" x2="16.5" y2="15"></line></svg>
+        <span>Sales Lab</span></button>
       <button class="navbtn" id="tab-settings" onclick="showTab('settings')">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.4-2-3.4-2.3.7a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.5 2.4a7.6 7.6 0 0 0-2.6 1.5l-2.3-.7-2 3.4 2 1.4a7.6 7.6 0 0 0 0 3l-2 1.4 2 3.4 2.3-.7c.75.65 1.63 1.16 2.6 1.5l.5 2.4h4l.5-2.4a7.6 7.6 0 0 0 2.6-1.5l2.3.7 2-3.4z"></path></svg>
         <span>Settings</span></button>
@@ -652,6 +656,8 @@
           <div id="reference-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;max-width:1180px"></div>
         </div>
 
+        <div id="pane-lab" style="display:none" class="anim-in"><div id="lab-root"></div></div>
+
         <div id="pane-leads" style="display:none"></div>
         <div id="pane-callreports" style="display:none" class="anim-in"></div>
 
@@ -700,6 +706,8 @@
 <script src="xlsx.full.min.js"></script>
 <script src="calldata.js"></script>
 <script src="callconsole.js"></script>
+<script src="lab/labdata.js"></script>
+<script src="lab/lab.js"></script>
 <script>
 
 /* ================= data ================= */
@@ -2241,15 +2249,15 @@ function renderReference(){
 
 /* ================= tabs & toast ================= */
 function showTab(t){
-  ['dashboard','leads','callreports','new','list','expenses','reports','reference','clients','archive','settings'].forEach(x=>{
+  ['dashboard','leads','callreports','new','list','expenses','reports','reference','lab','clients','archive','settings'].forEach(x=>{
     document.getElementById('pane-'+x).style.display=x===t?'block':'none';
     document.getElementById('tab-'+x).classList.toggle('active',x===t);
   });
   document.getElementById('app-shell').classList.toggle('split-view', t==='new');
   document.getElementById('app-shell').classList.toggle('call-view', t==='leads');
   document.getElementById('dash-period-group').style.display=t==='dashboard'?'flex':'none';
-  const titles={dashboard:'Dashboard',leads:'Leads',callreports:'Call reports',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',settings:'Settings'};
-  const notes={dashboard:'Cash basis',leads:'Green is what you say, red is what you do',callreports:'Built from your own calls',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};
+  const titles={dashboard:'Dashboard',leads:'Leads',callreports:'Call reports',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',lab:'Sales Lab',settings:'Settings'};
+  const notes={lab:'Offers, pains, personas and scripts. Nothing here reaches a live call until you publish it',dashboard:'Cash basis',leads:'Green is what you say, red is what you do',callreports:'Built from your own calls',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};
   document.getElementById('screen-title').textContent=titles[t]||t;
   document.getElementById('screen-note').textContent=notes[t]||'';
   document.getElementById('nav-inv-count').textContent=invoices.length?String(invoices.length):'';
@@ -2262,6 +2270,7 @@ function showTab(t){
   if(t==='expenses'){ if(!document.getElementById('ex-date').value) startNewExpense(); renderExpenses(); }
   if(t==='reports')renderReports();
   if(t==='reference')renderReference();
+  if(t==='lab')Lab.render();
   if(t==='settings')renderSettingsBody();
 }
 let toastTimer;

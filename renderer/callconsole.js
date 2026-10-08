@@ -79,6 +79,36 @@ async function ccLoad() {
   ccEvents     = (await sget('lyc-call-events')) || [];
   ccScripts    = (await sget('lyc-scripts')) || DEFAULT_SCRIPTS.map(s => ({ ...s }));
   ccObjections = (await sget('lyc-objections')) || JSON.parse(JSON.stringify(DEFAULT_OBJECTIONS));
+  // Offer defaults added after first install, once each, without overwriting saved edits or bringing back deleted ones.
+  try {
+    const NEW_SCRIPT_IDS = ['07-reputation-6min'];
+    const NEW_OBJ = [
+      ['dontneed', 'We get our reviews on Angi / Thumbtack / Facebook'],
+      ['dontneed', "Our customers don't leave reviews"],
+      ['anything', "They're about to hang up for good"]
+    ];
+    const seen = (await sget('lyc-defaults-seen')) || [];
+    let touched = false;
+    NEW_SCRIPT_IDS.forEach(id => {
+      const key = 'script:' + id;
+      if (seen.includes(key)) return;
+      seen.push(key); touched = true;
+      const d = DEFAULT_SCRIPTS.find(s => s.id === id);
+      if (d && !ccScripts.some(s => s.id === id)) { ccScripts.push({ ...d }); ccSaveScripts(); }
+    });
+    NEW_OBJ.forEach(([gid, trig]) => {
+      const key = 'obj:' + gid + ':' + trig;
+      if (seen.includes(key)) return;
+      seen.push(key); touched = true;
+      const dg = DEFAULT_OBJECTIONS.groups.find(g => g.id === gid);
+      const di = dg && dg.items.find(i => i.trigger === trig);
+      if (!di) return;
+      let g = ccObjections.groups.find(x => x.id === gid);
+      if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.push(g); }
+      if (!g.items.some(i => i.trigger === trig)) { g.items.push(JSON.parse(JSON.stringify(di))); sset('lyc-objections', ccObjections); }
+    });
+    if (touched) sset('lyc-defaults-seen', seen);
+  } catch (e) { console.warn('defaults merge skipped', e); }
   ccSettings   = (await sget('lyc-call-settings')) || {};
   if (ccSettings.ui) ccUI = Object.assign(ccUI, ccSettings.ui);
   ccScriptId = ccSettings.lastScript || (ccScripts[0] && ccScripts[0].id) || '';
