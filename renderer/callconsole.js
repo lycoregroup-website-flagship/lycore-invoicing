@@ -1264,6 +1264,9 @@ function ccGroupColor(gid) {
   return pal[h % pal.length];
 }
 
+/* The objections people actually say most, shown first and always on screen. */
+const CC_TOP_OBJ = ["I'm not interested", 'We already have someone', "We're already set up on Google", "I'm too busy", 'Just email me', 'Just give me a number', "That's too expensive", 'Let me think about it', 'All our work is word of mouth', 'We get enough customers', 'We got burned before', 'Call me later', 'I need to ask my partner', 'Who is this?'];
+
 function ccObjChip(it) {
   const fav = (ccUI.favs || []).includes(it.trigger);
   return `<button class="cc-oc ${it._pinned ? 'pin' : ''} ${ccOpenObj === it.trigger ? 'open' : ''}" style="--oc:${ccGroupColor(it._gid)}" data-t="${esc(it.trigger)}">${fav ? '<b class="cc-fav">&#9733;</b> ' : ''}${esc(it.trigger)}</button>`;
@@ -1281,7 +1284,7 @@ function ccRenderObjections() {
     html = hits.length ? `<div class="cc-chipwrap">${hits.map(ccObjChip).join('')}</div>` : '<div class="cc-empty">No objection matches that.</div>';
   } else if (!ccUI.pivAll) {
     const fav = (ccUI.favs || []).map(byT).filter(Boolean), seen = new Set(), quick = [];
-    fav.concat(items.filter(i => !i._pinned)).forEach(i => { if (!seen.has(i.trigger) && quick.length < 10) { seen.add(i.trigger); quick.push(i); } });
+    fav.concat(CC_TOP_OBJ.map(byT).filter(Boolean), items.filter(i => !i._pinned)).forEach(i => { if (!seen.has(i.trigger) && quick.length < 14) { seen.add(i.trigger); quick.push(i); } });
     html = '<div class="cc-chipwrap cc-quick">' + quick.map(ccObjChip).join('') + '</div>' +
       '<button class="cc-seeall" data-piv="all">See all ' + items.length + ' objections</button>';
   } else {
@@ -1319,7 +1322,7 @@ function ccRenderObjAnswer() {
   el.innerHTML = `<div class="cc-ans-head"><b>${esc(it.trigger)}</b>
       <button class="cc-mini" data-a="fav" title="Pin to Favorites">${fav ? '&#9733; Favorite' : '&#9734; Favorite'}</button>
       ${it._pinned ? '' : `<button class="cc-log ${heard ? 'done' : ''}" data-a="log">${heard ? 'logged' : 'they said this'}</button>`}
-      <button class="cc-mini" data-a="close" title="Close the answer">&times;</button></div>
+      <button class="cc-mini cc-back" data-a="close" title="Back to all objections (Esc)">&larr; Objections</button></div>
     ${(it.say || []).map(s => '<p class="cc-ans-say">' + ccFill(s) + '</p>').join('')}
     ${it.then ? `<div class="cc-then"><b>Then:</b> ${esc(it.then)}</div>` : ''}
     ${it.means ? `<div class="cc-means">${esc(it.means)}</div>` : ''}`;
@@ -2216,3 +2219,11 @@ function renderCallReports() {
       })()}</div>
     </div>`;
 }
+
+/* Esc closes an open objection answer and brings the list back. */
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || !ccOpenObj) return;
+  const pane = document.getElementById('pane-leads'); if (!pane || pane.style.display === 'none') return;
+  if (document.querySelector('.cc-modal-overlay')) return;
+  ccOpenObj = null; ccRenderObjections();
+});
