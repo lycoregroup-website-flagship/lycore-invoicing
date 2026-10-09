@@ -537,7 +537,7 @@
           <div class="card anim-in anim-in-3" style="padding:18px 20px;margin-bottom:16px">
             <div class="row2" style="grid-template-columns:120px 1fr">
               <div class="field"><label>Tax rate %</label><input id="f-taxrate" type="number" min="0" step="0.01" placeholder="0"></div>
-              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://buy.stripe.com/…"></div>
+              <div class="field"><label>Payment link</label><input id="f-paylink" placeholder="https://whop.com/checkout/…"></div>
             </div>
             <div class="field" style="max-width:none;margin-top:12px"><label>Notes on the invoice</label><textarea id="f-notes"></textarea></div>
             <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft)">
@@ -753,15 +753,8 @@ UT:['Salt Lake City','West Valley City','Provo','West Jordan'],VT:['Burlington',
 VA:['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandria'],WA:['Seattle','Spokane','Tacoma','Vancouver','Bellevue'],
 WV:['Charleston','Huntington','Morgantown'],WI:['Milwaukee','Madison','Green Bay','Kenosha'],WY:['Cheyenne','Casper','Laramie']};
 
-const DEFAULT_CATALOG=[
-  {name:'Voice Receptionist \u2014 Setup',price:2999,freq:'once',paylink:'https://buy.stripe.com/7sY28s2sy3wPcUT4Xa8Vi01'},
-  {name:'Voice Receptionist \u2014 Monthly Service',price:499,freq:'month',paylink:'https://buy.stripe.com/bJe4gAaZ4ebt5srbly8Vi02'},
-  {name:'Voice Receptionist \u2014 Monthly Service + Chatbot',price:699,freq:'month',paylink:'https://buy.stripe.com/9B67sMaZ4gjB0873T68Vi03'},
-  {name:'Website Build',price:697,freq:'once',paylink:'https://buy.stripe.com/8x25kEgjo0kDaML4Xa8Vi04'},
-  {name:'Website Maintenance \u2014 Monthly',price:89,freq:'month',paylink:'https://buy.stripe.com/14A7sMc383wP2gf3T68Vi00'},
-  {name:'Reputation Management \u2014 Monthly',price:349,freq:'month',paylink:'https://buy.stripe.com/00wcN6d7c5EX3kj75i8Vi05'},
-  {name:'Missed Call Text Back \u2014 Monthly',price:199,freq:'month',paylink:'https://buy.stripe.com/eVq6oI1ou3wPcUT75i8Vi06'}
-];
+const OLD_DEFAULT_CATALOG_NAMES=["Voice Receptionist \u2014 Setup","Voice Receptionist \u2014 Monthly Service","Voice Receptionist \u2014 Monthly Service + Chatbot","Website Build","Website Maintenance \u2014 Monthly","Reputation Management \u2014 Monthly","Missed Call Text Back \u2014 Monthly"];
+const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_irhs6nr2OFchh"},{"name":"Reputation Management \u2014 Monthly","price":899,"freq":"month","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Website Build","price":697,"freq":"once","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"Website Maintenance \u2014 Monthly","price":89,"freq":"month","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"AI Receptionist + Web Chat \u2014 Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"AI Receptionist + Web Chat \u2014 Monthly","price":699,"freq":"month","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"Missed-Call Text-Back \u2014 Monthly","price":199,"freq":"month","paylink":"https://whop.com/checkout/plan_1czgo9aRXvfoK"}];
 /* Bundles pair a one-time setup fee with its recurring monthly companion so
    picking either from the dropdown always adds both together \u2014 the mistake
    this exists to prevent is billing a setup fee with no ongoing service
@@ -771,11 +764,8 @@ const DEFAULT_CATALOG=[
    second charge to chase down). Services with no setup fee (Reputation
    Management, Missed Call Text Back) are never bundled \u2014 they stay
    individually selectable, same as before. */
-const DEFAULT_BUNDLES=[
-  {label:'Voice Receptionist \u2014 Setup + Monthly Service',parts:['Voice Receptionist \u2014 Setup','Voice Receptionist \u2014 Monthly Service'],paylink:'https://buy.stripe.com/8x2cN6ffk3wPcUTbly8Vi07'},
-  {label:'Voice Receptionist \u2014 Setup + Monthly Service + Chatbot',parts:['Voice Receptionist \u2014 Setup','Voice Receptionist \u2014 Monthly Service + Chatbot'],paylink:'https://buy.stripe.com/9B6aEY6IO9Vd7Az89m8Vi09'},
-  {label:'Website \u2014 Build + Maintenance',parts:['Website Build','Website Maintenance \u2014 Monthly'],paylink:'https://buy.stripe.com/dRmcN62sy0kDg752P28Vi08'}
-];
+const OLD_DEFAULT_BUNDLE_LABELS=["Voice Receptionist \u2014 Setup + Monthly Service","Voice Receptionist \u2014 Setup + Monthly Service + Chatbot","Website \u2014 Build + Maintenance"];
+const DEFAULT_BUNDLES=[{"label":"Website \u2014 Build + Maintenance","parts":["Website Build","Website Maintenance \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"label":"AI Receptionist + Web Chat \u2014 Setup + Monthly","parts":["AI Receptionist + Web Chat \u2014 Setup","AI Receptionist + Web Chat \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"}];
 const INDUSTRIES=['Bail Bonds','Restoration','Auto Detailing','Plumbing'];
 
 let settings={}, invoices=[], archive=[], expenses=[], expenseArchive=[], catalog=null, bundles=null, pinHash=null, recoveryHash=null, draft=null;
@@ -796,6 +786,15 @@ async function loadAll(){
   expenseArchive=(await sget('lyc-expense-archive'))||[];
   catalog=(await sget('lyc-catalog'))||DEFAULT_CATALOG.map(x=>({...x}));
   bundles=(await sget('lyc-bundles'))||DEFAULT_BUNDLES.map(x=>({...x,parts:[...x.parts]}));
+  if(!settings.whopCatalogV1){
+    const newNames=DEFAULT_CATALOG.map(x=>x.name), newLabels=DEFAULT_BUNDLES.map(x=>x.label);
+    const ownItems=(catalog||[]).filter(c=>c.name&&!OLD_DEFAULT_CATALOG_NAMES.includes(c.name)&&!newNames.includes(c.name));
+    const ownBundles=(bundles||[]).filter(b=>b.label&&!OLD_DEFAULT_BUNDLE_LABELS.includes(b.label)&&!newLabels.includes(b.label));
+    catalog=DEFAULT_CATALOG.map(x=>({...x})).concat(ownItems);
+    bundles=DEFAULT_BUNDLES.map(x=>({...x,parts:[...x.parts]})).concat(ownBundles);
+    settings.whopCatalogV1=true;
+    await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles); await sset('lyc-settings',settings);
+  }
   pinHash=(await sget('lyc-pin'))||null;
   recoveryHash=(await sget('lyc-recovery'))||null;
   draft=(await sget('lyc-draft'))||null;
@@ -1130,7 +1129,7 @@ function renderCatalogRows(){
         </select>
         <button class="btn" style="margin-left:auto;padding:5px 10px" onclick="this.closest('.cat-row').remove()">\u00D7</button>
       </div>
-      <input class="cl" value="${esc(c.paylink||'')}" placeholder="Stripe payment link (optional \u2014 auto-fills when this service is picked)" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;width:100%">`;
+      <input class="cl" value="${esc(c.paylink||'')}" placeholder="Payment link (auto-fills when this service is picked)" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;width:100%">`;
     w.appendChild(d);
   });
 }
@@ -1156,7 +1155,7 @@ function renderBundleRows(){
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end">
-        <input class="bpl" value="${esc(b.paylink||'')}" placeholder="Stripe payment link for this bundle" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;flex:1">
+        <input class="bpl" value="${esc(b.paylink||'')}" placeholder="Payment link for this bundle" style="border:1px solid var(--border-soft);padding:7px 9px;font-size:12.5px;background:#fff;flex:1">
         <button class="btn" style="padding:5px 10px" onclick="this.closest('.bundle-row').remove()">\u00D7</button>
       </div>`;
     d.querySelector('.bp1').value=b.parts[0]||'';
@@ -2095,11 +2094,12 @@ function render(){
         p:[['Reference',inv.number],['IBAN',settings['eur-iban']],['Swift/BIC',settings['eur-bic']]]});
     }
   }
-  const epc=cur==='EUR'?epcPayload(inv):null;
+  if(inv.paylink){ cols=[]; shared=null; mismatchBen=null; }
+  const epc=(cur==='EUR'&&!inv.paylink)?epcPayload(inv):null;
   const kv=(pairs)=>pairs.filter(p=>p[1]).map(p=>`<div class="kv"><span class="k">${p[0]}</span><span class="v mono">${esc(p[1])}</span></div>`).join('');
   const sharedPairs=shared?[['Account holder',shared.ben],['Bank name',shared.bankName],['Bank address',shared.bankAddr],...shared.extra].filter(p=>p[1]):[];
   const sharedHtml=sharedPairs.length?`<div class="ways-shared">${kv(sharedPairs)}</div>`:'';
-  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay by card</div><div class="cs">Charged in USD \u2014 your bank converts automatically if your card is in another currency</div><a href="${esc(inv.paylink)}" class="pay-link" target="_blank" rel="noopener">Pay online</a><div class="timing">Clears immediately; the receipt reaches you the same minute.</div></div>`:'';
+  const cardCol=inv.paylink?`<div class="col"><div class="ct">Pay online</div><div class="cs">Secure checkout by card. Click the button to pay this invoice.</div><a href="${esc(inv.paylink)}" class="pay-link" target="_blank" rel="noopener">Pay now</a><div class="timing" style="word-break:break-all">${esc(inv.paylink)}</div></div>`:'';
   const colsHtml=cols.map(c=>`<div class="col"><div class="ct">${c.t}</div><div class="cs">${c.s}</div>${kv(c.p)}${c.proc?`<div class="timing">${esc(c.proc)}</div>`:''}${c.warn?`<div class="paywarn">${esc(c.warn)}</div>`:''}</div>`).join('')
     +(epc?`<div class="col"><div class="ct">Scan to pay</div><div class="cs">Opens pre-filled in your banking app</div><div id="qrbox" style="margin-top:8px"></div></div>`:'');
 
