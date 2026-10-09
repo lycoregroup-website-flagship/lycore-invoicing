@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'home', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'live', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '', ind: '' }, evId: null, evDraft: null, evSuggest: null, evFilter: { q: '', type: '' },
@@ -221,7 +221,7 @@ const Lab = (function () {
       ['pains', 'Customer problems', 'pains', 'The problems you think prospects have, and the questions that would prove it.'],
       ['personas', 'Practice buyers', 'personas', 'Pretend prospects to practise against, including some who should say no.'],
       ['scripts', 'Call scripts', 'scripts', 'Reusable script pieces. Nothing reaches a live call until you publish it.']]],
-    ['Practice', [['practice', 'Practice calls', 'sessions', 'Talk or type with a pretend buyer, then get coaching quoted from the transcript.']]],
+    ['Practice', [['live', 'Guided live', null, 'Scripts and quick answers while you are on a call.'], ['practice', 'Practice calls', 'sessions', 'Talk or type with a pretend buyer, then get coaching quoted from the transcript.']]],
     ['Prove it', [
       ['evidence', 'Evidence', 'evidence', 'What real prospects actually said. This is what turns a guess into proof.'],
       ['panel', 'Expert panel', 'panelRuns', 'Ask AI reviewers to poke holes in an offer before you spend time on it.'],
@@ -245,7 +245,7 @@ const Lab = (function () {
     return '<div class="lab-shell"><nav class="lab-side" aria-label="Sales Lab sections">' +
       NAV.map((g) => '<div class="lab-group">' + (g[0] ? '<div class="lab-gh">' + E(g[0]) + '</div>' : '') +
         g[1].map((t) => '<button class="lab-nl' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '"><span>' + E(t[1]) + '</span><em>' + navCount(t[2]) + '</em></button>').join('') + '</div>').join('') +
-      '</nav><main class="lab-main"><header class="lab-ph"><h2>' + E(m[1]) + '</h2><p>' + E(m[3]) + '</p></header><div class="lab-body">' + body + '</div></main></div>';
+      '</nav><main class="lab-main">' + (S.tab === 'live' ? '' : '<header class="lab-ph"><h2>' + E(m[1]) + '</h2><p>' + E(m[3]) + '</p></header>') + '<div class="lab-body">' + body + '</div></main></div>';
   }
 
   function aiReady() {
@@ -261,7 +261,7 @@ const Lab = (function () {
       { t: 'Record what real prospects say', d: 'Practice shows how you sound. Only real calls show whether the offer is wanted. Log what people actually said.', tab: 'evidence', done: S.evidence.length > 0, stat: S.evidence.length + ' evidence ' + (S.evidence.length === 1 ? 'item' : 'items'), btn: 'Open evidence' }
     ];
     const next = steps.findIndex((s) => !s.done);
-    const more = [['pains', 'Customer problems', 'The problems you think prospects have.'], ['personas', 'Practice buyers', 'Pretend prospects to practise against.'], ['scripts', 'Call scripts', 'Reusable script pieces, published to the call console when you approve.'], ['panel', 'Expert panel', 'Have AI reviewers challenge an offer.'], ['stats', 'Results', 'What the records show so far.']];
+    const more = [['live', 'Guided live', 'Your script and quick answers, laid out for use during a call.'], ['pains', 'Customer problems', 'The problems you think prospects have.'], ['personas', 'Practice buyers', 'Pretend prospects to practise against.'], ['scripts', 'Call scripts', 'Reusable script pieces, published to the call console when you approve.'], ['panel', 'Expert panel', 'Have AI reviewers challenge an offer.'], ['stats', 'Results', 'What the records show so far.']];
     return '<div class="lab-hero"><b>Sales Lab is where you test an idea before you sell it.</b> Nothing here reaches a live call or a real client until you publish it. Everything you see is from your own records.</div>' +
       '<ol class="lab-steps">' + steps.map((s, i) => '<li class="lab-step' + (s.done ? ' done' : '') + (i === next ? ' next' : '') + '"><span class="lab-stepn">' + (s.done ? '&#10003;' : i + 1) + '</span>' +
         '<div class="lab-stepb"><div class="lab-stept">' + E(s.t) + (i === next ? ' <span class="lab-tag">Do this next</span>' : '') + '</div><div class="lab-stepd">' + E(s.d) + '</div><div class="lab-steps-s">' + E(s.stat) + '</div></div>' +
@@ -319,6 +319,126 @@ const Lab = (function () {
       '<div class="field"><label>Text model' + (cur === 'huggingface' ? ' (copy it from the model page on Hugging Face)' : '') + '</label><input list="lab-dl-text" data-act="ai-model" value="' + E(models[cur] || '') + '" placeholder="model id"><datalist id="lab-dl-text">' + opts(ck && ck.models && ck.models.text) + '</datalist></div>' +
       (cur === 'gemini' ? '<div class="field"><label>Voice model</label><input list="lab-dl-live" data-act="ai-live-model" value="' + E(models.live || '') + '"><datalist id="lab-dl-live">' + opts(ck && ck.models && ck.models.live) + '</datalist></div>' : '') +
       '</div></details></div>';
+  }
+
+  /* ---- Guided live: the call companion. Stage pills, one stage card, quick pivots. Reads the call-console scripts and objections, edits nothing. ---- */
+  const LIVE_STAGES = [
+    ['Opener', ['Opening', 'Gatekeeper'], 'Start the conversation', 'Earn curiosity before introducing an offer.', 'Listen for what actually happens. Do not bring up the service yet.'],
+    ['Discovery', ['Discovery'], 'Find out what is really happening', 'Ask, then let them say the problem in their own words.', 'Write down their exact words. Do not fix anything yet.'],
+    ['Pitch', ['Pitch'], 'Show how it works', 'Tie it to what they just told you, nothing more.', 'Stop after the explanation and let them react.'],
+    ['Book demo', ['Close'], 'Agree one small next step', 'Ask clearly, then stop talking.', 'If they hesitate, answer one objection from the right, then ask again.'],
+    ['Follow-up', ['Follow-up'], 'Leave it in a good place', 'Confirm what happens next and when.', 'Log the call before you do anything else.']
+  ];
+  const LG_ICON = {
+    head: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg>',
+    user: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
+    pen: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+    bolt: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 3 5 13h6l-1 8 8-10h-6z"/></svg>',
+    copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
+    arrow: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    tap: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a1.5 1.5 0 0 1 3 0v5l5 1.2a2 2 0 0 1 1.5 2.4L17.6 19a2 2 0 0 1-2 1.5H11a2 2 0 0 1-1.7-1l-3-4.7a1.5 1.5 0 0 1 2.4-1.8z"/></svg>',
+    dots: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="5.5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18.5" cy="12" r="1.8"/></svg>',
+    undo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>'
+  };
+  function liveState() { if (!S.ui.live) S.ui.live = { stage: 'Opener', part: 0, obj: null, all: false, menu: false, scriptId: '', scn: '' }; return S.ui.live; }
+  function liveTitle(t) { return String(t).replace(/^\s*\d+\s*[-.:)]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase().replace(/(^|\s)\S/g, (m) => m.toUpperCase()); }
+  function liveScript() {
+    if (typeof ccScripts === 'undefined' || !ccScripts.length) return null;
+    const L = liveState(), want = L.scriptId || (typeof ccScriptId !== 'undefined' && ccScriptId) || '';
+    return ccScripts.find((x) => x.id === want) || ccScripts[0];
+  }
+  function liveCards() {
+    const sc = liveScript(); if (!sc) return [];
+    return parseScript(sc.body).cards.filter((c) => c.body.some((l) => l.startsWith('>'))).map((c) => ({ title: liveTitle(c.title), stage: guessStage(c.title), lines: c.body }));
+  }
+  function liveFill(text) {
+    const set = (typeof ccSettings !== 'undefined' && ccSettings) || {}, vals = { rep_name: set.rep_name, offer_line: set.offer_line, discount_line: set.discount_line };
+    return E(text).replace(/\{\{(\w+)(?:\|([^}]*))?\}\}/g, (m, k, fb) => {
+      const v = vals[k]; if (v) return E(v);
+      if (fb !== undefined) return E(fb);
+      return '<span class="lg-ph">[' + E(k.replace(/_/g, ' ')) + ']</span>';
+    });
+  }
+  function livePivots() {
+    if (typeof ccObjections === 'undefined') return [];
+    const all = [];
+    (ccObjections.groups || []).forEach((g) => { if (!g.pinned) (g.items || []).forEach((it) => all.push(it)); });
+    const rec = ((typeof ccUI !== 'undefined' && ccUI.recent) || []).map((t) => all.find((i) => i.trigger === t)).filter(Boolean);
+    const seen = new Set(), out = [];
+    rec.concat(all).forEach((i) => { if (!seen.has(i.trigger)) { seen.add(i.trigger); out.push(i); } });
+    return out;
+  }
+
+  function vLive() {
+    const L = liveState(), ready = aiReady();
+    const st = LIVE_STAGES.find((s) => s[0] === L.stage) || LIVE_STAGES[0];
+    const cards = liveCards().filter((c) => st[1].includes(c.stage));
+    if (L.part >= cards.length) L.part = 0;
+    const card = cards[L.part];
+    const personas = S.personas, sc = personas.find((p) => p.id === L.scn) || null;
+    const scenSel = '<select class="lg-sel" data-act="live-scn"><option value="">Typical pest control owner</option>' + personas.map((p) => '<option value="' + E(p.id) + '"' + (p.id === L.scn ? ' selected' : '') + '>' + E(p.name) + (p.mood ? ' · ' + E(p.mood) : '') + '</option>').join('') + '</select>';
+    const scenDesc = sc ? ((sc.role || '') + (sc.mood ? ' · ' + sc.mood : '')) : 'Busy, guarded, has heard cold calls before.';
+
+    let say = '', nextMove = st[4], copyText = '';
+    if (card) {
+      const sayLines = card.lines.filter((l) => l.startsWith('>')).map((l) => l.slice(2).trim());
+      copyText = sayLines.map((t) => t.replace(/\{\{(\w+)(?:\|([^}]*))?\}\}/g, (m, k, fb) => { const v = ((typeof ccSettings !== 'undefined' && ccSettings) || {})[k]; return v || (fb !== undefined ? fb : '[' + k.replace(/_/g, ' ') + ']'); })).join('\n\n');
+      say = sayLines.map((t) => '<p>' + liveFill(t) + '</p>').join('');
+      const moves = card.lines.filter((l) => /^[~!]/.test(l) && !/^~ Branch/.test(l)).map((l) => l.slice(2).trim());
+      if (moves.length) nextMove = moves.slice(0, 2).join(' ');
+    }
+    S.ui.liveCopy = copyText;
+    const pager = cards.length > 1 ? '<div class="lg-pager"><button data-act="live-part" data-id="-1" aria-label="Previous part">&lsaquo;</button><span>Part ' + (L.part + 1) + ' of ' + cards.length + (card ? ' &middot; ' + E(card.title) : '') + '</span><button data-act="live-part" data-id="1" aria-label="Next part">&rsaquo;</button></div>' : '';
+    const stageCard = '<section class="lg-card"><div class="lg-cardtop"><span class="lg-eyebrow">STAGE GUIDE</span><button class="lg-pillbtn" data-act="live-edit">' + LG_ICON.pen + ' Edit</button></div>' +
+      '<h3 class="lg-h3">' + E(st[2]) + '</h3><p class="lg-sub">' + E(st[3]) + '</p>' + pager +
+      (card ? '<div class="lg-say"><div class="lg-saytop"><span class="lg-eyebrow">SAY THIS &bull; SUGGESTED</span><button class="lg-copy" data-act="live-copy">' + LG_ICON.copy + ' <span>Copy</span></button></div><div class="lg-saybody">' + say + '</div></div>'
+        : '<div class="lg-empty">This script has nothing written for this stage yet. Choose another script below, or press Edit to add it.</div>') +
+      '<div class="lg-next"><div class="lg-nexth">' + LG_ICON.arrow + '<b>Next move</b></div><p>' + E(nextMove) + '</p></div></section>';
+
+    const pv = livePivots(), shown = L.all ? pv : pv.slice(0, 10), open = pv.find((i) => i.trigger === L.obj);
+    const ans = open ? '<div class="lg-ans"><div class="lg-anst">' + E(open.trigger) + '</div>' + (open.say || []).map((t) => '<p class="lg-anssay">' + liveFill(t) + '</p>').join('') + (open.then ? '<p class="lg-then"><b>Next move:</b> ' + E(open.then) + '</p>' : '') + '</div>'
+      : '<div class="lg-pick">' + LG_ICON.tap + '<p>Choose an objection to reveal a suggested response and the next move.</p></div>';
+    const pivots = '<section class="lg-card"><div class="lg-cardtop"><h3 class="lg-h3 lg-h3i">' + LG_ICON.bolt + ' Quick pivots</h3></div>' +
+      '<p class="lg-sub">Tap what the prospect just said. The response appears below.</p>' +
+      '<div class="lg-grid">' + shown.map((i) => '<button class="lg-chip' + (i.trigger === L.obj ? ' on' : '') + '" data-act="live-obj" data-id="' + E(i.trigger) + '">' + E(i.trigger) + '</button>').join('') + '</div>' +
+      (pv.length > 10 ? '<button class="lg-more" data-act="live-all">' + (L.all ? 'Show fewer' : 'See all ' + pv.length) + '</button>' : '') + ans + '</section>';
+
+    const scripts = (typeof ccScripts !== 'undefined' ? ccScripts : []);
+    const cur = liveScript();
+    return '<div class="lg">' +
+      '<header class="lg-head"><div class="lg-logo">' + LG_ICON.head + '</div><div class="lg-title"><b>LYCORE Sales Lab</b><span>GUIDED LIVE &bull; Call companion</span></div>' +
+      '<div class="lg-status">' + (ready ? '<span class="lg-ready"><i></i>Ready</span>' : '<button class="lg-ready warn" data-act="tab" data-id="ai"><i></i>Set up AI</button>') + '<small>Practice guide</small></div></header>' +
+      '<div class="lg-label">Current prospect scenario</div>' + '<div class="lg-selwrap">' + scenSel + '</div>' +
+      '<div class="lg-scn">' + LG_ICON.user + '<span>' + E(scenDesc) + '</span></div>' +
+      '<div class="lg-label">Conversation stage</div>' +
+      '<div class="lg-stages">' + LIVE_STAGES.map((s) => '<button class="lg-stage' + (s[0] === L.stage ? ' on' : '') + '" data-act="live-stage" data-id="' + E(s[0]) + '">' + E(s[0]) + '</button>').join('') + '</div>' +
+      '<div class="lg-cols">' + stageCard + pivots + '</div>' +
+      '<footer class="lg-foot"><div><b>Edit cards without changing the entire script</b><span>Script: <select class="lg-sel lg-selsm" data-act="live-script">' + scripts.map((s) => '<option value="' + E(s.id) + '"' + (cur && s.id === cur.id ? ' selected' : '') + '>' + E((typeof ccScriptName === 'function' ? ccScriptName(s.id) : s.id)) + '</option>').join('') + '</select></span></div>' +
+      '<button class="lg-reset" data-act="live-reset">' + LG_ICON.undo + ' Reset view</button></footer>' +
+      '<div class="lg-fab"><button class="lg-dots" data-act="live-menu" aria-label="More">' + LG_ICON.dots + '</button>' +
+      (L.menu ? '<div class="lg-menu"><button data-act="live-edit">Edit this script</button><button data-act="live-voice">Practice this by voice</button><button data-act="tab" data-id="practice">Open practice calls</button></div>' : '') + '</div></div>';
+  }
+
+  function liveAct(act, id, el) {
+    const L = liveState();
+    if (act === 'live-stage') { L.stage = id; L.part = 0; L.menu = false; return render(); }
+    if (act === 'live-part') { L.part = Math.max(0, L.part + Number(id)); return render(); }
+    if (act === 'live-obj') { L.obj = L.obj === id ? null : id; L.menu = false; return render(); }
+    if (act === 'live-all') { L.all = !L.all; return render(); }
+    if (act === 'live-reset') { Object.assign(L, { stage: 'Opener', part: 0, obj: null, all: false, menu: false }); return render(); }
+    if (act === 'live-menu') { L.menu = !L.menu; return render(); }
+    if (act === 'live-copy') {
+      if (S.ui.liveCopy && navigator.clipboard) navigator.clipboard.writeText(S.ui.liveCopy);
+      const sp = el.querySelector('span'); if (sp) { sp.textContent = 'Copied'; setTimeout(() => { sp.textContent = 'Copy'; }, 1200); }
+      return;
+    }
+    if (act === 'live-edit') { L.menu = false; const sc = liveScript(); if (sc && typeof ccOpenScriptForm === 'function') ccOpenScriptForm(sc.id); else toast('Open the Leads screen to edit scripts.', 'info'); return; }
+    if (act === 'live-voice') {
+      L.menu = false; const sc = liveScript();
+      if (sc && typeof ccLoadScript === 'function' && typeof ccVoiceOpen === 'function') { ccScriptId = sc.id; ccLoadScript(sc.id); window.__ccVoiceScn = L.scn || ''; ccVoiceOpen('practice'); }
+      else toast('Voice practice needs the desktop app.', 'info');
+      return render();
+    }
   }
 
   /* ---- offers */
@@ -948,9 +1068,9 @@ const Lab = (function () {
     const root = document.getElementById('lab-root'); if (!root) return;
     if (!bound) { bind(root); bound = true; }
     const y = root.scrollTop;
-    if (S.tab === 'home' || S.tab === 'ai' || S.tab === 'practice' || S.tab === 'panel' || S.tab === 'evidence') await refreshAi();
+    if (S.tab === 'home' || S.tab === 'live' || S.tab === 'ai' || S.tab === 'practice' || S.tab === 'panel' || S.tab === 'evidence') await refreshAi();
     if (S.tab === 'practice' && !S.practice.personaId && S.personas[0]) S.practice.personaId = S.personas[0].id;
-    root.innerHTML = shellHtml(S.tab === 'home' ? vHome() : S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : S.tab === 'evidence' ? vEvidence() : S.tab === 'panel' ? vPanel() : S.tab === 'stats' ? vStats() : vScripts());
+    root.innerHTML = shellHtml(S.tab === 'home' ? vHome() : S.tab === 'live' ? vLive() : S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : S.tab === 'evidence' ? vEvidence() : S.tab === 'panel' ? vPanel() : S.tab === 'stats' ? vStats() : vScripts());
     root.scrollTop = y;
     if (S.tab === 'practice') { const tx = document.getElementById('lab-tx'); if (tx) tx.scrollTop = tx.scrollHeight; const pin = document.getElementById('lab-pin'); if (pin && !S.practice.busy) pin.focus(); }
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* not a text input */ } } }
@@ -1025,6 +1145,7 @@ const Lab = (function () {
     try {
       if (act === 'tab') { if (!guard()) return; if (S.practice.ctl) S.practice.ctl.stop(); u.dirty = false; S.tab = id; return render(); }
 
+      if (act.startsWith('live-')) return liveAct(act, id, el);
       if (act.startsWith('pr-')) return practiceAct(act, id);
       if (act.startsWith('ev-')) return evAct(act, id, el);
       if (act.startsWith('pn-')) return panelAct(act, id);
@@ -1154,6 +1275,8 @@ const Lab = (function () {
       if (t.dataset.act === 'pn-offer') { S.pn.offerId = t.value; S.pn.run = null; render(); return; }
       if (t.dataset.act === 'pn-role') { S.pn.roles[t.dataset.id] = t.checked; return; }
       if (t.dataset.act === 'pr-mode') { S.practice.mode = t.value; render(); return; }
+      if (t.dataset.act === 'live-scn') { liveState().scn = t.value; render(); return; }
+      if (t.dataset.act === 'live-script') { const L = liveState(); L.scriptId = t.value; L.part = 0; L.obj = null; render(); return; }
       if (t.dataset.act === 'ai-live-model') { S.settings.models.live = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-model') { S.settings.models[S.settings.provider] = t.value.trim(); sset(K.settings, S.settings); return; }
       if (t.dataset.act === 'ai-provider') { S.settings.provider = t.value; sset(K.settings, S.settings); render(); return; }

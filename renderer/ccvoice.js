@@ -185,7 +185,7 @@
   function open(mode) {
     if (V) closeModal();
     if (!ccScript) return toast('Pick a script first', 'error');
-    V = { mode: mode || 'practice', turns: [], live: null, state: '', err: '', notice: '', busy: false, draft: null, fb: '', ctl: null, scn: '', personas: [] };
+    V = { mode: mode || 'practice', turns: [], live: null, state: '', err: '', notice: '', busy: false, draft: null, fb: '', ctl: null, scn: window.__ccVoiceScn || '', personas: [] };
     const me0 = V;
     sget('lab-personas').then(p => { if (V === me0 && Array.isArray(p)) { me0.personas = p; paint(); } });
     const ov = document.createElement('div'); ov.id = 'cc-voice-ov'; ov.className = 'cc-modal-overlay';
