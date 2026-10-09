@@ -232,3 +232,54 @@
 .lg-menu{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;background:#111114;border:1px solid var(--lg-line2);border-radius:14px;padding:6px;min-width:230px;box-shadow:0 12px 32px rgba(0,0,0,.6)}
 .lg-menu button{background:none;border:0;text-align:left;padding:10px 14px;border-radius:9px;font-size:15px}
 .lg-menu button:hover{background:#1c1c21}
+/* ===================== Sales Lab v2.1: menus fold away ===================== */
+.app-shell.wide-view nav.sidebar{display:none}
+.app-shell.wide-view.nav-open nav.sidebar{display:flex}
+.lab-shell{max-width:1500px;gap:24px}
+.lab-shell.mini{grid-template-columns:40px minmax(0,1fr);gap:16px}
+.lab-sidetools{display:flex;gap:4px;margin-bottom:-6px}
+.lab-sideb{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text-soft);font:inherit;font-size:15px;line-height:1;cursor:pointer}
+.lab-sideb:hover{color:var(--text);border-color:var(--indigo-600)}
+.lab-shell.mini .lab-side{gap:6px}
+#lab-root .lg{max-width:none}
+
+/* ===================== Sales Lab v2.2: more room, fixes ===================== */
+.app-shell.wide-view header.topbar{display:none}
+.app-shell.wide-view .workbody{padding:12px 16px !important}
+.app-shell.wide-view .page{max-width:none !important}
+#lab-root{padding:0 0 30px}
+#lab-root .lg .lg-stage.on,#lab-root .lg .lg-chip.on{color:#08080a}
+#lab-root .lg .lg-sel{background-color:var(--lg-bg);color:var(--lg-text);border:1px solid var(--lg-line2);border-radius:12px;height:44px;padding:0 40px 0 14px;font-size:16px;width:100%}
+#lab-root .lg .lg-selsm{height:32px;width:auto;font-size:13px;padding:0 30px 0 10px;border-radius:9px}
+/* compact call companion */
+#lab-root .lg{padding:18px 20px 34px;font-size:14px}
+.lg-head{margin-bottom:12px}
+.lg-title b{font-size:20px}
+.lg-title span{font-size:12.5px}
+.lg-ready{font-size:15px}
+.lg-label{font-size:15px;margin:12px 0 6px}
+.lg-scn{font-size:14.5px;margin-top:8px}
+.lg-scn svg{width:18px;height:18px}
+.lg-stages{gap:8px}
+.lg-stage{font-size:15px;padding:6px 16px}
+.lg-cols{margin-top:14px;gap:14px}
+.lg-card{padding:14px 16px 16px;border-radius:16px}
+.lg-cardtop{min-height:32px}
+.lg-eyebrow{font-size:12px}
+.lg-pillbtn{font-size:14px;padding:5px 13px}
+.lg-h3{font-size:22px;margin:2px 0 6px}
+.lg-sub{font-size:14.5px;margin-bottom:10px}
+.lg-say{padding:12px 14px;margin:4px 0 12px;border-radius:12px}
+.lg-copy{font-size:14px}
+.lg-saybody p{font-size:19px;margin-bottom:12px}
+.lg-nexth{font-size:16px}
+.lg-next p{font-size:15px}
+.lg-grid{gap:8px}
+.lg-chip{font-size:14.5px;min-height:40px;padding:6px 8px}
+.lg-pick{padding:20px 14px 6px}
+.lg-pick p{font-size:15px}
+.lg-anssay{font-size:17px;margin-bottom:10px}
+.lg-then{font-size:14.5px}
+.lg-foot{margin-top:14px;font-size:13px}
+.lg-dots{width:42px;height:42px}
+.lab-shell{max-width:none;margin:0}

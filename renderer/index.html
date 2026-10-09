@@ -2267,6 +2267,8 @@ function showTab(t){
   });
   document.getElementById('app-shell').classList.toggle('split-view', t==='new');
   document.getElementById('app-shell').classList.toggle('call-view', t==='leads');
+  document.getElementById('app-shell').classList.toggle('wide-view', t==='lab');
+  document.getElementById('app-shell').classList.remove('nav-open');
   document.getElementById('dash-period-group').style.display=t==='dashboard'?'flex':'none';
   const titles={dashboard:'Dashboard',leads:'Leads',callreports:'Call reports',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',lab:'Sales Lab',settings:'Settings'};
   const notes={lab:'Test an idea before you sell it. Nothing here reaches a live call until you publish it',dashboard:'Cash basis',leads:'Green is what you say, red is what you do',callreports:'Built from your own calls',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};

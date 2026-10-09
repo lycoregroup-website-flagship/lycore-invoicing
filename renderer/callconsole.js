@@ -1146,22 +1146,42 @@ function ccShortTitle(t) {
   return s.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase());
 }
 
+/* Script sections grouped by phase, so you can jump straight to Discovery, the Pitch or the Close. */
+const CC_PHASES = ['Opener', 'Discovery', 'Pitch', 'Close', 'Pushback', 'Follow-up'];
+function ccPhaseOf(title) {
+  const t = String(title || '').toLowerCase().replace(/^\s*\d+\s*[-.:)]\s*/, '');
+  if (/say no|objection|^if they say|push ?back|brush/.test(t)) return 'Pushback';
+  if (/^open|intro|greet|gatekeep|route|not the owner/.test(t)) return 'Opener';
+  if (/follow/.test(t)) return 'Follow-up';
+  if (/close|next step|book|ask for|card|audit|lock|safety|payment|visa/.test(t)) return 'Close';
+  if (/pivot|offer|what you do|value|pitch|show|walk|where they are|rank|teach|how it works/.test(t)) return 'Pitch';
+  return 'Discovery';
+}
+function ccPhaseMap() {
+  const n = ccIntroN(), st = ccScript ? ccScript.steps.slice(n) : [], map = {};
+  st.forEach((s, i) => { const p = ccPhaseOf(s.title); (map[p] = map[p] || []).push(i); });
+  return CC_PHASES.filter(p => map[p]).map(p => ({ name: p, steps: map[p] }));
+}
+function ccGoPhase(dir) {
+  const ph = ccPhaseMap(), cur = ph.findIndex(p => p.steps.includes(ccUI.step));
+  const next = ph[Math.max(0, Math.min(ph.length - 1, (cur < 0 ? 0 : cur) + dir))];
+  if (next) ccGoStep(next.steps[0]);
+}
+
 function ccUpdateGuideBar() {
   const bar = document.getElementById('cc-guidebar'); if (!bar) return;
   if (!ccScript) { bar.innerHTML = ''; return; }
   const n = ccIntroN(), total = ccFlowCount(), cur = Math.min(ccUI.step, total - 1);
-  let pills = '';
-  for (let i = 0; i < total; i++) {
-    const t = ccScript.steps[n + i];
-    pills += '<button class="cc-pill ' + (i === cur ? 'on' : i < cur ? 'done' : '') + '" data-s="' + i + '" title="' + esc(t.title) + '">' + esc(ccShortTitle(t.title)) + '</button>';
-  }
-  bar.innerHTML = '<button class="cc-arrow" data-g="prev" title="Previous section (Alt+Left)">&lsaquo;</button><div class="cc-pills">' + pills + '</div><button class="cc-arrow" data-g="next" title="Next section (Alt+Right)">&rsaquo;</button>' +
-    '<div class="cc-progbar"><i style="width:' + Math.round(((cur + 1) / total) * 100) + '%"></i></div>';
+  const ph = ccPhaseMap(), curPh = ph.find(p => p.steps.includes(cur)) || ph[0];
+  const phases = ph.map(p => '<button class="cc-pill cc-phase' + (p === curPh ? ' on' : '') + '" data-p="' + p.steps[0] + '" title="' + esc(p.steps.map(i => ccShortTitle(ccScript.steps[n + i].title)).join(' / ')) + '">' + esc(p.name) +
+    (p.steps.length > 1 ? ' <em>' + p.steps.length + '</em>' : '') + '</button>').join('');
+  const subs = curPh && curPh.steps.length > 1 ? '<div class="cc-subpills">' + curPh.steps.map(i => '<button class="cc-sub' + (i === cur ? ' on' : '') + '" data-s="' + i + '">' + esc(ccShortTitle(ccScript.steps[n + i].title)) + '</button>').join('') + '</div>' : '';
+  bar.innerHTML = '<button class="cc-arrow" data-g="prev" title="Previous section (Alt+Left)">&lsaquo;</button><div class="cc-pills">' + phases + '</div><button class="cc-arrow" data-g="next" title="Next section (Alt+Right)">&rsaquo;</button>' +
+    subs + '<div class="cc-progbar"><i style="width:' + Math.round(((cur + 1) / total) * 100) + '%"></i></div>';
   bar.querySelector('[data-g="prev"]').onclick = () => ccGoStep(ccUI.step - 1);
   bar.querySelector('[data-g="next"]').onclick = () => ccGoStep(ccUI.step + 1);
-  bar.querySelectorAll('.cc-pill').forEach(p => p.onclick = () => ccGoStep(Number(p.dataset.s)));
-  const on = bar.querySelector('.cc-pill.on');
-  if (on && on.scrollIntoView) { try { on.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { /* older engines */ } }
+  bar.querySelectorAll('[data-p]').forEach(p => p.onclick = () => ccGoStep(Number(p.dataset.p)));
+  bar.querySelectorAll('[data-s]').forEach(p => p.onclick = () => ccGoStep(Number(p.dataset.s)));
 }
 
 function ccScrollToStep() {
@@ -1311,7 +1331,7 @@ function ccFlushNotes() {
 
 function ccOpenKeys() {
   const ov = document.createElement('div'); ov.className = 'cc-modal-overlay';
-  const rows = [['Alt+1', 'Focus the script'], ['Alt+2', 'Objections tab'], ['Alt+3', 'Notes tab'], ['Alt+S', 'Search objections'], ['Alt+Left / Alt+Right', 'Previous / next script section'], ['Ctrl+K', 'Phone lookup']];
+  const rows = [['Alt+1', 'Focus the script'], ['Alt+2', 'Objections tab'], ['Alt+3', 'Notes tab'], ['Alt+S', 'Search objections'], ['Alt+Up / Alt+Down', 'Previous / next phase (Opener, Discovery, Pitch, Close)'], ['Alt+Left / Alt+Right', 'Previous / next script section'], ['Ctrl+K', 'Phone lookup']];
   ov.innerHTML = '<div class="cc-modal"><h4>Keyboard shortcuts</h4>' + rows.map(r => `<div class="cc-keyrow"><kbd>${esc(r[0])}</kbd><span>${esc(r[1])}</span></div>`).join('') +
     '<p class="cc-hint">Section keys are ignored while you are typing in a box.</p><div class="cc-modal-actions"><button class="cc-mini focus" id="cc-keys-x">Close</button></div></div>';
   document.body.appendChild(ov);
@@ -1354,6 +1374,8 @@ function ccWireLeadsX() {
       else if (k === '3') { e.preventDefault(); ccSetTab('notes'); const t = document.getElementById('cc-notes'); if (t && !t.disabled) t.focus(); }
       else if (k === 'ArrowLeft' && !typing) { e.preventDefault(); ccGoStep(ccUI.step - 1); }
       else if (k === 'ArrowRight' && !typing) { e.preventDefault(); ccGoStep(ccUI.step + 1); }
+      else if (k === 'ArrowUp' && !typing) { e.preventDefault(); ccGoPhase(-1); }
+      else if (k === 'ArrowDown' && !typing) { e.preventDefault(); ccGoPhase(1); }
     });
   }
 }

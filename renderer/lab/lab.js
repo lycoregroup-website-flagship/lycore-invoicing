@@ -242,12 +242,15 @@ const Lab = (function () {
 
   function shellHtml(body) {
     const m = navMeta(S.tab);
-    return '<div class="lab-shell"><nav class="lab-side" aria-label="Sales Lab sections">' +
+    const mini = navMin();
+    if (mini) return '<div class="lab-shell mini"><nav class="lab-side"><button class="lab-sideb" data-act="lab-appnav" title="App menu">&#9638;</button><button class="lab-sideb" data-act="lab-navmin" title="Show Sales Lab sections">&raquo;</button></nav><main class="lab-main">' + (S.tab === 'live' ? '' : '<header class="lab-ph"><h2>' + E(m[1]) + '</h2><p>' + E(m[3]) + '</p></header>') + '<div class="lab-body">' + body + '</div></main></div>';
+    return '<div class="lab-shell"><nav class="lab-side" aria-label="Sales Lab sections"><div class="lab-sidetools"><button class="lab-sideb" data-act="lab-appnav" title="App menu">&#9638;</button><button class="lab-sideb" data-act="lab-navmin" title="Hide this menu">&laquo;</button></div>' +
       NAV.map((g) => '<div class="lab-group">' + (g[0] ? '<div class="lab-gh">' + E(g[0]) + '</div>' : '') +
         g[1].map((t) => '<button class="lab-nl' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '"><span>' + E(t[1]) + '</span><em>' + navCount(t[2]) + '</em></button>').join('') + '</div>').join('') +
       '</nav><main class="lab-main">' + (S.tab === 'live' ? '' : '<header class="lab-ph"><h2>' + E(m[1]) + '</h2><p>' + E(m[3]) + '</p></header>') + '<div class="lab-body">' + body + '</div></main></div>';
   }
 
+  function navMin() { try { return localStorage.getItem('lyc-lab-navmin') === '1'; } catch (e) { return false; } }
   function aiReady() {
     const p = S.settings.provider;
     return !!((S.ai[p] || {}).saved && ((S.settings.models || {})[p] || '').trim());
@@ -1145,6 +1148,8 @@ const Lab = (function () {
     try {
       if (act === 'tab') { if (!guard()) return; if (S.practice.ctl) S.practice.ctl.stop(); u.dirty = false; S.tab = id; return render(); }
 
+      if (act === 'lab-appnav') { const a = document.getElementById('app-shell'); if (a) a.classList.toggle('nav-open'); return; }
+      if (act === 'lab-navmin') { try { localStorage.setItem('lyc-lab-navmin', navMin() ? '0' : '1'); } catch (err) { /* storage blocked */ } return render(); }
       if (act.startsWith('live-')) return liveAct(act, id, el);
       if (act.startsWith('pr-')) return practiceAct(act, id);
       if (act.startsWith('ev-')) return evAct(act, id, el);
