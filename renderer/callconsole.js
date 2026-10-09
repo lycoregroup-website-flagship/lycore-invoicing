@@ -111,8 +111,7 @@ async function ccLoad() {
       });
       const cs = (await sget('lyc-call-settings')) || {};
       let ch = false;
-      if (!cs.setup_fee) { cs.setup_fee = '497'; ch = true; }
-      if (!cs.standard_price) { cs.standard_price = '899'; ch = true; }
+      if (!cs.standard_price) { cs.standard_price = '497'; ch = true; }
       if (ch) sset('lyc-call-settings', cs);
     }
     if (!seen.includes('scriptfix:balin-full')) {
@@ -128,6 +127,19 @@ async function ccLoad() {
       const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
       const mine = ccScripts.find(s => s.id === '10-pest-one-call'), def = DEFAULT_SCRIPTS.find(s => s.id === '10-pest-one-call');
       if (mine && def && mine.body.length === 7931 && h(mine.body) === 2771809929) { mine.body = def.body; ccSaveScripts(); }
+    }
+    if (!seen.includes('scriptfix:497-monthly')) {
+      seen.push('scriptfix:497-monthly'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      [['10-pest-one-call', 9407, 3754089761], ['09-new-in-town', 3673, 3220121773]].forEach(([id, len, hh]) => {
+        const mine = ccScripts.find(s => s.id === id), def = DEFAULT_SCRIPTS.find(s => s.id === id);
+        if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
+      });
+      (ccObjections.groups || []).forEach(g => (g.items || []).forEach(it => {
+        if (it.trigger === 'I thought it was free' && it.say && it.say[0] === "Fair question. It's ${{setup_fee}} to set it up and ${{standard_price}} a month starting {{start_date}}.") { it.say = ["Fair question. It's ${{standard_price}} a month, first month today.","I'll get you 20 reviews in that month — if I don't, I push your next bill back until I do.","It's on the checkout page before you pay anything."]; sset('lyc-objections', ccObjections); }
+      }));
+      const cs = (await sget('lyc-call-settings')) || {};
+      if ((cs.standard_price === '899' || !cs.standard_price) && (cs.setup_fee === '497' || !cs.setup_fee)) { cs.standard_price = '497'; cs.setup_fee = ''; cs.trial_days = ''; sset('lyc-call-settings', cs); }
     }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
