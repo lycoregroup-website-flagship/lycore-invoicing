@@ -648,3 +648,10 @@ body.cc-resizing{cursor:col-resize;user-select:none}
 .cc-skin .cc-scriptbox.guided .cc-do{font-style:normal}
 .cc-skin .cc-scriptbox.guided .cc-do::before{content:none}
 .cc-scriptbox{position:relative}
+/* ===================== Leads v2.6: less chrome ===================== */
+.cc-skin #cc-objans:empty{display:none}
+.cc-skin #cc-objans{min-height:0}
+.cc-skin .cc-stagetitle{font-size:21px;margin:0 2px 8px}
+.cc-skin .cc-stagehead{text-transform:uppercase}
+.cc-skin .cc-nextcard{padding:7px 12px;margin:2px 0 8px}
+.cc-skin .cc-nextcard small{font-size:10px}

@@ -81,7 +81,7 @@ async function ccLoad() {
   ccObjections = (await sget('lyc-objections')) || JSON.parse(JSON.stringify(DEFAULT_OBJECTIONS));
   // Offer defaults added after first install, once each, without overwriting saved edits or bringing back deleted ones.
   try {
-    const NEW_SCRIPT_IDS = ['07-reputation-6min', '08-pest-plain'];
+    const NEW_SCRIPT_IDS = ['07-reputation-6min', '08-pest-plain', '09-new-in-town'];
     const NEW_OBJ = [
       ['dontneed', 'We get our reviews on Angi / Thumbtack / Facebook'],
       ['dontneed', "Our customers don't leave reviews"],
@@ -113,6 +113,14 @@ async function ccLoad() {
       if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.splice(Math.min(1, ccObjections.groups.length), 0, g); }
       if (!g.items.some(i => i.trigger === trig)) { g.items.push(JSON.parse(JSON.stringify(di))); sset('lyc-objections', ccObjections); }
     });
+    if (!seen.includes('objfix:email-v2')) {
+      seen.push('objfix:email-v2'); touched = true;
+      const OLD0 = "Yeah, I can do that, that's probably easier for both of us.";
+      const dg = DEFAULT_OBJECTIONS.groups.find(g => g.id === 'start'), di = dg && dg.items.find(i => i.trigger === 'Just email me');
+      (ccObjections.groups || []).forEach(g => (g.items || []).forEach((it, k) => {
+        if (di && it.trigger === 'Just email me' && it.say && it.say[0] === OLD0) { g.items[k] = JSON.parse(JSON.stringify(di)); sset('lyc-objections', ccObjections); }
+      }));
+    }
     if (touched) sset('lyc-defaults-seen', seen);
   } catch (e) { console.warn('defaults merge skipped', e); }
   ccSettings   = (await sget('lyc-call-settings')) || {};
@@ -174,11 +182,15 @@ function ccVars() {
     v.other_platform_review_count = platKey ? (v[CC_PLATFORM_REVIEW_MAP[platKey]] || '') : '';
   }
 
+  const rpg = Number(v.rank_page), rps = Number(v.rank_pos);
+  if (rpg > 0 && rps > 0) { v.rank_spot = (rpg - 1) * 20 + rps; v.competitors_ahead = v.rank_spot - 1; }
+  else if (Number(v.rank) > 0) { if (!v.rank_spot) v.rank_spot = Number(v.rank); v.competitors_ahead = Number(v.rank) - 1; }
   const y = Number(v.years), j = Number(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
   v.next_month = d.toLocaleString('en-US', { month: 'long' });
-  if (v.search) v.search = String(v.search).replace(/\{\{(\w+)\}\}/g, (m, k) => v[k] || m);
+  if (!v.category) v.category = v.industry || v.type || '';
+  if (v.search) v.search = String(v.search).replace(/\{\{(\w+)\}\}/g, (m, k) => v[k] || '[' + k.replace(/_/g, ' ') + ']');
   return v;
 }
 
@@ -700,7 +712,6 @@ function ccShellHTML() {
             <button data-t="notes">Notes</button>
           </div>
           <div class="cc-tabpane" id="cc-pane-obj">
-            <p class="cc-pivhint">Tap what the prospect just said. The response appears below.</p>
             <input id="cc-objsearch" class="cc-input" placeholder="Search objections (Alt+S)" autocomplete="off">
             <div class="cc-objlist" id="cc-objlist"></div>
             <div id="cc-objans"></div>
@@ -1045,9 +1056,8 @@ function ccRenderScript() {
   if (ccUI.mode === 'guided') {
     const gi = n + ccUI.step, nx = st[gi + 1];
     box.innerHTML = st.slice(0, n).map((s, i) => ccStepHTML(s, i, false)).join('') +
-      '<div class="cc-stagehead"><span>Stage guide</span><button class="cc-editpill" data-g="edit" title="Edit this script">&#9998; Edit</button></div>' +
-      '<h3 class="cc-stagetitle">' + esc(ccStageIntent(st[gi].title)[0]) + '</h3><p class="cc-stagesub">' + esc(ccStageIntent(st[gi].title)[1]) + '</p>' +
-      '<div class="cc-stagecount">' + esc(ccShortTitle(st[gi].title)) + ' &middot; ' + (ccUI.step + 1) + ' of ' + ccFlowCount() + '</div>' +
+      '<div class="cc-stagehead"><span>Stage guide &middot; ' + esc(ccShortTitle(st[gi].title)) + ' &middot; ' + (ccUI.step + 1) + '/' + ccFlowCount() + '</span><button class="cc-editpill" data-g="edit" title="Edit this script">&#9998; Edit</button></div>' +
+      '<h3 class="cc-stagetitle">' + esc(ccStageIntent(st[gi].title)[0]) + '</h3>' +
       ccStepHTML(st[gi], gi, true).replace('<div class="cc-stepbody">', '<div class="cc-stepbody"><div class="cc-sayhead"><span>Say this &bull; suggested</span><button class="cc-copyall" data-g="copyall">Copy all</button></div>') +
       (nx ? '<button class="cc-nextcard" data-g="next"><small>Next move</small><b>' + esc(ccShortTitle(nx.title)) + '</b><span>&rarr;</span></button>'
           : '<div class="cc-nextcard end"><small>End of script</small><b>Log how the call went with the buttons below</b></div>');
@@ -1124,6 +1134,7 @@ function ccStageIntent(title) {
   const t = String(title || '').toLowerCase();
   if (/say no|objection|\bno\b/.test(t)) return ['Handle the no', 'Treat it as information. Answer once, then respect it.'];
   if (/open|intro|greet|gatekeep|route/.test(t)) return ['Start the conversation', 'Earn curiosity before introducing an offer.'];
+  if (/where they are|rank|show up/.test(t)) return ['Show them where they rank', ''];
   if (/follow/.test(t)) return ['Leave it in a good place', 'Confirm what happens next and when.'];
   if (/close|next step|book|ask for|card|audit|lock/.test(t)) return ['Agree one small next step', 'Ask clearly, then stop talking.'];
   if (/pivot|offer|what you do|value|pitch|show|walk/.test(t)) return ['Show how it works', 'Tie it to what they just told you, nothing more.'];
@@ -1259,7 +1270,7 @@ function ccRenderObjAnswer() {
   const el = document.getElementById('cc-objans'); if (!el) return;
   const it = ccFlatObj().find(i => i.trigger === ccOpenObj);
   const keep = el.scrollTop;
-  if (!it) { el.innerHTML = '<div class="cc-pick"><div class="cc-pickicon">&#9757;</div>Choose an objection to reveal a suggested response and the next move. Your place in the script does not move.</div>'; return; }
+  if (!it) { el.innerHTML = ''; return; }
   const fav = (ccUI.favs || []).includes(it.trigger), heard = ccHeard.has(it.trigger);
   el.innerHTML = `<div class="cc-ans-head"><b>${esc(it.trigger)}</b>
       <button class="cc-mini" data-a="fav" title="Pin to Favorites">${fav ? '&#9733; Favorite' : '&#9734; Favorite'}</button>
