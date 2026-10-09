@@ -123,6 +123,12 @@ async function ccLoad() {
         if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
       });
     }
+    if (!seen.includes('scriptfix:gatekeeper')) {
+      seen.push('scriptfix:gatekeeper'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      const mine = ccScripts.find(s => s.id === '10-pest-one-call'), def = DEFAULT_SCRIPTS.find(s => s.id === '10-pest-one-call');
+      if (mine && def && mine.body.length === 7931 && h(mine.body) === 2771809929) { mine.body = def.body; ccSaveScripts(); }
+    }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
       if (seen.includes(key)) return;

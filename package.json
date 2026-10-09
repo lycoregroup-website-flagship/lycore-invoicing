@@ -1,7 +1,7 @@
 {
   "_note": "Do NOT add a top-level productName or change name. Electron derives the userData path from it, and lycore-invoicing is where the existing encrypted database lives. The display name is set under build.productName instead.",
   "name": "lycore-invoicing",
-  "version": "3.14.5",
+  "version": "3.14.6",
   "description": "LYCORE GROUP LLC desktop app: leads, calling and invoicing",
   "main": "main.js",
   "author": "LYCORE GROUP LLC",
