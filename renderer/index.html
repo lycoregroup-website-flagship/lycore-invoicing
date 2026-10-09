@@ -754,7 +754,7 @@ VA:['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandri
 WV:['Charleston','Huntington','Morgantown'],WI:['Milwaukee','Madison','Green Bay','Kenosha'],WY:['Cheyenne','Casper','Laramie']};
 
 const OLD_DEFAULT_CATALOG_NAMES=["Voice Receptionist \u2014 Setup","Voice Receptionist \u2014 Monthly Service","Voice Receptionist \u2014 Monthly Service + Chatbot","Website Build","Website Maintenance \u2014 Monthly","Reputation Management \u2014 Monthly","Missed Call Text Back \u2014 Monthly"];
-const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_irhs6nr2OFchh"},{"name":"Reputation Management \u2014 Monthly","price":899,"freq":"month","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Website Build","price":697,"freq":"once","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"Website Maintenance \u2014 Monthly","price":89,"freq":"month","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"AI Receptionist + Web Chat \u2014 Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"AI Receptionist + Web Chat \u2014 Monthly","price":699,"freq":"month","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"Missed-Call Text-Back \u2014 Monthly","price":199,"freq":"month","paylink":"https://whop.com/checkout/plan_1czgo9aRXvfoK"}];
+const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_irhs6nr2OFchh"},{"name":"Reputation Management \u2014 Setup","price":497,"freq":"once","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Reputation Management \u2014 Monthly","price":899,"freq":"month","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Website Build","price":697,"freq":"once","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"Website Maintenance \u2014 Monthly","price":89,"freq":"month","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"AI Receptionist + Web Chat \u2014 Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"AI Receptionist + Web Chat \u2014 Monthly","price":699,"freq":"month","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"Missed-Call Text-Back \u2014 Monthly","price":199,"freq":"month","paylink":"https://whop.com/checkout/plan_1czgo9aRXvfoK"}];
 /* Bundles pair a one-time setup fee with its recurring monthly companion so
    picking either from the dropdown always adds both together \u2014 the mistake
    this exists to prevent is billing a setup fee with no ongoing service
@@ -765,7 +765,7 @@ const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once",
    Management, Missed Call Text Back) are never bundled \u2014 they stay
    individually selectable, same as before. */
 const OLD_DEFAULT_BUNDLE_LABELS=["Voice Receptionist \u2014 Setup + Monthly Service","Voice Receptionist \u2014 Setup + Monthly Service + Chatbot","Website \u2014 Build + Maintenance"];
-const DEFAULT_BUNDLES=[{"label":"Website \u2014 Build + Maintenance","parts":["Website Build","Website Maintenance \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"label":"AI Receptionist + Web Chat \u2014 Setup + Monthly","parts":["AI Receptionist + Web Chat \u2014 Setup","AI Receptionist + Web Chat \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"}];
+const DEFAULT_BUNDLES=[{"label":"Reputation Management \u2014 Setup + Monthly","parts":["Reputation Management \u2014 Setup","Reputation Management \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"label":"Website \u2014 Build + Maintenance","parts":["Website Build","Website Maintenance \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"label":"AI Receptionist + Web Chat \u2014 Setup + Monthly","parts":["AI Receptionist + Web Chat \u2014 Setup","AI Receptionist + Web Chat \u2014 Monthly"],"paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"}];
 const INDUSTRIES=['Bail Bonds','Restoration','Auto Detailing','Plumbing'];
 
 let settings={}, invoices=[], archive=[], expenses=[], expenseArchive=[], catalog=null, bundles=null, pinHash=null, recoveryHash=null, draft=null;
@@ -792,7 +792,14 @@ async function loadAll(){
     const ownBundles=(bundles||[]).filter(b=>b.label&&!OLD_DEFAULT_BUNDLE_LABELS.includes(b.label)&&!newLabels.includes(b.label));
     catalog=DEFAULT_CATALOG.map(x=>({...x})).concat(ownItems);
     bundles=DEFAULT_BUNDLES.map(x=>({...x,parts:[...x.parts]})).concat(ownBundles);
-    settings.whopCatalogV1=true;
+    settings.whopCatalogV1=true; settings.whopCatalogV2=true;
+    await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles); await sset('lyc-settings',settings);
+  }
+  if(!settings.whopCatalogV2){
+    const rs=DEFAULT_CATALOG.find(x=>x.name==='Reputation Management \u2014 Setup'), rb=DEFAULT_BUNDLES.find(x=>x.label==='Reputation Management \u2014 Setup + Monthly');
+    if(rs&&!catalog.some(c=>c.name===rs.name)){ const at=catalog.findIndex(c=>c.name==='Reputation Management \u2014 Monthly'); catalog.splice(at<0?catalog.length:at,0,{...rs}); }
+    if(rb&&!bundles.some(b=>b.label===rb.label)) bundles.unshift({...rb,parts:[...rb.parts]});
+    settings.whopCatalogV2=true;
     await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles); await sset('lyc-settings',settings);
   }
   pinHash=(await sget('lyc-pin'))||null;

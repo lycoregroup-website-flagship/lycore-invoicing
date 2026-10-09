@@ -86,6 +86,7 @@ async function ccLoad() {
       ['dontneed', 'We get our reviews on Angi / Thumbtack / Facebook'],
       ['dontneed', "Our customers don't leave reviews"],
       ['anything', "They're about to hang up for good"],
+      ['price', 'I thought it was free'],
       ['pest', "We're slammed, it's peak season"],
       ['pest', "Corporate handles that / we're a franchise"],
       ['pest', "Our customers are on plans, they don't need reviews"],
@@ -100,6 +101,19 @@ async function ccLoad() {
       const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
       const mine = ccScripts.find(s => s.id === '10-pest-one-call'), d10 = DEFAULT_SCRIPTS.find(s => s.id === '10-pest-one-call');
       if (mine && d10 && mine.body.length === 11770 && h(mine.body) === 463578079) { mine.body = d10.body; ccSaveScripts(); }
+    }
+    if (!seen.includes('scriptfix:upfront-price')) {
+      seen.push('scriptfix:upfront-price'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      [['10-pest-one-call', 11907, 1964836701], ['09-new-in-town', 3446, 1936718986]].forEach(([id, len, hh]) => {
+        const mine = ccScripts.find(s => s.id === id), def = DEFAULT_SCRIPTS.find(s => s.id === id);
+        if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
+      });
+      const cs = (await sget('lyc-call-settings')) || {};
+      let ch = false;
+      if (!cs.setup_fee) { cs.setup_fee = '497'; ch = true; }
+      if (!cs.standard_price) { cs.standard_price = '899'; ch = true; }
+      if (ch) sset('lyc-call-settings', cs);
     }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
@@ -159,6 +173,7 @@ function ccVars() {
     offer_line: ccSettings.offer_line,
     discount_line: ccSettings.discount_line,
     rep_name: ccSettings.rep_name,
+    trial_days: ccSettings.trial_days,
     standard_price: ccSettings.standard_price,
     promotion: ccSettings.promotion,
     contract_term: ccSettings.contract_term,
@@ -207,6 +222,7 @@ function ccVars() {
   if (/no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl)) v.rank_story = 'I looked for {{company_name}} in {{city}} on Google Maps and couldn\'t find a business profile. Without one you can\'t appear when someone searches pest control.';
   else if (pos > 0) v.rank_story = RS_BASE.replace('%%', 'comes up {{rank_ordinal}}' + (tot > 0 ? ' out of {{rank_total}}' : '') + ', and most people never scroll that far.');
   else v.rank_story = RS_BASE.replace('%%', 'isn\'t on it.');
+  if (!v.start_date) { const sd = new Date(); sd.setDate(sd.getDate() + (num(ccSettings.trial_days) || 30)); v.start_date = sd.toLocaleString('en-US', { month: 'long', day: 'numeric' }); }
   const y = num(v.years), j = num(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
@@ -874,7 +890,7 @@ function ccNormPhone(raw) {
 
 
 function ccOpenCallSettings() {
-  const F = [['rep_name', 'Your name', 'Brenda'], ['standard_price', 'Standard monthly price (number only)', '297'], ['promotion', 'Current promotion', 'the first month free'], ['contract_term', 'Contract term', 'no long-term contract'], ['setup_fee', 'Setup fee', 'waived'], ['offer_line', 'Offer line (said word for word)', ''], ['discount_line', 'Discount line (spoken only)', '']];
+  const F = [['rep_name', 'Your name', 'Brenda'], ['standard_price', 'Standard monthly price (number only)', '297'], ['promotion', 'Current promotion', 'the first month free'], ['contract_term', 'Contract term', 'no long-term contract'], ['setup_fee', 'Setup fee paid today (number only)', '497'], ['trial_days', 'Days until the first monthly charge', '30'], ['offer_line', 'Offer line (said word for word)', ''], ['discount_line', 'Discount line (spoken only)', '']];
   const ov = document.createElement('div'); ov.className = 'cc-modal-overlay';
   ov.innerHTML = '<div class="cc-modal cc-setmodal"><h4>Prices and offer lines</h4><p class="cc-hint">These fill {{standard_price}}, {{promotion}}, {{contract_term}}, {{setup_fee}}, {{offer_line}}, {{discount_line}} and {{rep_name}} in every script. Only enter what LYCORE has actually approved.</p>' +
     F.map(f => '<label class="cc-setrow"><span>' + esc(f[1]) + '</span><input class="cc-input" data-k="' + f[0] + '" value="' + esc(ccSettings[f[0]] || '') + '" placeholder="' + esc(f[2]) + '"></label>').join('') +
