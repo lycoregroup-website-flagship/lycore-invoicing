@@ -95,6 +95,12 @@ async function ccLoad() {
     ];
     const seen = (await sget('lyc-defaults-seen')) || [];
     let touched = false;
+    if (!seen.includes('scriptfix:10-rank-story')) {
+      seen.push('scriptfix:10-rank-story'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      const mine = ccScripts.find(s => s.id === '10-pest-one-call'), d10 = DEFAULT_SCRIPTS.find(s => s.id === '10-pest-one-call');
+      if (mine && d10 && mine.body.length === 11770 && h(mine.body) === 463578079) { mine.body = d10.body; ccSaveScripts(); }
+    }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
       if (seen.includes(key)) return;
@@ -191,6 +197,16 @@ function ccVars() {
   const rpg = num(v.rank_page), rps = num(v.rank_pos);
   if (rpg > 0 && rps > 0) { v.rank_spot = (rpg - 1) * 20 + rps; v.competitors_ahead = v.rank_spot - 1; }
   else if (Number(v.rank) > 0) { if (!v.rank_spot) v.rank_spot = Number(v.rank); v.competitors_ahead = Number(v.rank) - 1; }
+  const ord = n => { const k = n % 100; return n + (k >= 11 && k <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' })[n % 10] || 'th'); };
+  const pc = String(v.profile_check || '').trim(), pcl = pc.toLowerCase();
+  const pm = /(\d+)\s*(?:st|nd|rd|th)?\s*(?:out of|of|\/)\s*(\d+)/i.exec(pc) || /^#?\s*(\d+)(?:st|nd|rd|th)?$/.exec(pc);
+  let pos = num(v.rank_spot) || (pm ? Number(pm[1]) : NaN) || num(v.map_rank);
+  const tot = num(v.rank_total) || (pm && pm[2] ? Number(pm[2]) : NaN) || num(v.results_total);
+  if (pos > 0) { v.rank_ordinal = ord(pos); if (tot > 0) v.rank_total = String(tot); }
+  const RS_BASE = 'When someone searches just "pest control" in {{city}} and they don\'t know any company by name, Google shows them a short list. {{company_name}} %% You do have a website and a Google profile, which is why you come up when someone types your name. A stranger doesn\'t type your name. Google picks who to show those people by how many reviews a company has, how recent they are, and how complete its profile is. You have {{google_review_count}} reviews, so the companies with more of them get the call instead of you.';
+  if (/no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl)) v.rank_story = 'I looked for {{company_name}} in {{city}} on Google Maps and couldn\'t find a business profile. Without one you can\'t appear when someone searches pest control.';
+  else if (pos > 0) v.rank_story = RS_BASE.replace('%%', 'comes up {{rank_ordinal}}' + (tot > 0 ? ' out of {{rank_total}}' : '') + ', and most people never scroll that far.');
+  else v.rank_story = RS_BASE.replace('%%', 'isn\'t on it.');
   const y = num(v.years), j = num(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
@@ -204,6 +220,7 @@ function ccFill(text) {
   const v = ccVars();
   return esc(text).replace(/\{\{(\w+)(?:\|([^}]*))?\}\}/g, (m, k, fallback) => {
     const val = v[k];
+    if (typeof val === 'string' && val.includes('{{') && k !== 'search') return ccFill(val);
     if (val === undefined || val === null || val === '' || String(val).startsWith('NOT SET')) {
       if (fallback !== undefined) return esc(fallback);
       return '<span class="cc-var miss">[' + esc(k.replace(/_/g, ' ')) + ']</span>';
@@ -1629,6 +1646,7 @@ const CC_ALIAS = {
   established: ['established','established_since','year_founded'],
   years: ['years','years_in_business'], jobs_month: ['jobs_month','jobs_per_month','monthly_jobs'],
   avg_job: ['avg_job','avg_job_value','job_value'],
+  profile_check: ['profile_check','google_profile_check','gbp_check','profile_status','gbp_status','google_profile_status','search_check','city_search_check'],
   zip: ['zip','zipcode','zip_code','postal_code'], competitor_2: ['competitor_2','second_competitor','competitor_b','competitor2'], timezone: ['timezone','time_zone'],
   status: ['status','call_status','disposition'], last_called: ['last_called'],
   attempts: ['attempts'], notes: ['notes','note','comment']
@@ -1682,6 +1700,7 @@ function ccGuessKey(h) {
   if (has('first') && has('name')) return 'first_name';
   if (has('last') && has('name')) return 'last_name';
   if (has('competitor')) { if (has('review')) return 'competitor_reviews'; if (has('rating') || has('star')) return 'competitor_rating'; if (has('2') || has('second') || has('_b')) return 'competitor_2'; return 'competitor'; }
+  if ((has('profile') || has('gbp')) && (has('check') || has('status') || has('found'))) return 'profile_check';
   if (has('unanswer') || has('no_reply') || has('unrespond') || has('no_response')) return 'unanswered_reviews';
   if (has('owner') || has('contact') || has('decision')) return 'owner';
   if (has('rating') || has('star') || h === 'score') return 'rating';
