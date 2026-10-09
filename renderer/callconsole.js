@@ -262,12 +262,12 @@ function ccVars() {
   const pageNo = num(v.rank_page) || (pos > 0 ? Math.ceil(pos / 20) : NaN);
   const listed = pos > 0 && !/no (google )?(business )?profile|closed/.test(pcl);
   v.rank_where = listed ? 'on page ' + pageNo : (pcl || nl) ? 'nobody can find' : 'on page 2';
-  v.rank_status = listed ? (pos <= 3 ? 'number ' + pos + ' right now' : 'on page ' + pageNo) : (pcl || nl) ? 'not showing up' : 'on page 2';
+  v.rank_status = listed ? (pos <= 3 ? 'number ' + pos + ' right now' : 'on page ' + pageNo) : nl ? 'not in the first ' + nl[1] + ' listings' : pcl ? 'not showing up' : 'on page 2';
   if (/permanently closed|closed/.test(pcl)) v.rank_story = 'Google is showing {{company_name}} as permanently closed. Anyone who looks you up is told you\'re out of business.';
   else if (pos > 0 && pos <= 3 && !num(v.rank_page)) v.rank_story = 'When someone searches just "pest control" in {{city}}, Google Maps shows {{company_name}} {{rank_ordinal}}. That\'s a strong spot. The question is whether you keep it as the companies around you collect more reviews than your {{google_review_count}}.';
   else if (/no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl)) v.rank_story = 'I looked for {{company_name}} in {{city}} on Google Maps and couldn\'t find a business profile. Without one you can\'t appear when someone searches pest control.';
   else if (pos > 0) v.rank_story = RS_BASE.replace('%%', 'comes up {{rank_ordinal}}' + (tot > 0 ? ' out of {{rank_total}}' : '') + ', and most people never scroll that far.');
-  else v.rank_story = RS_BASE.replace('%%', 'isn\'t on it.');
+  else v.rank_story = RS_BASE.replace('%%', nl ? 'isn\'t on it. Google listed ' + nl[1] + ' companies for that search and you\'re not one of them.' : 'isn\'t on it.');
   if (!v.start_date) { const sd = new Date(); sd.setDate(sd.getDate() + (num(ccSettings.trial_days) || 30)); v.start_date = sd.toLocaleString('en-US', { month: 'long', day: 'numeric' }); }
   const y = num(v.years), j = num(v.jobs_month);
   if (y > 0 && j > 0) v.total_visits = Math.round(y * 12 * j).toLocaleString('en-US');
