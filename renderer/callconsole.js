@@ -695,10 +695,11 @@ function ccShellHTML() {
 
         <section class="cc-panel cc-objpanel">
           <div class="cc-tabs">
-            <button data-t="obj">Objections</button>
+            <button data-t="obj">Quick pivots</button>
             <button data-t="notes">Notes</button>
           </div>
           <div class="cc-tabpane" id="cc-pane-obj">
+            <p class="cc-pivhint">Tap what the prospect just said. The response appears below.</p>
             <input id="cc-objsearch" class="cc-input" placeholder="Search objections (Alt+S)" autocomplete="off">
             <div class="cc-objlist" id="cc-objlist"></div>
             <div id="cc-objans"></div>
@@ -1013,6 +1014,7 @@ function ccRenderHead() {
   if (has(l.status)) facts.push(`<span class="cc-fact status">${esc(l.status)}</span>`);
   h.innerHTML = `
     <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">&#9776;</button>
+    <span class="cc-logo" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg></span>
     <div class="cc-headname">
       <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
       <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' &middot; ' + esc(l.city) : ''}</div>
@@ -1040,8 +1042,10 @@ function ccRenderScript() {
   if (ccUI.mode === 'guided') {
     const gi = n + ccUI.step, nx = st[gi + 1];
     box.innerHTML = st.slice(0, n).map((s, i) => ccStepHTML(s, i, false)).join('') +
-      '<div class="cc-stagehead"><span>Stage guide</span><span>' + (ccUI.step + 1) + ' of ' + ccFlowCount() + '</span></div>' +
-      '<h3 class="cc-stagetitle">' + esc(ccShortTitle(st[gi].title)) + '</h3>' + ccStepHTML(st[gi], gi, true) +
+      '<div class="cc-stagehead"><span>Stage guide</span><button class="cc-editpill" data-g="edit" title="Edit this script">&#9998; Edit</button></div>' +
+      '<h3 class="cc-stagetitle">' + esc(ccStageIntent(st[gi].title)[0]) + '</h3><p class="cc-stagesub">' + esc(ccStageIntent(st[gi].title)[1]) + '</p>' +
+      '<div class="cc-stagecount">' + esc(ccShortTitle(st[gi].title)) + ' &middot; ' + (ccUI.step + 1) + ' of ' + ccFlowCount() + '</div>' +
+      ccStepHTML(st[gi], gi, true).replace('<div class="cc-stepbody">', '<div class="cc-stepbody"><div class="cc-sayhead"><span>Say this &bull; suggested</span><button class="cc-copyall" data-g="copyall">Copy all</button></div>') +
       (nx ? '<button class="cc-nextcard" data-g="next"><small>Next move</small><b>' + esc(ccShortTitle(nx.title)) + '</b><span>&rarr;</span></button>'
           : '<div class="cc-nextcard end"><small>End of script</small><b>Log how the call went with the buttons below</b></div>');
   } else {
@@ -1070,7 +1074,15 @@ function ccRenderScript() {
       if (text && navigator.clipboard) navigator.clipboard.writeText(text);
       c.textContent = 'Copied'; setTimeout(() => { c.textContent = 'Copy'; }, 1200); return;
     }
-    const g = e.target.closest('[data-g="next"]'); if (g) ccGoStep(ccUI.step + 1);
+    const ge = e.target.closest('[data-g]');
+    if (!ge) return;
+    if (ge.dataset.g === 'next') ccGoStep(ccUI.step + 1);
+    else if (ge.dataset.g === 'edit') { if (typeof ccOpenScriptForm === 'function') ccOpenScriptForm(ccScriptId); }
+    else if (ge.dataset.g === 'copyall') {
+      const body = ge.closest('.cc-stepbody'), text = body ? Array.from(body.querySelectorAll('.cc-say .cc-txt')).map(x => x.textContent.trim()).join('\n\n') : '';
+      if (text && navigator.clipboard) navigator.clipboard.writeText(text);
+      ge.textContent = 'Copied'; setTimeout(() => { ge.textContent = 'Copy all'; }, 1200);
+    }
   };
   box.onscroll = () => {
     if (ccUI.mode === 'guided') return;
@@ -1102,6 +1114,16 @@ function ccRefreshVars() {
     });
   });
   ccRenderObjections();
+}
+
+function ccStageIntent(title) {
+  const t = String(title || '').toLowerCase();
+  if (/say no|objection|\bno\b/.test(t)) return ['Handle the no', 'Treat it as information. Answer once, then respect it.'];
+  if (/open|intro|greet|gatekeep|route/.test(t)) return ['Start the conversation', 'Earn curiosity before introducing an offer.'];
+  if (/follow/.test(t)) return ['Leave it in a good place', 'Confirm what happens next and when.'];
+  if (/close|next step|book|ask for|card|audit|lock/.test(t)) return ['Agree one small next step', 'Ask clearly, then stop talking.'];
+  if (/pivot|offer|what you do|value|pitch|show|walk/.test(t)) return ['Show how it works', 'Tie it to what they just told you, nothing more.'];
+  return ['Find out what is really happening', 'Ask, then let them say it in their own words.'];
 }
 
 function ccShortTitle(t) {

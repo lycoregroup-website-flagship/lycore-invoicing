@@ -482,3 +482,79 @@ body.cc-resizing{cursor:col-resize;user-select:none}
 .cc-scn{margin:6px 0 4px}
 .cc-scn label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute);margin-bottom:4px}
 .cc-scn select{width:100%;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card-alt);color:var(--text);font:inherit;font-size:13.5px}
+
+/* ===================== Leads v2.3: the call-companion look on Leads and Call reports ===================== */
+/* Both panes carry data-theme="dark", so every colour variable flips. Below: the shape and type of the supplied design. */
+.cc-skin{--lg-line:#2c2c31;--lg-line2:#3a3a41;
+  --bg:#050506; --card:#0b0b0e; --card-alt:#101015; --border:#2c2c31; --border-soft:#232328;
+  --text:#f4f4f6; --text-soft:#d2d2d9; --text-mute:#a2a2ab; --indigo-600:#9db8ff; --navy-600:#d2d2d9;
+  --say-bg:#0d0d10; --say-ink:#f4f4f6; --say-bar:transparent;
+  background:#050506;color:var(--text)}
+#pane-leads.cc-skin{border-radius:20px}
+.cc-skin .cc-wrap{padding:6px}
+.cc-skin .cc-panel,.cc-skin .cc-head,.cc-skin .cc-rail,.cc-skin .cc-outcomes{background:var(--bg);border-color:var(--lg-line);border-radius:20px}
+.cc-skin .cc-stars .off{color:#3a3a41}
+.cc-skin .cc-bar .btr{background:#26262c}
+.cc-skin .cc-src-close{background:color-mix(in srgb,#22C55E 14%,transparent)}
+.cc-skin .cc-if span{border-color:color-mix(in srgb,#EF4444 45%,transparent)}
+.cc-skin .cc-src-x:hover{background:#3a1c1f}
+
+/* header: headset, big business name */
+.cc-logo{display:flex;color:var(--text);flex:0 0 auto}
+.cc-skin .cc-head{padding:14px 18px;gap:14px}
+.cc-skin .cc-biz{font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.cc-skin .cc-who{font-size:13px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.cc-skin .cc-fact{font-size:13px;padding:3px 12px;background:transparent;border-color:var(--lg-line2);color:var(--text)}
+.cc-skin .cc-fact.status{background:#f4f4f6;color:#08080a;border-color:#f4f4f6}
+.cc-skin .cc-mini{border-radius:999px;padding:6px 14px;font-size:13px;background:transparent;border:1px solid var(--lg-line2);color:var(--text)}
+.cc-skin .cc-mini:hover{border-color:#8b8b95}
+.cc-skin .cc-mini.focus{background:#f4f4f6;color:#08080a;border-color:#f4f4f6}
+.cc-skin .cc-phone{font-size:17px}
+
+/* stage pills */
+.cc-skin .cc-pills{gap:10px}
+.cc-skin .cc-pill{padding:8px 20px;font-size:16px;font-weight:500;border-color:var(--lg-line2);color:var(--text)}
+.cc-skin .cc-pill.done{border-color:#6b6b75}
+.cc-skin .cc-pill.on{background:#f4f4f6;color:#08080a;border-color:#f4f4f6;font-weight:600}
+.cc-skin .cc-arrow{border-color:var(--lg-line2);background:transparent}
+.cc-skin .cc-progbar{background:#26262c}
+.cc-skin .cc-progbar i{background:#f4f4f6}
+
+/* stage guide card (guided mode) */
+.cc-skin .cc-stagehead{align-items:center;font-size:13px;letter-spacing:.04em;color:var(--text-mute);margin:2px 0 4px}
+.cc-editpill{background:transparent;border:1px solid var(--lg-line2);color:var(--text);border-radius:999px;padding:6px 16px;font:inherit;font-size:14px;text-transform:none;letter-spacing:0;cursor:pointer}
+.cc-editpill:hover{border-color:#8b8b95}
+.cc-skin .cc-stagetitle{font-size:28px;line-height:1.15;letter-spacing:-.01em;margin:4px 2px 8px}
+.cc-stagesub{margin:0 2px 6px;font-size:17px;line-height:1.45;color:var(--text-soft)}
+.cc-stagecount{margin:0 2px 14px;font-size:12.5px;color:var(--text-mute)}
+.cc-skin .cc-scriptbox.guided .cc-step:not(.intro) .cc-stepbody{border:1px solid var(--lg-line);border-radius:16px;padding:14px 18px 8px;background:#0d0d10}
+.cc-sayhead{display:flex;justify-content:space-between;align-items:center;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-mute);margin-bottom:6px}
+.cc-copyall{background:none;border:0;color:var(--text);font:inherit;font-size:15px;text-transform:none;letter-spacing:0;cursor:pointer}
+.cc-sayhead{display:none}
+.cc-skin .cc-scriptbox.guided .cc-sayhead{display:flex}
+.cc-skin .cc-scriptbox.guided .cc-copy{display:none}
+.cc-skin .cc-scriptbox.guided .cc-say{background:transparent;border:0;padding:4px 0 14px;font-size:23px;line-height:1.55;margin:0}
+.cc-skin .cc-scriptbox.guided .cc-say .cc-txt{padding-right:0}
+.cc-skin .cc-scriptbox.guided .cc-do{font-size:16px;color:var(--text-soft);background:transparent;border:0;padding:2px 0 10px}
+.cc-skin .cc-scriptbox.guided .cc-do::before{content:"\2192  ";color:var(--text)}
+.cc-skin .cc-scriptbox.guided .cc-stop{font-size:16px}
+.cc-skin .cc-nextcard{background:transparent;border-color:var(--lg-line)}
+.cc-skin .cc-nextcard:hover{border-color:#8b8b95}
+.cc-skin .cc-nextcard span{color:var(--text)}
+
+/* quick pivots */
+.cc-pivhint{margin:0 0 10px;font-size:15px;line-height:1.45;color:var(--text-soft)}
+.cc-skin .cc-tabs button{font-size:15px}
+.cc-skin .cc-tabs button.on{color:#f4f4f6;border-bottom-color:#f4f4f6}
+.cc-skin .cc-oc{background:transparent;border:1px solid var(--lg-line2);border-left:4px solid var(--oc);border-radius:6px;color:var(--text);font-size:15px;font-weight:500;min-height:44px;padding:6px 10px}
+.cc-skin .cc-oc:hover{background:#15151a;border-color:#a8a8b2;border-left-color:var(--oc)}
+.cc-skin .cc-oc.open,.cc-skin .cc-oc.pin.open{background:#f4f4f6;color:#08080a;border-color:#f4f4f6;border-left-color:var(--oc);box-shadow:none}
+.cc-skin .cc-oc.pin{background:transparent;color:var(--text)}
+.cc-skin .cc-gh{font-size:11.5px;color:var(--text-mute)}
+.cc-skin .cc-pick{font-size:16px;color:var(--text);padding:26px 14px}
+.cc-skin .cc-ans-say{background:#0d0d10;border-left:0;border:1px solid var(--lg-line);font-size:18px;line-height:1.55;border-radius:12px}
+.cc-skin #cc-objsearch,.cc-skin .cc-input{background:var(--bg);border-color:var(--lg-line2);color:var(--text)}
+.cc-skin #cc-notes{background:var(--bg);color:var(--text);border-color:var(--lg-line2)}
+
+/* call reports in the same dark surface */
+#pane-callreports.cc-skin{padding:20px 22px 40px;border-radius:20px;min-height:100%}
