@@ -115,6 +115,14 @@ async function ccLoad() {
       if (!cs.standard_price) { cs.standard_price = '899'; ch = true; }
       if (ch) sset('lyc-call-settings', cs);
     }
+    if (!seen.includes('scriptfix:balin-full')) {
+      seen.push('scriptfix:balin-full'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      [['10-pest-one-call', 12568, 2512095507], ['09-new-in-town', 3563, 1008358999]].forEach(([id, len, hh]) => {
+        const mine = ccScripts.find(s => s.id === id), def = DEFAULT_SCRIPTS.find(s => s.id === id);
+        if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
+      });
+    }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
       if (seen.includes(key)) return;
@@ -146,6 +154,7 @@ async function ccLoad() {
   ccSettings   = (await sget('lyc-call-settings')) || {};
   if (ccSettings.ui) ccUI = Object.assign(ccUI, ccSettings.ui);
   if (ccUI.wObjV !== 2) { ccUI.wObj = 470; ccUI.wObjV = 2; }
+  if (ccUI.fullV !== 1) { ccUI.mode = 'full'; ccUI.fullV = 1; }
   ccScriptId = ccSettings.lastScript || (ccScripts[0] && ccScripts[0].id) || '';
   ccLoadScript(ccScriptId);
 }
@@ -1042,7 +1051,7 @@ function ccClampStep() { ccUI.step = Math.max(0, Math.min(ccFlowCount() - 1, Num
 function ccStepHTML(step, i, forceOpen) {
   const intro = i < ccIntroN();
   const key = ccScriptId + '|' + step.title;
-  const open = forceOpen || (ccSecOpen[key] !== undefined ? ccSecOpen[key] : !intro);
+  const open = forceOpen || (ccSecOpen[key] !== undefined ? ccSecOpen[key] : true);
   return `<div class="cc-step ${open ? '' : 'collapsed'} ${intro ? 'intro' : ''}" data-i="${i}">
     <div class="cc-stephead" data-i="${i}"><span class="cc-chev"></span><span>${esc(step.title)}</span>${step.badge ? ` <span class="cc-badge">${esc(step.badge)}</span>` : ''}</div>
     <div class="cc-stepbody">${step.lines.map(ccLineHTML).join('')}</div>
