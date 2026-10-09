@@ -113,9 +113,9 @@ async function ccLoad() {
       if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.splice(Math.min(1, ccObjections.groups.length), 0, g); }
       if (!g.items.some(i => i.trigger === trig)) { g.items.push(JSON.parse(JSON.stringify(di))); sset('lyc-objections', ccObjections); }
     });
-    if (!seen.includes('objfix:email-v3')) {
-      seen.push('objfix:email-v3'); touched = true;
-      const OLDS = ["Yeah, I can do that, that's probably easier for both of us.", "I could, but you and I both know that email ends up buried in your inbox, or in spam."];
+    if (!seen.includes('objfix:email-v4')) {
+      seen.push('objfix:email-v4'); touched = true;
+      const OLDS = ["Yeah, I can do that, that's probably easier for both of us.", "I could, but you and I both know that email ends up buried in your inbox, or in spam.", "No, I'm sorry, but I'm not going to send you an email."];
       const dg = DEFAULT_OBJECTIONS.groups.find(g => g.id === 'start'), di = dg && dg.items.find(i => i.trigger === 'Just email me');
       (ccObjections.groups || []).forEach(g => (g.items || []).forEach((it, k) => {
         if (di && it.trigger === 'Just email me' && it.say && OLDS.includes(it.say[0])) { g.items[k] = JSON.parse(JSON.stringify(di)); sset('lyc-objections', ccObjections); }
