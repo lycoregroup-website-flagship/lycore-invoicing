@@ -754,7 +754,7 @@ VA:['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandri
 WV:['Charleston','Huntington','Morgantown'],WI:['Milwaukee','Madison','Green Bay','Kenosha'],WY:['Cheyenne','Casper','Laramie']};
 
 const OLD_DEFAULT_CATALOG_NAMES=["Voice Receptionist \u2014 Setup","Voice Receptionist \u2014 Monthly Service","Voice Receptionist \u2014 Monthly Service + Chatbot","Website Build","Website Maintenance \u2014 Monthly","Reputation Management \u2014 Monthly","Missed Call Text Back \u2014 Monthly"];
-const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_irhs6nr2OFchh"},{"name":"Reputation Management \u2014 Monthly","price":497,"freq":"month","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Website Build","price":697,"freq":"once","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"Website Maintenance \u2014 Monthly","price":89,"freq":"month","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"AI Receptionist + Web Chat \u2014 Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"AI Receptionist + Web Chat \u2014 Monthly","price":699,"freq":"month","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"Missed-Call Text-Back \u2014 Monthly","price":199,"freq":"month","paylink":"https://whop.com/checkout/plan_1czgo9aRXvfoK"}];
+const DEFAULT_CATALOG=[{"name":"Cold Outreach Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_irhs6nr2OFchh"},{"name":"Reputation Management \u2014 Monthly","price":899,"freq":"month","paylink":"https://whop.com/checkout/plan_KTauEjUI2cpgJ"},{"name":"Website Build","price":697,"freq":"once","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"Website Maintenance \u2014 Monthly","price":89,"freq":"month","paylink":"https://whop.com/checkout/plan_pSJIJGcWzcank"},{"name":"AI Receptionist + Web Chat \u2014 Setup","price":2499,"freq":"once","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"AI Receptionist + Web Chat \u2014 Monthly","price":699,"freq":"month","paylink":"https://whop.com/checkout/plan_B8IQMOv1mwAaO"},{"name":"Missed-Call Text-Back \u2014 Monthly","price":199,"freq":"month","paylink":"https://whop.com/checkout/plan_1czgo9aRXvfoK"}];
 /* Bundles pair a one-time setup fee with its recurring monthly companion so
    picking either from the dropdown always adds both together \u2014 the mistake
    this exists to prevent is billing a setup fee with no ongoing service
@@ -792,7 +792,7 @@ async function loadAll(){
     const ownBundles=(bundles||[]).filter(b=>b.label&&!OLD_DEFAULT_BUNDLE_LABELS.includes(b.label)&&!newLabels.includes(b.label));
     catalog=DEFAULT_CATALOG.map(x=>({...x})).concat(ownItems);
     bundles=DEFAULT_BUNDLES.map(x=>({...x,parts:[...x.parts]})).concat(ownBundles);
-    settings.whopCatalogV1=true; settings.whopCatalogV2=true; settings.whopCatalogV3=true;
+    settings.whopCatalogV1=true; settings.whopCatalogV2=true; settings.whopCatalogV3=true; settings.whopCatalogV4=true;
     await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles); await sset('lyc-settings',settings);
   }
   if(!settings.whopCatalogV2){
@@ -804,10 +804,15 @@ async function loadAll(){
   }
   if(!settings.whopCatalogV3){
     catalog=catalog.filter(c=>!(c.name==='Reputation Management \u2014 Setup'&&Number(c.price)===497));
-    const rm=catalog.find(c=>c.name==='Reputation Management \u2014 Monthly'); if(rm&&Number(rm.price)===899) rm.price=497;
+    const rm=catalog.find(c=>c.name==='Reputation Management \u2014 Monthly');
     bundles=bundles.filter(b=>b.label!=='Reputation Management \u2014 Setup + Monthly');
     settings.whopCatalogV3=true;
     await sset('lyc-catalog',catalog); await sset('lyc-bundles',bundles); await sset('lyc-settings',settings);
+  }
+  if(!settings.whopCatalogV4){
+    const rm=catalog.find(c=>c.name==='Reputation Management \u2014 Monthly'); if(rm&&Number(rm.price)===497) rm.price=899;
+    settings.whopCatalogV4=true;
+    await sset('lyc-catalog',catalog); await sset('lyc-settings',settings);
   }
   pinHash=(await sget('lyc-pin'))||null;
   recoveryHash=(await sget('lyc-recovery'))||null;

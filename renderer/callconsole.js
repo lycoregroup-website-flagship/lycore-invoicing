@@ -141,6 +141,14 @@ async function ccLoad() {
       const cs = (await sget('lyc-call-settings')) || {};
       if ((cs.standard_price === '899' || !cs.standard_price) && (cs.setup_fee === '497' || !cs.setup_fee)) { cs.standard_price = '497'; cs.setup_fee = ''; cs.trial_days = ''; sset('lyc-call-settings', cs); }
     }
+    if (!seen.includes('scriptfix:positions-sheet')) {
+      seen.push('scriptfix:positions-sheet'); touched = true;
+      const h = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = ((x * 33) ^ s.charCodeAt(i)) >>> 0; return x; };
+      [['10-pest-one-call', 9348, 731670302], ['09-new-in-town', 3644, 80230825]].forEach(([id, len, hh]) => {
+        const mine = ccScripts.find(s => s.id === id), def = DEFAULT_SCRIPTS.find(s => s.id === id);
+        if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
+      });
+    }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
       if (seen.includes(key)) return;
@@ -242,15 +250,27 @@ function ccVars() {
   const ord = n => { const k = n % 100; return n + (k >= 11 && k <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' })[n % 10] || 'th'); };
   const pc = String(v.profile_check || '').trim(), pcl = pc.toLowerCase();
   const pm = /(\d+)\s*(?:st|nd|rd|th)?\s*(?:out of|of|\/)\s*(\d+)/i.exec(pc) || /^#?\s*(\d+)(?:st|nd|rd|th)?$/.exec(pc);
-  let pos = num(v.rank_spot) || (pm ? Number(pm[1]) : NaN) || num(v.map_rank);
+  const notListed = x => /not listed|not found|not shown|none/i.test(String(x || ''));
+  const mapPos = notListed(v.map_rank) ? NaN : num(v.map_rank);
+  let pos = num(v.rank_spot) || (pm ? Number(pm[1]) : NaN) || mapPos;
+  const nl = /not listed\s*\((\d+)\s*shown\)/i.exec(String(v.map_rank || ''));
   const tot = num(v.rank_total) || (pm && pm[2] ? Number(pm[2]) : NaN) || num(v.results_total);
   if (pos > 0) { v.rank_ordinal = ord(pos); if (tot > 0) v.rank_total = String(tot); }
   const RS_BASE = 'When someone searches just "pest control" in {{city}} and they don\'t know any company by name, Google shows them a short list. {{company_name}} %% You do have a website and a Google profile, which is why you come up when someone types your name. A stranger doesn\'t type your name. Google picks who to show those people by how many reviews a company has, how recent they are, and how complete its profile is. You have {{google_review_count}} reviews, so the companies with more of them get the call instead of you.';
-  if (/no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl)) v.rank_story = 'I looked for {{company_name}} in {{city}} on Google Maps and couldn\'t find a business profile. Without one you can\'t appear when someone searches pest control.';
+  if (!(pos > 0) && nl && !v.rank_total) v.rank_total = nl[1];
+  if (pos > 0 && !v.rank_spot) v.rank_spot = String(pos);
+  const pageNo = num(v.rank_page) || (pos > 0 ? Math.ceil(pos / 20) : NaN);
+  const listed = pos > 0 && !/no (google )?(business )?profile|closed/.test(pcl);
+  v.rank_where = listed ? 'on page ' + pageNo : (pcl || nl) ? 'nobody can find' : 'on page 2';
+  v.rank_status = listed ? (pos <= 3 ? 'number ' + pos + ' right now' : 'on page ' + pageNo) : (pcl || nl) ? 'not showing up' : 'on page 2';
+  if (/permanently closed|closed/.test(pcl)) v.rank_story = 'Google is showing {{company_name}} as permanently closed. Anyone who looks you up is told you\'re out of business.';
+  else if (pos > 0 && pos <= 3 && !num(v.rank_page)) v.rank_story = 'When someone searches just "pest control" in {{city}}, Google Maps shows {{company_name}} {{rank_ordinal}}. That\'s a strong spot. The question is whether you keep it as the companies around you collect more reviews than your {{google_review_count}}.';
+  else if (/no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl)) v.rank_story = 'I looked for {{company_name}} in {{city}} on Google Maps and couldn\'t find a business profile. Without one you can\'t appear when someone searches pest control.';
   else if (pos > 0) v.rank_story = RS_BASE.replace('%%', 'comes up {{rank_ordinal}}' + (tot > 0 ? ' out of {{rank_total}}' : '') + ', and most people never scroll that far.');
   else v.rank_story = RS_BASE.replace('%%', 'isn\'t on it.');
   if (!v.start_date) { const sd = new Date(); sd.setDate(sd.getDate() + (num(ccSettings.trial_days) || 30)); v.start_date = sd.toLocaleString('en-US', { month: 'long', day: 'numeric' }); }
   const y = num(v.years), j = num(v.jobs_month);
+  if (y > 0 && j > 0) v.total_visits = Math.round(y * 12 * j).toLocaleString('en-US');
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
   v.next_month = d.toLocaleString('en-US', { month: 'long' });
@@ -1676,7 +1696,7 @@ const CC_ALIAS = {
   owner_replied: ['owner_replied'],
   sales_implication: ['review_summary_sales_implication'],
   rank_signal: ['local_visibility_rank_signal'],
-  other_platforms: ['bbb_other_platforms','other_platform','other_platforms'],
+  other_platforms: ['bbb_other_platforms','other_platform','other_platforms','other_reviews','other_reviews_bbb_angi_yelp'],
   positive_unanswered_reviews: ['positive_unanswered_reviews','positive_unanswered_count','unanswered_positive_reviews','positive_reviews_unanswered'],
   negative_unanswered_reviews: ['negative_unanswered_reviews','negative_unanswered_count','unanswered_negative_reviews','negative_reviews_unanswered'],
   facebook_verified: ['facebook_verified','fb_verified','facebook_confirmed'],
@@ -1686,7 +1706,7 @@ const CC_ALIAS = {
   last_review: ['review_date_relative','last_review_date_relative','last_review','last_review_date','most_recent_review','exact_days_since_last_review','days_since_review'],
   unanswered_reviews: ['unanswered_reviews','google_unanswered_count','unresponded_reviews','no_owner_response'],
   negative_reviews: ['negative_reviews','one_star_reviews','low_star_reviews'],
-  established: ['established','established_since','year_founded'],
+  established: ['established','established_since','year_founded','founded','year_established','founded_year'],
   years: ['years','years_in_business'], jobs_month: ['jobs_month','jobs_per_month','monthly_jobs'],
   avg_job: ['avg_job','avg_job_value','job_value'],
   profile_check: ['profile_check','google_profile_check','gbp_check','profile_status','gbp_status','google_profile_status','search_check','city_search_check'],
@@ -1747,8 +1767,10 @@ function ccGuessKey(h) {
   if (has('unanswer') || has('no_reply') || has('unrespond') || has('no_response')) return 'unanswered_reviews';
   if (has('owner') || has('contact') || has('decision')) return 'owner';
   if (has('rating') || has('star') || h === 'score') return 'rating';
+  if (has('other') && has('review')) return 'other_platforms';
   if (has('review')) return 'reviews';
   if (has('website') || has('url') || has('domain')) return 'website';
+  if (has('rank') || has('position')) return 'map_rank';
   if (has('zip') || has('postal')) return 'zip';
   if (has('state') || has('province')) return 'state';
   if (has('city') || has('town')) return 'city';
