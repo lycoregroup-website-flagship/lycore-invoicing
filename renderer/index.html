@@ -10,6 +10,10 @@
   function apply(){ var t=cur(); document.documentElement.setAttribute('data-theme',t); var b=document.getElementById('theme-btn'); if(b) b.textContent=t==='dark'?'Light mode':'Dark mode'; }
   window.toggleTheme=function(){ var n=cur()==='dark'?'light':'dark'; try{localStorage.setItem('lyc-theme',n);}catch(e){} apply(); };
   apply(); document.addEventListener('DOMContentLoaded',apply);
+  document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('nav.sidebar .navbtn').forEach(function(b){ if(!b.title) b.title=(b.querySelector('span')||b).textContent.trim(); });
+    var ub=document.getElementById('update-btn'); if(ub){ document.body.appendChild(ub); ub.classList.add('update-float'); }
+  });
 })();
 </script>
 <script src="qrcode.min.js"></script>

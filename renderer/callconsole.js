@@ -149,6 +149,11 @@ async function ccLoad() {
         if (mine && def && mine.body.length === len && h(mine.body) === hh) { mine.body = def.body; ccSaveScripts(); }
       });
     }
+    if (!seen.includes('scriptfix:onecall-v4-pasted')) {
+      seen.push('scriptfix:onecall-v4-pasted'); touched = true;
+      const mine = ccScripts.find(s => s.id === '10-pest-one-call'), def = DEFAULT_SCRIPTS.find(s => s.id === '10-pest-one-call');
+      if (mine && def && mine.body !== def.body) { mine.prevBody = mine.body; mine.body = def.body; ccSaveScripts(); }
+    }
     NEW_SCRIPT_IDS.forEach(id => {
       const key = 'script:' + id;
       if (seen.includes(key)) return;
@@ -271,6 +276,31 @@ function ccVars() {
   if (!v.start_date) { const sd = new Date(); sd.setDate(sd.getDate() + (num(ccSettings.trial_days) || 30)); v.start_date = sd.toLocaleString('en-US', { month: 'long', day: 'numeric' }); }
   const y = num(v.years), j = num(v.jobs_month);
   if (y > 0 && j > 0) v.total_visits = Math.round(y * 12 * j).toLocaleString('en-US');
+  {
+    const rv = num(v.google_review_count), ac = num(v.active_customers), tc = num(v.techs), ft = num(v.first_treatment), price = num(v.standard_price) || 497;
+    if (rv >= 0 && ac > 0) v.review_pct = (Math.round(rv / ac * 1000) / 10) + '%';
+    if (rv >= 0 && y > 0) v.reviews_per_year = String(Math.round(rv / y * 10) / 10);
+    if (j > 0 && tc > 0) v.visits_per_tech = String(Math.round(j / tc));
+    if (ft > 0) { v.first_treatment_usd = '$' + ft.toLocaleString('en-US'); v.customers_to_cover = String(Math.ceil(price / ft)); }
+    // position: what you type on the call wins; "not listed" is never turned into a number
+    const tp = String(v.position || '').trim(), tNum = tp && !notListed(tp) ? num(tp) : NaN, tNot = !!tp && !(tNum > 0);
+    const P = tNum > 0 ? tNum : (tNot ? NaN : pos);
+    const noProf = !(tNum > 0) && /no (google )?(business )?profile|profile not found|not found when searched|no gbp|couldn.?t find/.test(pcl);
+    const sheetNl = !tp && nl;
+    if (P > 0) { v.position_line = "Here you are, you're showing up around number " + P + ' in these results.'; v.observed_status = 'showing up around number ' + P; }
+    else if (noProf) { v.position_line = "I couldn't find a Google business profile for you at all."; v.observed_status = 'not showing up at all'; }
+    else if (sheetNl) { v.position_line = 'I went through the first ' + nl[1] + " results and you're not in them."; v.observed_status = 'not in the first ' + nl[1] + ' results'; }
+    else if (tNot) { v.position_line = "I went through the results and I can't find you in them."; v.observed_status = 'not showing up in these results'; }
+    else { v.position_line = "Here you are, you're showing up around {{position}} in these results."; v.observed_status = 'showing up around {{position}}'; }
+    const note = [];
+    if (v.map_rank) note.push('Maps in city: ' + v.map_rank);
+    if (v.maps_position_25_mile_area) note.push('Maps 25-mile area: ' + v.maps_position_25_mile_area);
+    if (v.google_search_position_in_city) note.push('Google search: ' + v.google_search_position_in_city);
+    if (pc) note.push(pc);
+    v.rank_note = note.length ? note.join(' \u00b7 ') : 'no position data for this lead';
+    v.scholarship_check = !(rv >= 0) || String(v.google_review_count || '').trim() === '' ? 'review count unknown. Check before offering the scholarship.'
+      : rv <= 100 ? 'qualifies (' + rv + ' Google reviews, 100 or fewer).' : 'does NOT qualify (' + rv + ' Google reviews, over 100). Do not offer the $497 scholarship.';
+  }
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
   v.next_month = d.toLocaleString('en-US', { month: 'long' });

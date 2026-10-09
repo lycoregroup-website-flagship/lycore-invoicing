@@ -695,3 +695,15 @@ body.cc-resizing{cursor:col-resize;user-select:none}
 .cc-skin .cc-ans-say{font-size:17.5px;line-height:1.5;margin:0 0 12px}
 /* dark mode: invoice line items and catalog rows were white boxes with pale text */
 [data-theme="dark"] #items input,[data-theme="dark"] #items select,[data-theme="dark"] #catalog-rows input,[data-theme="dark"] #catalog-rows select,[data-theme="dark"] #bundle-rows input,[data-theme="dark"] #bundle-rows select{background:var(--card-alt) !important;color:var(--text) !important;border-color:var(--border) !important}
+/* ===================== Nav rail v1: the app menu stays reachable on Leads and Sales Lab ===================== */
+.app-shell.call-view:not(.nav-open) nav.sidebar,.app-shell.wide-view:not(.nav-open) nav.sidebar{display:flex !important;width:58px;flex:0 0 58px}
+.app-shell.call-view:not(.nav-open) nav.sidebar .navbtn span,.app-shell.wide-view:not(.nav-open) nav.sidebar .navbtn span{display:none}
+.app-shell.call-view:not(.nav-open) nav.sidebar .navbtn,.app-shell.wide-view:not(.nav-open) nav.sidebar .navbtn{justify-content:center;padding:10px 0}
+.app-shell.call-view:not(.nav-open) nav.sidebar .navbtn.active::before,.app-shell.wide-view:not(.nav-open) nav.sidebar .navbtn.active::before{left:-6px}
+.app-shell.call-view:not(.nav-open) nav.sidebar .navlist,.app-shell.wide-view:not(.nav-open) nav.sidebar .navlist{padding:6px}
+.app-shell.call-view:not(.nav-open) nav.sidebar .brand,.app-shell.wide-view:not(.nav-open) nav.sidebar .brand{padding:14px 0 8px;display:flex;justify-content:center}
+.app-shell.call-view:not(.nav-open) nav.sidebar .brand .word,.app-shell.wide-view:not(.nav-open) nav.sidebar .brand .word{font-size:0;gap:0}
+.app-shell.call-view:not(.nav-open) nav.sidebar .brand .sub,.app-shell.call-view:not(.nav-open) nav.sidebar .brand .ver,.app-shell.call-view:not(.nav-open) nav.sidebar .plant-card,.app-shell.call-view:not(.nav-open) nav.sidebar .footer,
+.app-shell.wide-view:not(.nav-open) nav.sidebar .brand .sub,.app-shell.wide-view:not(.nav-open) nav.sidebar .brand .ver,.app-shell.wide-view:not(.nav-open) nav.sidebar .plant-card,.app-shell.wide-view:not(.nav-open) nav.sidebar .footer{display:none}
+.app-shell.call-view:not(.nav-open) nav.sidebar .divider,.app-shell.wide-view:not(.nav-open) nav.sidebar .divider{margin:8px 6px}
+.update-float{position:fixed !important;right:22px;bottom:72px;z-index:500;box-shadow:0 8px 24px rgba(0,0,0,.45)}
