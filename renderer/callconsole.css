@@ -662,3 +662,24 @@ body.cc-resizing{cursor:col-resize;user-select:none}
 .cc-sub{flex:0 0 auto;background:none;border:0;border-bottom:2px solid transparent;color:var(--text-mute);font:inherit;font-size:13px;padding:2px 6px;cursor:pointer;white-space:nowrap}
 .cc-sub:hover{color:var(--text)}
 .cc-sub.on{color:var(--text);border-bottom-color:currentColor;font-weight:600}
+/* ===================== Leads v2.8: answers you can read without scrolling ===================== */
+.cc-skin #cc-pane-obj{gap:6px}
+.cc-skin #cc-objlist{flex:0 0 auto;max-height:34%;overflow-y:auto}
+.cc-skin .cc-chipwrap{display:flex !important;flex-wrap:wrap;gap:5px}
+.cc-skin .cc-oc{min-height:0;padding:4px 10px;font-size:12.5px;border-radius:999px;border-left-width:3px;line-height:1.3;text-align:left;justify-content:flex-start}
+.cc-skin .cc-gh{margin:6px 0 3px}
+.cc-skin .cc-seeall{margin:4px 0 0}
+.cc-skin #cc-objans{flex:1 1 auto;min-height:0;overflow-y:auto;border-top:1px solid var(--lg-line);padding-top:10px}
+.cc-skin .cc-ans-head{gap:6px;margin-bottom:8px}
+.cc-skin .cc-ans-head b{font-size:13px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.04em}
+.cc-skin .cc-ans-head .cc-mini,.cc-skin .cc-ans-head .cc-log{padding:2px 9px;font-size:11.5px}
+.cc-skin .cc-ans-say{background:none;border:0;padding:0;margin:0 0 12px;font-size:18px;line-height:1.5;color:#f4f4f6;font-weight:500}
+.cc-skin .cc-then{font-size:14px;margin-top:4px}
+.cc-skin .cc-means{font-size:12.5px;margin-top:6px}
+.cc-lt{white-space:nowrap}
+.cc-setmodal{width:520px}
+.cc-setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12.5px;color:var(--text-mute)}
+.cc-setrow .cc-input{width:100%;box-sizing:border-box}
+.cc-skin #cc-pane-obj:has(#cc-objans:not(:empty)) #cc-objlist{max-height:112px}
+.cc-skin .cc-ans-say{font-size:16px;line-height:1.45;margin:0 0 9px}
+.cc-skin #cc-pane-obj:has(#cc-objans:not(:empty)) .cc-seeall{display:none}

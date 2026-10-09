@@ -81,7 +81,7 @@ async function ccLoad() {
   ccObjections = (await sget('lyc-objections')) || JSON.parse(JSON.stringify(DEFAULT_OBJECTIONS));
   // Offer defaults added after first install, once each, without overwriting saved edits or bringing back deleted ones.
   try {
-    const NEW_SCRIPT_IDS = ['07-reputation-6min', '08-pest-plain', '09-new-in-town'];
+    const NEW_SCRIPT_IDS = ['07-reputation-6min', '08-pest-plain', '09-new-in-town', '10-pest-one-call'];
     const NEW_OBJ = [
       ['dontneed', 'We get our reviews on Angi / Thumbtack / Facebook'],
       ['dontneed', "Our customers don't leave reviews"],
@@ -152,7 +152,11 @@ function ccVars() {
   const v = Object.assign({}, M, L, {
     offer_line: ccSettings.offer_line,
     discount_line: ccSettings.discount_line,
-    rep_name: ccSettings.rep_name
+    rep_name: ccSettings.rep_name,
+    standard_price: ccSettings.standard_price,
+    promotion: ccSettings.promotion,
+    contract_term: ccSettings.contract_term,
+    setup_fee: ccSettings.setup_fee
   }, L.answers || {});
 
   for (const [k, fallback] of Object.entries(CC_AUTO_FALLBACK)) {
@@ -182,10 +186,12 @@ function ccVars() {
     v.other_platform_review_count = platKey ? (v[CC_PLATFORM_REVIEW_MAP[platKey]] || '') : '';
   }
 
-  const rpg = Number(v.rank_page), rps = Number(v.rank_pos);
+  const num = x => { const m = String(x == null ? '' : x).replace(/,/g, '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : NaN; };
+  if (!v.years && /^(19|20)\d\d$/.test(String(v.established || '').trim())) v.years = String(new Date().getFullYear() - Number(v.established));
+  const rpg = num(v.rank_page), rps = num(v.rank_pos);
   if (rpg > 0 && rps > 0) { v.rank_spot = (rpg - 1) * 20 + rps; v.competitors_ahead = v.rank_spot - 1; }
   else if (Number(v.rank) > 0) { if (!v.rank_spot) v.rank_spot = Number(v.rank); v.competitors_ahead = Number(v.rank) - 1; }
-  const y = Number(v.years), j = Number(v.jobs_month);
+  const y = num(v.years), j = num(v.jobs_month);
   if (y > 0 && j > 0) v.customers = Math.round(y * 12 * j).toLocaleString('en-US');
   const d = new Date(); d.setMonth(d.getMonth() + 1);
   v.next_month = d.toLocaleString('en-US', { month: 'long' });
@@ -226,6 +232,7 @@ function ccParse(raw) {
     if (line.startsWith('## ')) { cur = { title: line.slice(3).trim(), lines: [], caps: [] }; steps.push(cur); return; }
     if (!cur || !line.trim()) return;
     if (/^badge:/i.test(line)) { cur.badge = line.slice(line.indexOf(':') + 1).trim(); return; }
+    if (/^phase:/i.test(line)) { cur.phase = line.slice(line.indexOf(':') + 1).trim(); return; }
     const k = line[0], text = line.slice(2).trim();
     if (k === '>') cur.lines.push({ t: 'say', text });
     else if (k === '~') cur.lines.push({ t: 'do', text });
@@ -410,6 +417,7 @@ function ccSerializeSections(sections) {
     const title = (sec.title || 'SECTION').trim() || 'SECTION';
     let head = '## ' + title + '\n';
     if (sec.badge && sec.badge.trim()) head += 'badge: ' + sec.badge.trim() + '\n';
+  if (sec.phase && sec.phase.trim()) head += 'phase: ' + sec.phase.trim() + '\n';
     head += '\n';
     const body = sec.lines
       .filter(l => l.t === 'cap' ? (l.cap.key || '').trim() : (l.text || '').trim())
@@ -514,7 +522,7 @@ function ccOpenScriptForm(id) {
   const parsed = ccParse('---\nname: x\n---\n' + bodyText);
   let sections = parsed.steps.map(s => ({
     title: s.title,
-    badge: s.badge || '',
+    badge: s.badge || '', phase: s.phase || '',
     lines: s.lines.map(l => l.t === 'cap' ? { t: 'cap', cap: { key: l.cap.key, label: l.cap.label } } : { t: l.t, text: l.text })
   }));
   if (!sections.length) sections = [{ title: 'OPENER', badge: '', lines: [] }];
@@ -692,6 +700,7 @@ function ccShellHTML() {
             <h4>Script</h4>
             <select id="cc-scriptsel" class="cc-select"></select>
             <div class="cc-seg" id="cc-modeseg"><button data-m="full" title="Read the whole script">Full</button><button data-m="guided" title="One section at a time">Guided</button></div>
+            <button class="cc-mini" onclick="ccOpenCallSettings()" title="Your name, prices and offer lines used in scripts">&#9881; Prices</button>
             <button class="cc-mini" id="cc-scriptedit-btn" title="Create, edit, duplicate, or delete call scripts">Edit scripts</button>
           </div>
           <div class="cc-legend">
@@ -847,6 +856,19 @@ function ccNormPhone(raw) {
 }
 
 
+function ccOpenCallSettings() {
+  const F = [['rep_name', 'Your name', 'Brenda'], ['standard_price', 'Standard monthly price (number only)', '297'], ['promotion', 'Current promotion', 'the first month free'], ['contract_term', 'Contract term', 'no long-term contract'], ['setup_fee', 'Setup fee', 'waived'], ['offer_line', 'Offer line (said word for word)', ''], ['discount_line', 'Discount line (spoken only)', '']];
+  const ov = document.createElement('div'); ov.className = 'cc-modal-overlay';
+  ov.innerHTML = '<div class="cc-modal cc-setmodal"><h4>Prices and offer lines</h4><p class="cc-hint">These fill {{standard_price}}, {{promotion}}, {{contract_term}}, {{setup_fee}}, {{offer_line}}, {{discount_line}} and {{rep_name}} in every script. Only enter what LYCORE has actually approved.</p>' +
+    F.map(f => '<label class="cc-setrow"><span>' + esc(f[1]) + '</span><input class="cc-input" data-k="' + f[0] + '" value="' + esc(ccSettings[f[0]] || '') + '" placeholder="' + esc(f[2]) + '"></label>').join('') +
+    '<div class="cc-modal-actions"><button class="cc-mini" data-x="no">Cancel</button> <button class="cc-mini focus" data-x="ok">Save</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('[data-x="no"]').onclick = () => ov.remove();
+  ov.querySelector('[data-x="ok"]').onclick = () => {
+    ov.querySelectorAll('input[data-k]').forEach(i => { ccSettings[i.dataset.k] = i.value.trim(); });
+    ccSaveSettings(); ov.remove(); ccRenderScript(); ccRenderObjections(); toast('Saved', 'success');
+  };
+}
 function ccToggleAppNav() { const a = document.getElementById('app-shell'); if (a) a.classList.toggle('nav-open'); }
 function ccToggleRail() { ccUI.rail = !ccUI.rail; ccApplyUI(); ccSaveUI(); }
 function ccCopyPhone() { if (ccLead) { navigator.clipboard.writeText(ccFormatPhone(ccLead.phone) || ccLead.phone || ''); toast('Number copied', 'success'); } }
@@ -859,6 +881,7 @@ setInterval(() => {
   const s = Math.floor((ccTimer.elapsed + (ccTimer.on ? Date.now() - ccTimer.start : 0)) / 1000);
   el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
   el.classList.toggle('running', ccTimer.on);
+  const ltEl = document.getElementById('cc-localtime'); if (ltEl && ccLead) ltEl.textContent = ccLocalTime(ccLead);
 }, 500);
 
 /* ------------------------------------------------------------ lead detail */
@@ -1024,6 +1047,7 @@ function ccRenderHead() {
   if (has(v.google_unanswered_count)) facts.push(`<span class="cc-fact">${esc(v.google_unanswered_count)} unanswered</span>`);
   if (has(v.other_platform)) facts.push(`<span class="cc-fact">${esc(v.other_platform)}${has(v.other_platform_review_count) ? ' ' + esc(v.other_platform_review_count) : ''}</span>`);
   if (has(v.facebook_verified)) facts.push(`<span class="cc-fact">Facebook: ${esc(v.facebook_verified)}</span>`);
+  const lt = ccLocalTime(l); if (lt) facts.push('<span class="cc-fact cc-lt" id="cc-localtime" title="Their local time">' + esc(lt) + '</span>');
   if (has(l.status)) facts.push(`<span class="cc-fact status">${esc(l.status)}</span>`);
   h.innerHTML = `
     <button class="cc-railbtn" onclick="ccToggleAppNav()" title="Show or hide the app menu">&#9638;</button>
@@ -1121,7 +1145,7 @@ function ccRefreshVars() {
     const parts = sd.lines.filter(x => x.t !== 'cap');
     let p = 0;
     Array.from(body.children).forEach(child => {
-      if (child.classList.contains('cc-cap')) return;
+      if (child.classList.contains('cc-cap') || child.classList.contains('cc-sayhead')) return;
       const line = parts[p++]; if (!line || line.t === 'why') return;
       if (line.t === 'say') { const tx = child.querySelector('.cc-txt'); if (tx) tx.innerHTML = ccFill(line.text); return; }
       child.innerHTML = line.t === 'if' ? '<span>' + ccFill(line.text) + '</span>' : ccFill(line.text);
@@ -1159,7 +1183,7 @@ function ccPhaseOf(title) {
 }
 function ccPhaseMap() {
   const n = ccIntroN(), st = ccScript ? ccScript.steps.slice(n) : [], map = {};
-  st.forEach((s, i) => { const p = ccPhaseOf(s.title); (map[p] = map[p] || []).push(i); });
+  st.forEach((s, i) => { const p = s.phase && CC_PHASES.includes(s.phase) ? s.phase : ccPhaseOf(s.title); (map[p] = map[p] || []).push(i); });
   return CC_PHASES.filter(p => map[p]).map(p => ({ name: p, steps: map[p] }));
 }
 function ccGoPhase(dir) {
@@ -1602,6 +1626,7 @@ const CC_ALIAS = {
   established: ['established','established_since','year_founded'],
   years: ['years','years_in_business'], jobs_month: ['jobs_month','jobs_per_month','monthly_jobs'],
   avg_job: ['avg_job','avg_job_value','job_value'],
+  zip: ['zip','zipcode','zip_code','postal_code'], competitor_2: ['competitor_2','second_competitor','competitor_b','competitor2'], timezone: ['timezone','time_zone'],
   status: ['status','call_status','disposition'], last_called: ['last_called'],
   attempts: ['attempts'], notes: ['notes','note','comment']
 };
@@ -1635,22 +1660,94 @@ function ccNormHeads(row) {
   return row.map(h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''));
 }
 
-function ccSheetLooksLikeLeads(heads) {
+
+/* ---- Smart import: works out which column is which from the header wording and, if that fails, from what is in the cells. ---- */
+const CC_US_TZ = { AL: 'America/Chicago', AK: 'America/Anchorage', AZ: 'America/Phoenix', AR: 'America/Chicago', CA: 'America/Los_Angeles', CO: 'America/Denver', CT: 'America/New_York', DE: 'America/New_York', DC: 'America/New_York', FL: 'America/New_York', GA: 'America/New_York', HI: 'Pacific/Honolulu', ID: 'America/Boise', IL: 'America/Chicago', IN: 'America/Indiana/Indianapolis', IA: 'America/Chicago', KS: 'America/Chicago', KY: 'America/New_York', LA: 'America/Chicago', ME: 'America/New_York', MD: 'America/New_York', MA: 'America/New_York', MI: 'America/Detroit', MN: 'America/Chicago', MS: 'America/Chicago', MO: 'America/Chicago', MT: 'America/Denver', NE: 'America/Chicago', NV: 'America/Los_Angeles', NH: 'America/New_York', NJ: 'America/New_York', NM: 'America/Denver', NY: 'America/New_York', NC: 'America/New_York', ND: 'America/Chicago', OH: 'America/New_York', OK: 'America/Chicago', OR: 'America/Los_Angeles', PA: 'America/New_York', RI: 'America/New_York', SC: 'America/New_York', SD: 'America/Chicago', TN: 'America/Chicago', TX: 'America/Chicago', UT: 'America/Denver', VT: 'America/New_York', VA: 'America/New_York', WA: 'America/Los_Angeles', WV: 'America/New_York', WI: 'America/Chicago', WY: 'America/Denver', PR: 'America/Puerto_Rico' };
+const CC_STATE_NAMES = { alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA', colorado: 'CO', connecticut: 'CT', delaware: 'DE', 'district of columbia': 'DC', florida: 'FL', georgia: 'GA', hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD', massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY', 'puerto rico': 'PR' };
+
+function ccStateCode(s) {
+  const t = String(s || '').trim(); if (!t) return '';
+  if (/^[A-Za-z]{2}$/.test(t) && CC_US_TZ[t.toUpperCase()]) return t.toUpperCase();
+  return CC_STATE_NAMES[t.toLowerCase()] || '';
+}
+
+function ccGuessKey(h) {
+  for (const [key, list] of Object.entries(CC_ALIAS)) if (list.includes(h)) return key;
+  const has = s => h.includes(s);
+  if (has('email')) return 'email';
+  if (has('phone') || has('tel') || has('mobile') || has('cell') || h === 'number') return 'phone';
+  if (has('first') && has('name')) return 'first_name';
+  if (has('last') && has('name')) return 'last_name';
+  if (has('competitor')) { if (has('review')) return 'competitor_reviews'; if (has('rating') || has('star')) return 'competitor_rating'; if (has('2') || has('second') || has('_b')) return 'competitor_2'; return 'competitor'; }
+  if (has('unanswer') || has('no_reply') || has('unrespond') || has('no_response')) return 'unanswered_reviews';
+  if (has('owner') || has('contact') || has('decision')) return 'owner';
+  if (has('rating') || has('star') || h === 'score') return 'rating';
+  if (has('review')) return 'reviews';
+  if (has('website') || has('url') || has('domain')) return 'website';
+  if (has('zip') || has('postal')) return 'zip';
+  if (has('state') || has('province')) return 'state';
+  if (has('city') || has('town')) return 'city';
+  if (has('address') || has('street') || has('location')) return 'address';
+  if (has('time_zone') || has('timezone')) return 'timezone';
+  if (has('compan') || has('business') || h === 'name' || has('account') || has('listing')) return 'business';
+  if (has('categor') || has('industry') || has('niche')) return 'category';
+  if (has('rank') || has('position')) return 'map_rank';
+  if (has('year') && (has('business') || has('found') || has('establish'))) return 'established';
+  return null;
+}
+
+function ccSniff(vals) {
+  const v = vals.map(x => String(x || '').trim()).filter(Boolean).slice(0, 30); if (v.length < 2) return null;
+  const frac = re => v.filter(x => re.test(x)).length / v.length;
+  if (frac(/@.+\./) > 0.7) return 'email';
+  if (frac(/^\+?1?[\s\-.(]*\d{3}[\s\-.)]*\d{3}[\s\-.]*\d{4}(\s*(x|ext)\.?\s*\d+)?$/i) > 0.7) return 'phone';
+  if (frac(/^(https?:\/\/|www\.)|\.(com|net|org|us|co|biz)(\/|$)/i) > 0.7) return 'website';
+  if (frac(/^[1-5](\.\d{1,2})?$/) > 0.8 && v.some(x => x.includes('.'))) return 'rating';
+  if (frac(/^[A-Za-z]{2}$/) > 0.8 && v.every(x => !/^[A-Za-z]{2}$/.test(x) || CC_US_TZ[x.toUpperCase()])) return 'state';
+  if (frac(/^\d{5}(-\d{4})?$/) > 0.8) return 'zip';
+  if (frac(/^\d{1,6}\s+[^,]+,/) > 0.6) return 'address';
+  return null;
+}
+
+/* Some sheets start with a title row or two; the header is the first row that names several known fields. */
+function ccHeaderRow(rows) {
+  let best = 0, bestScore = -1;
+  for (let i = 0; i < Math.min(rows.length, 6); i++) {
+    const heads = ccNormHeads(rows[i]); const score = heads.filter(h => h && ccGuessKey(h)).length;
+    if (score > bestScore) { bestScore = score; best = i; }
+  }
+  return best;
+}
+
+function ccMapColumns(rows) {
+  const hi = ccHeaderRow(rows), heads = ccNormHeads(rows[hi]), body = rows.slice(hi + 1), map = {};
+  heads.forEach((h, j) => { if (!h) return; for (const [key, list] of Object.entries(CC_ALIAS)) if (list.includes(h) && map[key] === undefined) map[key] = j; });
+  const used = new Set(Object.values(map));
+  heads.forEach((h, j) => { if (used.has(j) || !h) return; const k = ccGuessKey(h); if (k && map[k] === undefined) { map[k] = j; used.add(j); } });
+  heads.forEach((h, j) => { if (used.has(j)) return; const k = ccSniff(body.map(r => r[j])); if (k && map[k] === undefined) { map[k] = j; used.add(j); } });
+  if (map.business === undefined) {
+    // no name column found: take the first unclaimed column that is mostly words
+    const j = heads.findIndex((h, j) => { if (used.has(j)) return false; const v = body.map(r => String(r[j] || '').trim()).filter(Boolean).slice(0, 30); return v.length >= 2 && v.filter(x => /[A-Za-z]{3,}/.test(x) && !/^\d/.test(x)).length / v.length > 0.8; });
+    if (j >= 0) { map.business = j; used.add(j); }
+  }
+  return { hi, heads, body, map, used };
+}
+
+function ccSheetLooksLikeLeads(heads, rows) {
   if (heads.some(h => CC_SHEET_SKIP_HEADERS.includes(h))) return false;
-  const hasBiz = CC_ALIAS.business.some(a => heads.includes(a));
-  const hasPhone = CC_ALIAS.phone.some(a => heads.includes(a));
-  return hasBiz && hasPhone;
+  if (!rows) return CC_ALIAS.business.some(a => heads.includes(a)) && CC_ALIAS.phone.some(a => heads.includes(a));
+  const m = ccMapColumns(rows).map;
+  return m.phone !== undefined && (m.business !== undefined || m.owner !== undefined || m.first_name !== undefined);
 }
 
 function ccRowsToLeads(rows, sourceId) {
-  const heads = ccNormHeads(rows[0]);
-  return rows.slice(1).filter(r => r.some(c => String(c || '').trim())).map((r, i) => {
-    const raw = {}; heads.forEach((h, j) => raw[h] = (r[j] || '').trim());
+  const { heads, body, map, used } = ccMapColumns(rows);
+  return body.filter(r => r.some(c => String(c || '').trim())).map((r, i) => {
     const o = { id: sourceId + '-' + i, sourceId };
-    for (const [key, list] of Object.entries(CC_ALIAS)) {
-      for (const a of list) if (raw[a]) { o[key] = raw[a]; break; }
-      if (o[key] === undefined) o[key] = '';
-    }
+    for (const key of Object.keys(CC_ALIAS)) o[key] = '';
+    for (const [key, j] of Object.entries(map)) o[key] = String(r[j] || '').trim();
+    // every other column stays readable as a {{variable}} under its own header name
+    heads.forEach((h, j) => { if (!h || used.has(j) || o[h] !== undefined) return; o[h] = String(r[j] || '').trim(); });
     ccCleanPlaceholders(o);
     if (o.email && o.email.includes('|')) {
       const parts = o.email.split('|').map(s => s.trim());
@@ -1658,12 +1755,29 @@ function ccRowsToLeads(rows, sourceId) {
       if (!o.first_name && parts[1]) o.first_name = parts[1];
       if (!o.last_name && parts[2]) o.last_name = parts[2];
     }
-    if (!o.first_name && o.owner) {
-      const b = o.owner.split(/\s+/); o.first_name = b[0]; o.last_name = b.slice(1).join(' ');
-    }
+    if (!o.first_name && o.owner) { const b = o.owner.split(/\s+/); o.first_name = b[0]; o.last_name = b.slice(1).join(' '); }
+    const addr = /,\s*([^,]+?),\s*([A-Za-z]{2}|[A-Za-z ]{4,})\s*(\d{5})?(?:-\d{4})?\s*(,\s*(USA|United States))?\s*$/.exec(o.address || '');
+    if (addr) { if (!o.city) o.city = addr[1].trim(); if (!o.state && ccStateCode(addr[2])) o.state = ccStateCode(addr[2]); if (!o.zip && addr[3]) o.zip = addr[3]; }
+    if (o.state) o.state = ccStateCode(o.state) || o.state;
+    if (o.reviews) { const n = String(o.reviews).replace(/,/g, '').match(/\d+/); o.reviews = n ? n[0] : o.reviews; }
+    if (o.rating) { const n = String(o.rating).match(/\d+(\.\d+)?/); o.rating = n ? n[0] : o.rating; }
     return o;
   });
 }
+
+/* Local time for a lead, from its state (or address). Empty when the location is unknown: never a guess. */
+function ccLeadTz(l) {
+  if (!l) return '';
+  if (l.timezone && /\//.test(l.timezone)) return l.timezone;
+  let st = ccStateCode(l.state);
+  if (!st) { const m = /,\s*([A-Z]{2})\s*\d{5}/.exec(l.address || ''); if (m) st = ccStateCode(m[1]); }
+  return st ? CC_US_TZ[st] : '';
+}
+function ccLocalTime(l) {
+  const tz = ccLeadTz(l); if (!tz) return '';
+  try { return new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }); } catch (e) { return ''; }
+}
+
 
 function ccShowSheetPicker(fileName, sheetInfos) {
   return new Promise(resolve => {
@@ -1735,7 +1849,7 @@ async function ccImportCSV(e) {
 
   if (isExcel) {
     const sheets = await ccReadWorkbook(f);
-    const usable = sheets.filter(s => s.rows.length > 1 && ccSheetLooksLikeLeads(ccNormHeads(s.rows[0])));
+    const usable = sheets.filter(s => s.rows.length > 1 && ccSheetLooksLikeLeads(ccNormHeads(s.rows[0]), s.rows));
     if (!usable.length) return toast('No sheet in that file looks like a lead list (need a business name + phone column)', 'error');
 
     let chosen = usable;

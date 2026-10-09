@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'live', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'voice', ctl: null, live: null, notice: '', vstate: '' }, tab: 'live', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '', ind: '' }, evId: null, evDraft: null, evSuggest: null, evFilter: { q: '', type: '' },
