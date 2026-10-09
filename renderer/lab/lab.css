@@ -162,10 +162,10 @@
 [data-theme="dark"] .lab-danger{color:#FCA5A5}
 
 /* ===================== Guided live: the call companion (always dark) ===================== */
-.lg{--lg-bg:#050506;--lg-line:#2c2c31;--lg-line2:#3a3a41;--lg-text:#f4f4f6;--lg-mute:#a2a2ab;--lg-in:#0d0d10;
+#lab-root .lg{--lg-bg:#050506;--lg-line:#2c2c31;--lg-line2:#3a3a41;--lg-text:#f4f4f6;--lg-mute:#a2a2ab;--lg-in:#0d0d10;
   background:var(--lg-bg);color:var(--lg-text);border-radius:22px;padding:26px 26px 40px;position:relative;max-width:1180px;margin:0 auto;font-size:15px;line-height:1.45}
-.lg *{box-sizing:border-box}
-.lg button{font:inherit;color:inherit;cursor:pointer}
+#lab-root .lg *{box-sizing:border-box}
+#lab-root .lg button{font:inherit;color:inherit;cursor:pointer}
 .lg-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .lg-logo{color:var(--lg-text);display:flex}
 .lg-title{display:flex;flex-direction:column;flex:1;min-width:0}

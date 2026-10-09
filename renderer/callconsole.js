@@ -117,6 +117,7 @@ async function ccLoad() {
   } catch (e) { console.warn('defaults merge skipped', e); }
   ccSettings   = (await sget('lyc-call-settings')) || {};
   if (ccSettings.ui) ccUI = Object.assign(ccUI, ccSettings.ui);
+  if (ccUI.wObjV !== 2) { ccUI.wObj = 470; ccUI.wObjV = 2; }
   ccScriptId = ccSettings.lastScript || (ccScripts[0] && ccScripts[0].id) || '';
   ccLoadScript(ccScriptId);
 }
@@ -835,6 +836,7 @@ function ccNormPhone(raw) {
 }
 
 
+function ccToggleAppNav() { const a = document.getElementById('app-shell'); if (a) a.classList.toggle('nav-open'); }
 function ccToggleRail() { ccUI.rail = !ccUI.rail; ccApplyUI(); ccSaveUI(); }
 function ccCopyPhone() { if (ccLead) { navigator.clipboard.writeText(ccFormatPhone(ccLead.phone) || ccLead.phone || ''); toast('Number copied', 'success'); } }
 function ccToggleTimer() {
@@ -1013,6 +1015,7 @@ function ccRenderHead() {
   if (has(v.facebook_verified)) facts.push(`<span class="cc-fact">Facebook: ${esc(v.facebook_verified)}</span>`);
   if (has(l.status)) facts.push(`<span class="cc-fact status">${esc(l.status)}</span>`);
   h.innerHTML = `
+    <button class="cc-railbtn" onclick="ccToggleAppNav()" title="Show or hide the app menu">&#9638;</button>
     <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">&#9776;</button>
     <span class="cc-logo" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg></span>
     <div class="cc-headname">
@@ -1067,6 +1070,7 @@ function ccRenderScript() {
     ccRefreshVars();
   });
   box.classList.toggle('guided', ccUI.mode === 'guided');
+  const sp = box.closest('.cc-scriptpanel'); if (sp) sp.classList.toggle('guided-mode', ccUI.mode === 'guided');
   box.onclick = e => {
     const c = e.target.closest('.cc-copy');
     if (c) {
@@ -1220,7 +1224,13 @@ function ccRenderObjections() {
   if (q) {
     const hits = items.filter(i => ccObjText(i).includes(q));
     html = hits.length ? `<div class="cc-chipwrap">${hits.map(ccObjChip).join('')}</div>` : '<div class="cc-empty">No objection matches that.</div>';
+  } else if (!ccUI.pivAll) {
+    const fav = (ccUI.favs || []).map(byT).filter(Boolean), seen = new Set(), quick = [];
+    fav.concat(items.filter(i => !i._pinned)).forEach(i => { if (!seen.has(i.trigger) && quick.length < 10) { seen.add(i.trigger); quick.push(i); } });
+    html = '<div class="cc-chipwrap cc-quick">' + quick.map(ccObjChip).join('') + '</div>' +
+      '<button class="cc-seeall" data-piv="all">See all ' + items.length + ' objections</button>';
   } else {
+    html += '<button class="cc-seeall top" data-piv="few">Show the quick ten</button>';
     const rec = (ccUI.recent || []).map(byT).filter(Boolean).slice(0, 5);
     const fav = (ccUI.favs || []).map(byT).filter(Boolean);
     if (rec.length) html += sec('Recent', rec);
@@ -1233,6 +1243,7 @@ function ccRenderObjections() {
   lb.innerHTML = html;
   lb.scrollTop = listTop;
   lb.querySelectorAll('.cc-oc').forEach(b => b.onclick = () => ccShowObj(b.dataset.t));
+  lb.querySelectorAll('[data-piv]').forEach(b => b.onclick = () => { ccUI.pivAll = b.dataset.piv === 'all'; ccSaveUI(); lb.scrollTop = 0; ccRenderObjections(); });
   ccRenderObjAnswer();
 }
 
