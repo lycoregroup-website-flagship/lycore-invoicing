@@ -420,7 +420,7 @@
         <span class="savepill" id="save-indicator"></span>
         <button class="lock" id="update-btn" style="display:none" onclick="updateClicked()">Update available</button>
         <button class="lock" onclick="lockNow()" id="lock-btn" style="display:none">Lock</button>
-        <button class="btn orange" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.85">Ctrl+N</span></button>
+        <button class="btn orange" id="new-inv-btn" onclick="startNew(true)">New invoice <span style="margin-left:8px;font-size:10px;opacity:.85">Ctrl+N</span></button>
       </div>
     </header>
 
@@ -2259,6 +2259,7 @@ function showTab(t){
   document.getElementById('dash-period-group').style.display=t==='dashboard'?'flex':'none';
   const titles={dashboard:'Dashboard',leads:'Leads',callreports:'Call reports',new:editingId?'Edit invoice':'New invoice',list:'Invoices',expenses:'Expenses',reports:'Reports',clients:'Clients',archive:'Archive',reference:'Reference',lab:'Sales Lab',settings:'Settings'};
   const notes={lab:'Offers, pains, personas and scripts. Nothing here reaches a live call until you publish it',dashboard:'Cash basis',leads:'Green is what you say, red is what you do',callreports:'Built from your own calls',new:'Live preview on the right',list:invoices.length+' active',expenses:'Owner draws tracked separately',reports:'Profit and loss',clients:'Built from invoice history',archive:'Restorable',reference:'Internal notes',settings:'Company, payment and catalog'};
+  const nib=document.getElementById('new-inv-btn'); if(nib) nib.style.display=t==='leads'?'none':'';
   document.getElementById('screen-title').textContent=titles[t]||t;
   document.getElementById('screen-note').textContent=notes[t]||'';
   document.getElementById('nav-inv-count').textContent=invoices.length?String(invoices.length):'';

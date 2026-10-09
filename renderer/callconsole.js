@@ -21,7 +21,7 @@ let ccFilter = 'all', ccQuery = '', ccOpenObj = null;
 let ccHeard = new Set();
 let ccTimer = { on: false, start: 0, elapsed: 0 };
 let ccRanges = { sum: 30, obj: 30, scr: 30 };
-let ccUI = { rail: true, info: false, activity: false };
+let ccUI = { rail: true, info: false, activity: false, mode: 'full', tab: 'obj', step: 0, wObj: 340, favs: [], recent: [] };
 
 const CC_STATUSES = [
   { label: 'Sold',           tone: 'green'  },
@@ -81,11 +81,17 @@ async function ccLoad() {
   ccObjections = (await sget('lyc-objections')) || JSON.parse(JSON.stringify(DEFAULT_OBJECTIONS));
   // Offer defaults added after first install, once each, without overwriting saved edits or bringing back deleted ones.
   try {
-    const NEW_SCRIPT_IDS = ['07-reputation-6min'];
+    const NEW_SCRIPT_IDS = ['07-reputation-6min', '08-pest-plain'];
     const NEW_OBJ = [
       ['dontneed', 'We get our reviews on Angi / Thumbtack / Facebook'],
       ['dontneed', "Our customers don't leave reviews"],
-      ['anything', "They're about to hang up for good"]
+      ['anything', "They're about to hang up for good"],
+      ['pest', "We're slammed, it's peak season"],
+      ['pest', "Corporate handles that / we're a franchise"],
+      ['pest', "Our customers are on plans, they don't need reviews"],
+      ['pest', "People just call whoever's cheapest"],
+      ['pest', "We run Google Ads / we buy leads"],
+      ['pest', "I'm on a job right now"]
     ];
     const seen = (await sget('lyc-defaults-seen')) || [];
     let touched = false;
@@ -104,7 +110,7 @@ async function ccLoad() {
       const di = dg && dg.items.find(i => i.trigger === trig);
       if (!di) return;
       let g = ccObjections.groups.find(x => x.id === gid);
-      if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.push(g); }
+      if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.splice(Math.min(1, ccObjections.groups.length), 0, g); }
       if (!g.items.some(i => i.trigger === trig)) { g.items.push(JSON.parse(JSON.stringify(di))); sset('lyc-objections', ccObjections); }
     });
     if (touched) sset('lyc-defaults-seen', seen);
@@ -636,13 +642,6 @@ function ccOpenScriptForm(id) {
 
 /* ------------------------------------------------------------ the shell */
 
-function renderLeadsPane() {
-  const p = document.getElementById('pane-leads');
-  if (!p.dataset.built) { p.innerHTML = ccShellHTML(); p.dataset.built = '1'; ccWireShell(); }
-  ccApplyUI();
-  ccRenderRail(); ccRenderSources(); ccRenderHead(); ccRenderInfo();
-  ccRenderScript(); ccRenderObjections(); ccRenderActivity(); ccRenderOutcomes();
-}
 
 function ccShellHTML() {
   return `
@@ -674,11 +673,12 @@ function ccShellHTML() {
         <div class="cc-collapse-body" id="cc-info"></div>
       </div>
 
-      <div class="cc-cols">
+      <div class="cc-cols" id="cc-cols">
         <section class="cc-panel cc-scriptpanel">
           <div class="cc-panelhead">
             <h4>Script</h4>
             <select id="cc-scriptsel" class="cc-select"></select>
+            <div class="cc-seg" id="cc-modeseg"><button data-m="full" title="Read the whole script">Full</button><button data-m="guided" title="One section at a time">Guided</button></div>
             <button class="cc-mini" id="cc-scriptedit-btn" title="Create, edit, duplicate, or delete call scripts">Edit scripts</button>
           </div>
           <div class="cc-legend">
@@ -687,15 +687,26 @@ function ccShellHTML() {
             <span class="lg iff">if they say</span>
             <span class="lg stop">stop</span>
           </div>
-          <div class="cc-scriptbox" id="cc-scriptbox"></div>
+          <div class="cc-guidebar" id="cc-guidebar"></div>
+          <div class="cc-scriptbox" id="cc-scriptbox" tabindex="0"></div>
         </section>
 
+        <div class="cc-resizer" id="cc-resizer" title="Drag to resize. Double-click to reset."></div>
+
         <section class="cc-panel cc-objpanel">
-          <div class="cc-panelhead">
-            <h4>Objections</h4>
-            <span class="cc-hint">tap a word to see the answer</span>
+          <div class="cc-tabs">
+            <button data-t="obj">Objections</button>
+            <button data-t="notes">Notes</button>
           </div>
-          <div class="cc-objlist" id="cc-objlist"></div>
+          <div class="cc-tabpane" id="cc-pane-obj">
+            <input id="cc-objsearch" class="cc-input" placeholder="Search objections (Alt+S)" autocomplete="off">
+            <div class="cc-objlist" id="cc-objlist"></div>
+            <div id="cc-objans"></div>
+          </div>
+          <div class="cc-tabpane" id="cc-pane-notes">
+            <textarea id="cc-notes" placeholder="Notes for this lead. Saved as you type."></textarea>
+            <div id="cc-notestatus"></div>
+          </div>
         </section>
       </div>
 
@@ -732,11 +743,12 @@ function ccWireShell() {
   });
   document.getElementById('cc-info-btn').onclick = () => { ccUI.info = !ccUI.info; ccApplyUI(); ccSaveUI(); };
   document.getElementById('cc-act-btn').onclick  = () => { ccUI.activity = !ccUI.activity; ccApplyUI(); ccSaveUI(); };
-  document.getElementById('cc-scriptsel').onchange = e => { ccLoadScript(e.target.value); ccRenderScript(); };
+  document.getElementById('cc-scriptsel').onchange = e => { ccLoadScript(e.target.value); ccUI.step = 0; ccRenderScript(); };
   document.getElementById('cc-scriptedit-btn').onclick = ccOpenScriptManager;
   document.getElementById('cc-csv').onchange = ccImportCSV;
   document.getElementById('cc-actadd').onclick = ccAddActivity;
   ccWireMic();
+  ccWireLeadsX();
 }
 
 function ccApplyUI() {
@@ -796,12 +808,6 @@ function ccRenderRail() {
     el.onclick = () => ccSelect(ccLeads.find(l => l.id === el.dataset.id)));
 }
 
-function ccSelect(l) {
-  if (!l) return;
-  ccLead = l; ccOpenObj = null; ccHeard = new Set();
-  ccRenderRail(); ccRenderHead(); ccRenderInfo();
-  ccRenderScript(); ccRenderObjections(); ccRenderActivity(); ccRenderOutcomes();
-}
 
 /* -------------------------------------------------------------- the head */
 
@@ -826,25 +832,6 @@ function ccNormPhone(raw) {
   return d;
 }
 
-function ccRenderHead() {
-  const l = ccLead;
-  const h = document.getElementById('cc-head');
-  if (!l) { h.innerHTML = '<div class="cc-empty">Pick a lead on the left to start.</div>'; return; }
-  const telDisp = ccFormatPhone(l.phone);
-  const tel = telDisp.replace(/[^0-9+]/g, '');
-  h.innerHTML = `
-    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">☰</button>
-    <div class="cc-headname">
-      <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
-      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' · ' + esc(l.city) : ''}</div>
-    </div>
-    <span class="cc-phone-wrap"><span class="cc-phone-tag">PHONE</span><a class="cc-phone" href="tel:${esc(tel)}">${esc(telDisp || 'no number')}</a></span>
-    <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
-    <div class="cc-timer" id="cc-timer" onclick="ccToggleTimer()">00:00</div>
-    <button class="cc-mini" onclick="ccOpenStats()" title="How many leads you've actually reached out to">Contacted</button>
-    <button class="cc-mini" onclick="ccOpenLookup()" title="Quick phone lookup (Ctrl+K)">Lookup</button>
-    <button class="cc-mini focus" onclick="ccFocus()">Focus</button>`;
-}
 
 function ccToggleRail() { ccUI.rail = !ccUI.rail; ccApplyUI(); ccSaveUI(); }
 function ccCopyPhone() { if (ccLead) { navigator.clipboard.writeText(ccFormatPhone(ccLead.phone) || ccLead.phone || ''); toast('Number copied', 'success'); } }
@@ -941,29 +928,6 @@ function ccRenderInfo() {
 
 /* ----------------------------------------------------------- the script */
 
-function ccRenderScript() {
-  const sel = document.getElementById('cc-scriptsel');
-  sel.innerHTML = ccScripts.map(s => `<option value="${esc(s.id)}">${esc(ccScriptName(s.id))}</option>`).join('');
-  sel.value = ccScriptId;
-
-  const box = document.getElementById('cc-scriptbox');
-  if (!ccScript) { box.innerHTML = ''; return; }
-
-  box.innerHTML = ccScript.steps.map(step => `
-    <div class="cc-step">
-      <div class="cc-stephead">${esc(step.title)}</div>
-      ${step.lines.map(ccLineHTML).join('')}
-    </div>`).join('');
-
-  box.querySelectorAll('input[data-cap]').forEach(i => i.oninput = () => {
-    if (!ccLead) return;
-    ccLead.answers = ccLead.answers || {};
-    ccLead.answers[i.dataset.cap] = i.value;
-    clearTimeout(ccRenderScript._t);
-    ccRenderScript._t = setTimeout(ccSaveLeads, 400);
-    ccRefreshVars();
-  });
-}
 
 function ccLineHTML(l) {
   switch (l.t) {
@@ -981,14 +945,141 @@ function ccLineHTML(l) {
 }
 
 /* Repaint only the text, so typing into a capture box does not move the caret. */
+
+/* -------------------------------------------------------- the objections */
+
+
+
+/* ===================== Leads workspace v2 ===================== */
+let ccSecOpen = {};
+let ccObjQuery = '';
+let ccNotesT = null;
+let ccSpyT = null, ccStepSaveT = null;
+
+const ccIsNum = s => /^\s*\d/.test(s.title);
+
+function ccIntroN() {
+  const st = ccScript ? ccScript.steps : [];
+  const f = st.findIndex(ccIsNum);
+  return f > 0 ? f : 0;
+}
+
+function ccFlowCount() { return ccScript ? Math.max(1, ccScript.steps.length - ccIntroN()) : 1; }
+
+function ccClampStep() { ccUI.step = Math.max(0, Math.min(ccFlowCount() - 1, Number(ccUI.step) || 0)); }
+
+function ccStepHTML(step, i, forceOpen) {
+  const intro = i < ccIntroN();
+  const key = ccScriptId + '|' + step.title;
+  const open = forceOpen || (ccSecOpen[key] !== undefined ? ccSecOpen[key] : !intro);
+  return `<div class="cc-step ${open ? '' : 'collapsed'} ${intro ? 'intro' : ''}" data-i="${i}">
+    <div class="cc-stephead" data-i="${i}"><span class="cc-chev"></span><span>${esc(step.title)}</span>${step.badge ? ` <span class="cc-badge">${esc(step.badge)}</span>` : ''}</div>
+    <div class="cc-stepbody">${step.lines.map(ccLineHTML).join('')}</div>
+  </div>`;
+}
+
+function ccSelect(l) {
+  if (!l) return;
+  ccFlushNotes();
+  ccLead = l; ccOpenObj = null; ccHeard = new Set(); ccUI.step = 0;
+  ccRenderRail(); ccRenderHead(); ccRenderInfo();
+  ccRenderScript(); ccRenderObjections(); ccRenderActivity(); ccRenderOutcomes(); ccRenderNotes();
+  const box = document.getElementById('cc-scriptbox'); if (box) box.scrollTop = 0;
+}
+
+function renderLeadsPane() {
+  const p = document.getElementById('pane-leads');
+  if (!p.dataset.built) { p.innerHTML = ccShellHTML(); p.dataset.built = '1'; ccWireShell(); }
+  ccApplyUI(); ccApplyX();
+  ccRenderRail(); ccRenderSources(); ccRenderHead(); ccRenderInfo();
+  ccRenderScript(); ccRenderObjections(); ccRenderActivity(); ccRenderOutcomes(); ccRenderNotes();
+}
+
+function ccRenderHead() {
+  const l = ccLead;
+  const h = document.getElementById('cc-head');
+  if (!l) { h.innerHTML = '<div class="cc-empty">Pick a lead on the left to start.</div>'; return; }
+  const v = ccVars();
+  const has = x => x !== undefined && x !== null && String(x).trim() !== '';
+  const telDisp = ccFormatPhone(l.phone);
+  const tel = telDisp.replace(/[^0-9+]/g, '');
+  const facts = [];
+  if (has(v.google_rating)) facts.push(`<span class="cc-fact">${ccStars(v.google_rating)} ${esc(v.google_rating)}${has(v.google_review_count) ? ' &middot; ' + esc(v.google_review_count) + ' reviews' : ''}</span>`);
+  else if (has(v.google_review_count)) facts.push(`<span class="cc-fact">${esc(v.google_review_count)} Google reviews</span>`);
+  if (has(v.google_unanswered_count)) facts.push(`<span class="cc-fact">${esc(v.google_unanswered_count)} unanswered</span>`);
+  if (has(v.other_platform)) facts.push(`<span class="cc-fact">${esc(v.other_platform)}${has(v.other_platform_review_count) ? ' ' + esc(v.other_platform_review_count) : ''}</span>`);
+  if (has(v.facebook_verified)) facts.push(`<span class="cc-fact">Facebook: ${esc(v.facebook_verified)}</span>`);
+  if (has(l.status)) facts.push(`<span class="cc-fact status">${esc(l.status)}</span>`);
+  h.innerHTML = `
+    <button class="cc-railbtn" onclick="ccToggleRail()" title="Show or hide the lead list">&#9776;</button>
+    <div class="cc-headname">
+      <div class="cc-biz">${esc(l.business || 'Unnamed')}</div>
+      <div class="cc-who">${esc([l.first_name, l.last_name].filter(Boolean).join(' ') || 'owner unknown')}${l.city ? ' &middot; ' + esc(l.city) : ''}</div>
+    </div>
+    <div class="cc-facts">${facts.join('')}</div>
+    <span class="cc-phone-wrap"><span class="cc-phone-tag">PHONE</span><a class="cc-phone" href="tel:${esc(tel)}">${esc(telDisp || 'no number')}</a></span>
+    <button class="cc-mini" onclick="ccCopyPhone()">Copy</button>
+    <div class="cc-timer" id="cc-timer" onclick="ccToggleTimer()">00:00</div>
+    <button class="cc-mini" onclick="ccOpenStats()" title="How many leads you've actually reached out to">Contacted</button>
+    <button class="cc-mini" onclick="ccOpenLookup()" title="Quick phone lookup (Ctrl+K)">Lookup</button>
+    <button class="cc-mini focus" onclick="ccFocus()">Focus</button>
+    <button class="cc-mini" onclick="ccOpenKeys()" title="Keyboard shortcuts">?</button>`;
+}
+
+function ccRenderScript() {
+  const sel = document.getElementById('cc-scriptsel');
+  sel.innerHTML = ccScripts.map(s => `<option value="${esc(s.id)}">${esc(ccScriptName(s.id))}</option>`).join('');
+  sel.value = ccScriptId;
+
+  const box = document.getElementById('cc-scriptbox');
+  if (!ccScript) { box.innerHTML = ''; ccUpdateGuideBar(); return; }
+
+  ccClampStep();
+  const st = ccScript.steps, n = ccIntroN(), top = box.scrollTop;
+  if (ccUI.mode === 'guided') {
+    box.innerHTML = st.slice(0, n).map((s, i) => ccStepHTML(s, i, false)).join('') + ccStepHTML(st[n + ccUI.step], n + ccUI.step, true);
+  } else {
+    box.innerHTML = st.map((s, i) => ccStepHTML(s, i, false)).join('');
+  }
+
+  box.querySelectorAll('.cc-stephead').forEach(hd => hd.onclick = () => {
+    const i = Number(hd.dataset.i), el = hd.parentElement, key = ccScriptId + '|' + st[i].title;
+    const willOpen = el.classList.contains('collapsed');
+    el.classList.toggle('collapsed', !willOpen); ccSecOpen[key] = willOpen;
+    if (i >= n && ccUI.mode !== 'guided') { ccUI.step = i - n; ccUpdateGuideBar(); }
+  });
+  box.querySelectorAll('input[data-cap]').forEach(i => i.oninput = () => {
+    if (!ccLead) return;
+    ccLead.answers = ccLead.answers || {};
+    ccLead.answers[i.dataset.cap] = i.value;
+    clearTimeout(ccRenderScript._t);
+    ccRenderScript._t = setTimeout(ccSaveLeads, 400);
+    ccRefreshVars();
+  });
+  box.onscroll = () => {
+    if (ccUI.mode === 'guided') return;
+    clearTimeout(ccSpyT);
+    ccSpyT = setTimeout(() => {
+      const els = Array.from(box.querySelectorAll('.cc-step')).filter(e => Number(e.dataset.i) >= n);
+      const hit = els.find(e => e.offsetTop + e.offsetHeight > box.scrollTop + 24);
+      if (hit) { const s = Number(hit.dataset.i) - n; if (s !== ccUI.step) { ccUI.step = s; ccUpdateGuideBar(); clearTimeout(ccStepSaveT); ccStepSaveT = setTimeout(ccSaveUI, 800); } }
+    }, 80);
+  };
+  box.scrollTop = top;
+  ccUpdateGuideBar();
+}
+
+/* Repaint only the text, so typing into a capture box does not move the caret. */
 function ccRefreshVars() {
   const box = document.getElementById('cc-scriptbox'); if (!box || !ccScript) return;
   const steps = ccScript.steps;
-  box.querySelectorAll('.cc-step').forEach((el, i) => {
-    const parts = steps[i].lines.filter(x => x.t !== 'cap');
+  box.querySelectorAll('.cc-step').forEach(el => {
+    const sd = steps[Number(el.dataset.i)]; if (!sd) return;
+    const body = el.querySelector('.cc-stepbody'); if (!body) return;
+    const parts = sd.lines.filter(x => x.t !== 'cap');
     let p = 0;
-    Array.from(el.children).forEach(child => {
-      if (child.classList.contains('cc-cap') || child.classList.contains('cc-stephead')) return;
+    Array.from(body.children).forEach(child => {
+      if (child.classList.contains('cc-cap')) return;
       const line = parts[p++]; if (!line || line.t === 'why') return;
       child.innerHTML = line.t === 'if' ? '<span>' + ccFill(line.text) + '</span>' : ccFill(line.text);
     });
@@ -996,41 +1087,197 @@ function ccRefreshVars() {
   ccRenderObjections();
 }
 
-/* -------------------------------------------------------- the objections */
+function ccUpdateGuideBar() {
+  const bar = document.getElementById('cc-guidebar'); if (!bar) return;
+  if (!ccScript) { bar.innerHTML = ''; return; }
+  const n = ccIntroN(), total = ccFlowCount(), cur = Math.min(ccUI.step, total - 1), t = ccScript.steps[n + cur];
+  bar.innerHTML = `<button class="cc-mini" data-g="prev" title="Previous section (Alt+Left)">&lsaquo; Previous</button>
+    <div class="cc-prog"><div class="cc-progtxt">Section ${cur + 1} of ${total} &middot; ${esc(t ? t.title : '')}</div><div class="cc-progbar"><i style="width:${Math.round(((cur + 1) / total) * 100)}%"></i></div></div>
+    <button class="cc-mini" data-g="next" title="Next section (Alt+Right)">Next &rsaquo;</button>
+    <button class="cc-mini" data-g="restart" title="Back to the first section">Restart</button>`;
+  bar.querySelector('[data-g="prev"]').onclick = () => ccGoStep(ccUI.step - 1);
+  bar.querySelector('[data-g="next"]').onclick = () => ccGoStep(ccUI.step + 1);
+  bar.querySelector('[data-g="restart"]').onclick = () => ccGoStep(0);
+}
+
+function ccScrollToStep() {
+  const box = document.getElementById('cc-scriptbox'); if (!box) return;
+  const el = box.querySelector('.cc-step[data-i="' + (ccIntroN() + ccUI.step) + '"]');
+  if (!el) return;
+  if (el.classList.contains('collapsed')) el.classList.remove('collapsed');
+  const y = Math.max(0, el.offsetTop - 4);
+  if (box.scrollTo) box.scrollTo({ top: y, behavior: 'smooth' }); else box.scrollTop = y;
+}
+
+function ccGoStep(i) {
+  ccUI.step = Math.max(0, Math.min(ccFlowCount() - 1, i)); ccSaveUI();
+  if (ccUI.mode === 'guided') {
+    ccRenderScript();
+    const box = document.getElementById('cc-scriptbox'); if (box) box.scrollTop = 0;
+  } else { ccScrollToStep(); ccUpdateGuideBar(); }
+}
+
+function ccSetMode(m) {
+  if (ccUI.mode === m) return;
+  ccUI.mode = m; ccSaveUI(); ccApplyX(); ccRenderScript();
+  if (m === 'full') requestAnimationFrame(ccScrollToStep);
+}
+
+function ccSetTab(t) {
+  ccUI.tab = t; ccSaveUI(); ccApplyX();
+}
+
+function ccApplyX() {
+  const cols = document.getElementById('cc-cols'); if (!cols) return;
+  ccUI.wObj = Math.max(260, Math.min(620, Number(ccUI.wObj) || 340));
+  cols.style.setProperty('--wobj', ccUI.wObj + 'px');
+  document.querySelectorAll('#cc-modeseg button').forEach(b => b.classList.toggle('on', b.dataset.m === ccUI.mode));
+  document.querySelectorAll('.cc-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === ccUI.tab));
+  const po = document.getElementById('cc-pane-obj'), pn = document.getElementById('cc-pane-notes');
+  if (po) po.style.display = ccUI.tab === 'obj' ? 'flex' : 'none';
+  if (pn) pn.style.display = ccUI.tab === 'notes' ? 'flex' : 'none';
+}
 
 function ccFlatObj() {
   const out = [];
-  (ccObjections.groups || []).forEach(g => g.items.forEach(it =>
-    out.push(Object.assign({ _pinned: !!g.pinned }, it))));
+  (ccObjections.groups || []).forEach(g => (g.items || []).forEach(it =>
+    out.push(Object.assign({ _pinned: !!g.pinned, _g: g.name || '', _gid: g.id || '', _hint: g.hint || '' }, it))));
   return out;
 }
 
+function ccObjText(it) {
+  return [it.trigger, (it.variants || []).join(' '), it._g, (it.say || []).join(' '), it.then || '', it.means || ''].join(' ').toLowerCase();
+}
+
+function ccObjChip(it) {
+  const fav = (ccUI.favs || []).includes(it.trigger);
+  return `<button class="cc-oc ${it._pinned ? 'pin' : ''} ${ccOpenObj === it.trigger ? 'open' : ''}" data-t="${esc(it.trigger)}">${fav ? '<b class="cc-fav">&#9733;</b> ' : ''}${esc(it.trigger)}</button>`;
+}
+
 function ccRenderObjections() {
-  const items = ccFlatObj();
-  const pinned = items.filter(i => i._pinned);
-  const rest = items.filter(i => !i._pinned);
+  const lb = document.getElementById('cc-objlist'); if (!lb) return;
+  const listTop = lb.scrollTop;
+  const items = ccFlatObj(), q = ccObjQuery.trim().toLowerCase();
+  const byT = t => items.find(i => i.trigger === t);
+  const sec = (title, arr, hint) => `<div class="cc-gh" ${hint ? 'title="' + esc(hint) + '"' : ''}>${esc(title)}</div><div class="cc-chipwrap">${arr.map(ccObjChip).join('')}</div>`;
+  let html = '';
+  if (q) {
+    const hits = items.filter(i => ccObjText(i).includes(q));
+    html = hits.length ? `<div class="cc-chipwrap">${hits.map(ccObjChip).join('')}</div>` : '<div class="cc-empty">No objection matches that.</div>';
+  } else {
+    const rec = (ccUI.recent || []).map(byT).filter(Boolean).slice(0, 5);
+    const fav = (ccUI.favs || []).map(byT).filter(Boolean);
+    if (rec.length) html += sec('Recent', rec);
+    if (fav.length) html += sec('Favorites', fav);
+    (ccObjections.groups || []).forEach(g => {
+      const its = (g.items || []).map(it => Object.assign({ _pinned: !!g.pinned, _g: g.name || '', _gid: g.id || '' }, it));
+      if (its.length) html += sec(g.name || 'Other', its, g.hint);
+    });
+  }
+  lb.innerHTML = html;
+  lb.scrollTop = listTop;
+  lb.querySelectorAll('.cc-oc').forEach(b => b.onclick = () => ccShowObj(b.dataset.t));
+  ccRenderObjAnswer();
+}
 
-  document.getElementById('cc-objlist').innerHTML = pinned.concat(rest).map(it => `
-    <div class="cc-obj ${it._pinned ? 'pin' : ''} ${ccOpenObj === it.trigger ? 'open' : ''}" data-t="${esc(it.trigger)}">
-      <span class="cc-trig">${esc(it.trigger)}</span>
-      <div class="cc-rest">
-        ${it._pinned ? '' : `<button class="cc-log ${ccHeard.has(it.trigger) ? 'done' : ''}" data-log="${esc(it.trigger)}">${ccHeard.has(it.trigger) ? 'logged' : 'they said this'}</button>`}
-        ${it.say.map(s => '<p>' + ccFill(s) + '</p>').join('')}
-        <div class="cc-then"><b>Then:</b> ${esc(it.then)}</div>
-        <div class="cc-means">${esc(it.means)}</div>
-      </div>
-    </div>`).join('');
+function ccShowObj(t) {
+  ccOpenObj = t;
+  ccUI.recent = [t].concat((ccUI.recent || []).filter(x => x !== t)).slice(0, 8);
+  ccSaveUI();
+  ccRenderObjections();
+  const a = document.getElementById('cc-objans'); if (a) a.scrollTop = 0;
+}
 
-  document.querySelectorAll('#cc-objlist .cc-obj').forEach(el => el.onclick = () => {
-    ccOpenObj = ccOpenObj === el.dataset.t ? null : el.dataset.t; ccRenderObjections();
-  });
-  document.querySelectorAll('#cc-objlist .cc-log').forEach(b => b.onclick = ev => {
-    ev.stopPropagation();
-    const t = b.dataset.log; if (ccHeard.has(t)) return;
-    ccHeard.add(t);
-    ccLogEvent({ type: 'objection', trigger: t, leadId: ccLead && ccLead.id, script: ccScriptId });
-    ccRenderObjections(); toast('Logged for the report', 'success');
-  });
+function ccRenderObjAnswer() {
+  const el = document.getElementById('cc-objans'); if (!el) return;
+  const it = ccFlatObj().find(i => i.trigger === ccOpenObj);
+  const keep = el.scrollTop;
+  if (!it) { el.innerHTML = '<div class="cc-empty">Tap an objection to see the answer here. Your place in the script does not move.</div>'; return; }
+  const fav = (ccUI.favs || []).includes(it.trigger), heard = ccHeard.has(it.trigger);
+  el.innerHTML = `<div class="cc-ans-head"><b>${esc(it.trigger)}</b>
+      <button class="cc-mini" data-a="fav" title="Pin to Favorites">${fav ? '&#9733; Favorite' : '&#9734; Favorite'}</button>
+      ${it._pinned ? '' : `<button class="cc-log ${heard ? 'done' : ''}" data-a="log">${heard ? 'logged' : 'they said this'}</button>`}
+      <button class="cc-mini" data-a="close" title="Close the answer">&times;</button></div>
+    ${(it.say || []).map(s => '<p class="cc-ans-say">' + ccFill(s) + '</p>').join('')}
+    ${it.then ? `<div class="cc-then"><b>Then:</b> ${esc(it.then)}</div>` : ''}
+    ${it.means ? `<div class="cc-means">${esc(it.means)}</div>` : ''}`;
+  el.scrollTop = keep;
+  el.querySelector('[data-a="close"]').onclick = () => { ccOpenObj = null; ccRenderObjections(); };
+  el.querySelector('[data-a="fav"]').onclick = () => {
+    ccUI.favs = ccUI.favs || [];
+    const i = ccUI.favs.indexOf(it.trigger);
+    if (i >= 0) ccUI.favs.splice(i, 1); else ccUI.favs.push(it.trigger);
+    ccSaveUI(); ccRenderObjections();
+  };
+  const lg = el.querySelector('[data-a="log"]');
+  if (lg) lg.onclick = () => {
+    if (ccHeard.has(it.trigger)) return;
+    ccHeard.add(it.trigger);
+    ccLogEvent({ type: 'objection', trigger: it.trigger, leadId: ccLead && ccLead.id, script: ccScriptId });
+    ccRenderObjAnswer(); toast('Logged for the report', 'success');
+  };
+}
+
+function ccNoteStatus(t) { const s = document.getElementById('cc-notestatus'); if (s) s.textContent = t; }
+
+function ccRenderNotes() {
+  const ta = document.getElementById('cc-notes'); if (!ta) return;
+  ta.value = ccLead ? (ccLead.call_notes || '') : '';
+  ta.disabled = !ccLead;
+  ccNoteStatus(ccLead ? (ta.value ? 'Saved' : '') : 'Pick a lead to take notes.');
+}
+
+function ccFlushNotes() {
+  if (ccNotesT) { clearTimeout(ccNotesT); ccNotesT = null; ccSaveLeads(); }
+}
+
+function ccOpenKeys() {
+  const ov = document.createElement('div'); ov.className = 'cc-modal-overlay';
+  const rows = [['Alt+1', 'Focus the script'], ['Alt+2', 'Objections tab'], ['Alt+3', 'Notes tab'], ['Alt+S', 'Search objections'], ['Alt+Left / Alt+Right', 'Previous / next script section'], ['Ctrl+K', 'Phone lookup']];
+  ov.innerHTML = '<div class="cc-modal"><h4>Keyboard shortcuts</h4>' + rows.map(r => `<div class="cc-keyrow"><kbd>${esc(r[0])}</kbd><span>${esc(r[1])}</span></div>`).join('') +
+    '<p class="cc-hint">Section keys are ignored while you are typing in a box.</p><div class="cc-modal-actions"><button class="cc-mini focus" id="cc-keys-x">Close</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#cc-keys-x').onclick = () => ov.remove();
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+}
+
+function ccWireLeadsX() {
+  document.querySelectorAll('#cc-modeseg button').forEach(b => b.onclick = () => ccSetMode(b.dataset.m));
+  document.querySelectorAll('.cc-tabs button').forEach(b => b.onclick = () => ccSetTab(b.dataset.t));
+  const s = document.getElementById('cc-objsearch');
+  s.oninput = () => { ccObjQuery = s.value; ccRenderObjections(); };
+  const ta = document.getElementById('cc-notes');
+  ta.oninput = () => {
+    if (!ccLead) return;
+    ccLead.call_notes = ta.value; ccNoteStatus('Saving...');
+    clearTimeout(ccNotesT);
+    ccNotesT = setTimeout(() => { ccNotesT = null; ccSaveLeads(); ccNoteStatus('Saved'); }, 600);
+  };
+  const rz = document.getElementById('cc-resizer');
+  rz.onmousedown = e => {
+    e.preventDefault();
+    const x0 = e.clientX, w0 = Number(ccUI.wObj) || 340;
+    document.body.classList.add('cc-resizing');
+    const mv = ev => { ccUI.wObj = w0 - (ev.clientX - x0); ccApplyX(); };
+    const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.classList.remove('cc-resizing'); ccSaveUI(); };
+    document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+  };
+  rz.ondblclick = () => { ccUI.wObj = 340; ccApplyX(); ccSaveUI(); };
+  if (!window.__ccKeys) {
+    window.__ccKeys = true;
+    document.addEventListener('keydown', e => {
+      const pane = document.getElementById('pane-leads');
+      if (!pane || pane.style.display === 'none') return;
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const tg = e.target, typing = tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable);
+      const k = e.key;
+      if (k === '1') { e.preventDefault(); const b = document.getElementById('cc-scriptbox'); if (b) b.focus(); }
+      else if (k === '2' || k === 's' || k === 'S') { e.preventDefault(); ccSetTab('obj'); const i = document.getElementById('cc-objsearch'); if (i) i.focus(); }
+      else if (k === '3') { e.preventDefault(); ccSetTab('notes'); const t = document.getElementById('cc-notes'); if (t && !t.disabled) t.focus(); }
+      else if (k === 'ArrowLeft' && !typing) { e.preventDefault(); ccGoStep(ccUI.step - 1); }
+      else if (k === 'ArrowRight' && !typing) { e.preventDefault(); ccGoStep(ccUI.step + 1); }
+    });
+  }
 }
 
 /* ---------------------------------------------------------- activity feed */
