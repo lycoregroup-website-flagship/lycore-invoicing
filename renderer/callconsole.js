@@ -113,12 +113,12 @@ async function ccLoad() {
       if (!g) { g = JSON.parse(JSON.stringify(Object.assign({}, dg, { items: [] }))); ccObjections.groups.splice(Math.min(1, ccObjections.groups.length), 0, g); }
       if (!g.items.some(i => i.trigger === trig)) { g.items.push(JSON.parse(JSON.stringify(di))); sset('lyc-objections', ccObjections); }
     });
-    if (!seen.includes('objfix:email-v2')) {
-      seen.push('objfix:email-v2'); touched = true;
-      const OLD0 = "Yeah, I can do that, that's probably easier for both of us.";
+    if (!seen.includes('objfix:email-v3')) {
+      seen.push('objfix:email-v3'); touched = true;
+      const OLDS = ["Yeah, I can do that, that's probably easier for both of us.", "I could, but you and I both know that email ends up buried in your inbox, or in spam."];
       const dg = DEFAULT_OBJECTIONS.groups.find(g => g.id === 'start'), di = dg && dg.items.find(i => i.trigger === 'Just email me');
       (ccObjections.groups || []).forEach(g => (g.items || []).forEach((it, k) => {
-        if (di && it.trigger === 'Just email me' && it.say && it.say[0] === OLD0) { g.items[k] = JSON.parse(JSON.stringify(di)); sset('lyc-objections', ccObjections); }
+        if (di && it.trigger === 'Just email me' && it.say && OLDS.includes(it.say[0])) { g.items[k] = JSON.parse(JSON.stringify(di)); sset('lyc-objections', ccObjections); }
       }));
     }
     if (touched) sset('lyc-defaults-seen', seen);
