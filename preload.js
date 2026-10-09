@@ -48,5 +48,6 @@ contextBridge.exposeInMainWorld('secrets', {
 
 contextBridge.exposeInMainWorld('ai', {
   chat: (opts) => ipcRenderer.invoke('ai:chat', opts),
-  liveToken: () => ipcRenderer.invoke('ai:liveToken')
+  liveToken: () => ipcRenderer.invoke('ai:liveToken'),
+  checkSetup: (opts) => ipcRenderer.invoke('ai:checkSetup', opts)
 });

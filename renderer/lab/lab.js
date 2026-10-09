@@ -28,7 +28,7 @@ const Lab = (function () {
   ];
 
   const S = {
-    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'offers', undo: [],
+    loaded: false, offers: [], pains: [], personas: [], scripts: { playbooks: [], cards: [] }, settings: { provider: 'gemini', models: { gemini: 'gemini-3.8-flash', huggingface: '', live: 'gemini-3.8-live' } }, ai: {}, evidence: [], panelRuns: [], pn: { offerId: null, roles: { skeptic: true, compliance: true, competitor: false, finance: false, delivery: true }, busy: false, progress: '', err: '', run: null }, sessions: [], practice: { personaId: null, session: null, busy: false, err: '', draft: '', mode: 'text', ctl: null, live: null, notice: '', vstate: '' }, tab: 'home', undo: [],
     ui: {
       offerId: null, moduleId: null, draft: null, dirty: false,
       painId: null, painDraft: null, painFilter: { q: '', sev: '', ev: '', ind: '' }, evId: null, evDraft: null, evSuggest: null, evFilter: { q: '', type: '' },
@@ -212,9 +212,113 @@ const Lab = (function () {
     return '<div class="field"><label>' + E(label) + '</label><input ' + at + ' value="' + E(val) + '"></div>';
   }
 
-  function navHtml() {
-    const tabs = [['offers', 'Offer Laboratory', S.offers.length], ['pains', 'Pain Library', S.pains.length], ['personas', 'Prospect Personas', S.personas.length], ['scripts', 'Script Builder', S.scripts.cards.length], ['practice', 'Practice', S.sessions.length], ['evidence', 'Evidence', S.evidence.length], ['panel', 'Panel', S.panelRuns.length], ['stats', 'Analytics', ''], ['ai', 'AI Settings', '']];
-    return '<div class="lab-nav">' + tabs.map((t) => '<button class="lab-tab' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '">' + t[1] + '<span>' + t[2] + '</span></button>').join('') + '</div>';
+
+  /* ---- shell: grouped navigation, a plain-English page header, and a Start-here page ---- */
+  const NAV = [
+    ['', [['home', 'Start here', null, 'What this is for, and what to do next.']]],
+    ['Build', [
+      ['offers', 'Offers', 'offers', 'What you are selling, on what terms. Written down so it can be tested, not assumed.'],
+      ['pains', 'Customer problems', 'pains', 'The problems you think prospects have, and the questions that would prove it.'],
+      ['personas', 'Practice buyers', 'personas', 'Pretend prospects to practise against, including some who should say no.'],
+      ['scripts', 'Call scripts', 'scripts', 'Reusable script pieces. Nothing reaches a live call until you publish it.']]],
+    ['Practice', [['practice', 'Practice calls', 'sessions', 'Talk or type with a pretend buyer, then get coaching quoted from the transcript.']]],
+    ['Prove it', [
+      ['evidence', 'Evidence', 'evidence', 'What real prospects actually said. This is what turns a guess into proof.'],
+      ['panel', 'Expert panel', 'panelRuns', 'Ask AI reviewers to poke holes in an offer before you spend time on it.'],
+      ['stats', 'Results', null, 'What the records show so far. Only real data, nothing estimated.']]],
+    ['Setup', [['ai', 'AI setup', null, 'Connect your Google or Hugging Face key and check that the models work.']]]
+  ];
+  function navCount(k) {
+    if (!k) return '';
+    const n = k === 'scripts' ? S.scripts.cards.length : (S[k] || []).length;
+    return n ? String(n) : '';
+  }
+  function navMeta(tab) {
+    for (const g of NAV) for (const it of g[1]) if (it[0] === tab) return it;
+    return NAV[0][1][0];
+  }
+  function secOpen(title, open) { return '<details class="lab-sec"' + (open ? ' open' : '') + '><summary>' + E(title) + '</summary><div class="lab-secbody">'; }
+  const secClose = '</div></details>';
+
+  function shellHtml(body) {
+    const m = navMeta(S.tab);
+    return '<div class="lab-shell"><nav class="lab-side" aria-label="Sales Lab sections">' +
+      NAV.map((g) => '<div class="lab-group">' + (g[0] ? '<div class="lab-gh">' + E(g[0]) + '</div>' : '') +
+        g[1].map((t) => '<button class="lab-nl' + (S.tab === t[0] ? ' on' : '') + '" data-act="tab" data-id="' + t[0] + '"><span>' + E(t[1]) + '</span><em>' + navCount(t[2]) + '</em></button>').join('') + '</div>').join('') +
+      '</nav><main class="lab-main"><header class="lab-ph"><h2>' + E(m[1]) + '</h2><p>' + E(m[3]) + '</p></header><div class="lab-body">' + body + '</div></main></div>';
+  }
+
+  function aiReady() {
+    const p = S.settings.provider;
+    return !!((S.ai[p] || {}).saved && ((S.settings.models || {})[p] || '').trim());
+  }
+
+  function vHome() {
+    const steps = [
+      { t: 'Connect the AI', d: 'Paste your key once. The app checks which models work for you, so you do not have to guess names.', tab: 'ai', done: aiReady(), stat: aiReady() ? 'Connected' : 'Not connected yet', btn: aiReady() ? 'Review' : 'Set up' },
+      { t: 'Write down what you are testing', d: 'An offer is a guess about what a prospect will pay for. Writing it down lets you test it honestly.', tab: 'offers', done: S.offers.length > 0, stat: S.offers.length + (S.offers.length === 1 ? ' offer' : ' offers'), btn: 'Open offers' },
+      { t: 'Practise a call', d: 'Talk or type with a pretend buyer. Some of them should say no, and the coaching tells you when they were right to.', tab: 'practice', done: S.sessions.length > 0, stat: S.sessions.length + (S.sessions.length === 1 ? ' practice call' : ' practice calls'), btn: 'Start practising' },
+      { t: 'Record what real prospects say', d: 'Practice shows how you sound. Only real calls show whether the offer is wanted. Log what people actually said.', tab: 'evidence', done: S.evidence.length > 0, stat: S.evidence.length + ' evidence ' + (S.evidence.length === 1 ? 'item' : 'items'), btn: 'Open evidence' }
+    ];
+    const next = steps.findIndex((s) => !s.done);
+    const more = [['pains', 'Customer problems', 'The problems you think prospects have.'], ['personas', 'Practice buyers', 'Pretend prospects to practise against.'], ['scripts', 'Call scripts', 'Reusable script pieces, published to the call console when you approve.'], ['panel', 'Expert panel', 'Have AI reviewers challenge an offer.'], ['stats', 'Results', 'What the records show so far.']];
+    return '<div class="lab-hero"><b>Sales Lab is where you test an idea before you sell it.</b> Nothing here reaches a live call or a real client until you publish it. Everything you see is from your own records.</div>' +
+      '<ol class="lab-steps">' + steps.map((s, i) => '<li class="lab-step' + (s.done ? ' done' : '') + (i === next ? ' next' : '') + '"><span class="lab-stepn">' + (s.done ? '&#10003;' : i + 1) + '</span>' +
+        '<div class="lab-stepb"><div class="lab-stept">' + E(s.t) + (i === next ? ' <span class="lab-tag">Do this next</span>' : '') + '</div><div class="lab-stepd">' + E(s.d) + '</div><div class="lab-steps-s">' + E(s.stat) + '</div></div>' +
+        '<button class="btn' + (i === next ? ' orange' : '') + '" data-act="tab" data-id="' + s.tab + '">' + E(s.btn) + '</button></li>').join('') + '</ol>' +
+      '<h4 class="lab-h">Also in here</h4><div class="lab-more">' + more.map((m) => '<button class="lab-morei" data-act="tab" data-id="' + m[0] + '"><b>' + E(m[1]) + '</b><span>' + E(m[2]) + '</span></button>').join('') + '</div>' +
+      '<details class="lab-sec" style="margin-top:22px"><summary>Words used here</summary><div class="lab-secbody"><p><b>Offer</b>: what you sell and on what terms.</p><p><b>Customer problem</b>: something you believe prospects struggle with. Treated as a guess until a prospect confirms it.</p><p><b>Practice buyer</b>: a made-up prospect. Never a real person.</p><p><b>Evidence</b>: something a real prospect actually said or did, with where it came from.</p><p><b>Playbook</b>: an ordered set of script cards you can publish to the call console.</p></div></details>';
+  }
+
+  /* ---- AI setup: three plain steps, then a check that finds the models that really work for this key ---- */
+  function vAi() {
+    if (!window.secrets) return '<p class="lab-empty">Key storage is only available inside the desktop app.</p>';
+    const cur = S.settings.provider, info = PROV.find((p) => p[0] === cur) || PROV[0], st = S.ai[cur] || {}, ck = S.ui.aiCheck && S.ui.aiCheck.provider === cur ? S.ui.aiCheck : null;
+    const models = S.settings.models || {};
+    const opts = (arr) => (arr || []).map((m) => '<option value="' + E(m) + '"></option>').join('');
+    const line = (okv, text) => '<div class="lab-chk ' + (okv ? 'ok' : 'bad') + '"><span>' + (okv ? '&#10003;' : '&#10005;') + '</span><div>' + text + '</div></div>';
+    let res = '';
+    if (S.ui.aiBusy) res = '<div class="lab-chk"><span>&hellip;</span><div>Checking. This takes a few seconds.</div></div>';
+    else if (ck) {
+      if (!ck.ok) res = line(false, E(ck.error || 'The check could not finish.'));
+      else {
+        res += line(true, 'Your key works.');
+        if (ck.note) res += '<div class="lab-count">' + E(ck.note) + '</div>';
+        if (ck.textTest) {
+          res += ck.textTest.ok ? line(true, 'Text model <b>' + E(ck.textTest.model) + '</b> answered. Used for practice chat, coaching and the expert panel.')
+            : line(false, 'Text model <b>' + E(ck.textTest.model || '(none set)') + '</b> did not work: ' + E(ck.textTest.error || 'not available to your key') + '.');
+        }
+        if (cur === 'gemini') {
+          res += ck.liveCheck && ck.liveCheck.listed ? line(true, 'Voice model <b>' + E(ck.liveCheck.model) + '</b> is available' + (ck.liveCheck.tokenOk ? ' and a voice session can be opened.' : ', but a voice session could not be opened: ' + E(ck.liveCheck.error || 'unknown error') + '.'))
+            : line(false, 'Voice model <b>' + E((ck.liveCheck && ck.liveCheck.model) || '(none set)') + '</b> is not offered to your key.');
+        }
+        const rec = ck.recommended || {};
+        if ((rec.text && (!ck.textTest || !ck.textTest.ok || ck.textTest.model !== rec.text)) || (rec.live && (!ck.liveCheck || !ck.liveCheck.listed || ck.liveCheck.model !== rec.live))) {
+          res += '<div class="lab-rec"><b>Suggested for your key</b>' +
+            (rec.text ? '<button class="btn" data-act="ai-use" data-k="text" data-id="' + E(rec.text) + '">Use ' + E(rec.text) + ' for text</button>' : '') +
+            (rec.live ? '<button class="btn" data-act="ai-use" data-k="live" data-id="' + E(rec.live) + '">Use ' + E(rec.live) + ' for voice</button>' : '') + '</div>';
+        }
+        const all = ck.models || {};
+        if ((all.text || []).length || (all.live || []).length) {
+          res += '<details class="lab-sec"><summary>Every model your key can use (' + ((all.text || []).length + (all.live || []).length) + ')</summary><div class="lab-secbody"><p><b>Text</b>: ' + E((all.text || []).join(', ') || 'none') + '</p><p><b>Voice</b>: ' + E((all.live || []).join(', ') || 'none') + '</p></div></details>';
+        }
+      }
+    }
+    return '<div class="lab-ai">' +
+      '<div class="lab-aistep"><div class="lab-aihd"><span class="lab-stepn">1</span><b>Choose a provider</b></div>' +
+      '<div class="field"><select data-act="ai-provider">' + PROV.map((p) => '<option value="' + p[0] + '"' + (p[0] === cur ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></div>' +
+      '<p class="lab-count">' + E(info[2]) + (cur === 'gemini' ? ' Gemini is the only one that can do voice.' : '') + '</p></div>' +
+      '<div class="lab-aistep"><div class="lab-aihd"><span class="lab-stepn">2</span><b>Paste your key</b>' + (st.saved ? '<span class="lab-tag ok">Saved, ends in ' + E(st.last4) + '</span>' : '<span class="lab-tag">Not saved</span>') + '</div>' +
+      '<div class="field"><input id="lab-aikey" type="password" autocomplete="off" spellcheck="false" placeholder="' + (st.saved ? 'Paste a new key to replace the saved one' : 'Paste your key here') + '"></div>' +
+      '<div class="lab-row"><button class="btn orange" data-act="ai-save">Save key</button>' + (st.saved ? '<button class="btn ghost lab-danger" data-act="ai-clear">Remove key</button>' : '') + '<span id="lab-aimsg" class="lab-count"></span></div>' +
+      '<p class="lab-count">The key is encrypted on this computer. It is never shown again, never put in backups, and only sent to the provider you picked.</p></div>' +
+      '<div class="lab-aistep"><div class="lab-aihd"><span class="lab-stepn">3</span><b>Check that it works</b></div>' +
+      '<p class="lab-count">Not sure which model name to use? Press the button. It asks the provider what your key can use, tries your text model, and suggests ones that work.</p>' +
+      '<div class="lab-row"><button class="btn orange" data-act="ai-check"' + (st.saved && !S.ui.aiBusy ? '' : ' disabled') + '>Check my setup</button></div>' + res + '</div>' +
+      '<details class="lab-sec"><summary>Model names (advanced)</summary><div class="lab-secbody">' +
+      '<div class="field"><label>Text model' + (cur === 'huggingface' ? ' (copy it from the model page on Hugging Face)' : '') + '</label><input list="lab-dl-text" data-act="ai-model" value="' + E(models[cur] || '') + '" placeholder="model id"><datalist id="lab-dl-text">' + opts(ck && ck.models && ck.models.text) + '</datalist></div>' +
+      (cur === 'gemini' ? '<div class="field"><label>Voice model</label><input list="lab-dl-live" data-act="ai-live-model" value="' + E(models.live || '') + '"><datalist id="lab-dl-live">' + opts(ck && ck.models && ck.models.live) + '</datalist></div>' : '') +
+      '</div></details></div>';
   }
 
   /* ---- offers */
@@ -243,10 +347,10 @@ const Lab = (function () {
       '<div class="lab-bar"><input id="lab-vnote" class="lab-note-in" placeholder="Version note (optional)"><span id="lab-dirty" class="lab-dirty">' + (u.dirty ? 'Unsaved changes' : '') + '</span>' +
       '<button class="btn" data-act="offer-revert">Discard changes</button><button class="btn" data-act="offer-dup">Duplicate</button>' +
       '<button class="btn ghost lab-danger" data-act="offer-del">Delete</button><button class="btn orange" data-act="offer-save">Save new version</button></div>' +
-      '<h4 class="lab-h">Version history</h4>' +
+      secOpen('Version history', false) +
       (vers.length ? vers.map((v) => '<div class="lab-ver"><div><b>v' + v.v + '</b> &middot; ' + E(fmt(v.at)) + (v.note ? ' &middot; ' + E(v.note) : '') +
         '<div class="lab-ver-d">Differs from current saved: ' + (E(diffOffer(saved, v.data).join('; ')) || 'nothing') + '</div></div>' +
-        '<button class="btn" data-act="ver-restore" data-v="' + v.v + '">Restore into editor</button></div>').join('') : '<p class="lab-empty">No earlier versions yet. Each save keeps the previous state here.</p>');
+        '<button class="btn" data-act="ver-restore" data-v="' + v.v + '">Restore into editor</button></div>').join('') : '<p class="lab-empty">No earlier versions yet. Each save keeps the previous state here.</p>') + secClose;
   }
 
   function vOffers() {
@@ -266,14 +370,14 @@ const Lab = (function () {
       '<div class="lab-grid2">' + fld('pain', 'name', 'Name', d.name) + fld('pain', 'industry', 'Industry', d.industry) +
       fld('pain', 'segment', 'Customer segment', d.segment) + fld('pain', 'evidenceLevel', 'Evidence level', d.evidenceLevel, 'select', { opts: EVID }) +
       fld('pain', 'severity', 'Severity rating (1 to 5)', d.severity, 'range', { min: 1, max: 5, k: 'num' }) + fld('pain', 'willingnessToPay', 'Willingness-to-pay estimate', d.willingnessToPay) + '</div>' +
-      fld('pain', 'symptom', 'Symptom', d.symptom, 'area') + fld('pain', 'rootCause', 'Root cause', d.rootCause, 'area') +
+      secOpen('The problem in plain words', true) + fld('pain', 'symptom', 'Symptom', d.symptom, 'area') + fld('pain', 'rootCause', 'Root cause', d.rootCause, 'area') +
       fld('pain', 'consequence', 'Business consequence', d.consequence, 'area') + fld('pain', 'financialEffect', 'Possible financial effect', d.financialEffect, 'area') +
-      fld('pain', 'discovery', 'Discovery questions', d.discovery, 'lines') + fld('pain', 'consequenceQ', 'Consequence questions', d.consequenceQ, 'lines') +
+      secClose + secOpen('Questions to ask on a call', false) + fld('pain', 'discovery', 'Discovery questions', d.discovery, 'lines') + fld('pain', 'consequenceQ', 'Consequence questions', d.consequenceQ, 'lines') +
       fld('pain', 'statusQuo', 'Questions that challenge the status quo', d.statusQuo, 'lines') +
       fld('pain', 'confirms', 'Responses that confirm the problem', d.confirms, 'lines') + fld('pain', 'disproves', 'Responses that disprove the problem', d.disproves, 'lines') +
-      fld('pain', 'offer', 'Relevant LYCORE offer', d.offer) + fld('pain', 'existingSoftware', 'Existing software alternatives', d.existingSoftware, 'area', { rows: 2 }) +
+      secClose + secOpen('Offer, proof and follow-up', false) + fld('pain', 'offer', 'Relevant LYCORE offer', d.offer) + fld('pain', 'existingSoftware', 'Existing software alternatives', d.existingSoftware, 'area', { rows: 2 }) +
       fld('pain', 'proofRequired', 'Proof required', d.proofRequired, 'area', { rows: 2 }) + fld('pain', 'analogy', 'Suitable analogy', d.analogy, 'area', { rows: 2 }) +
-      fld('pain', 'objections', 'Associated objections', d.objections, 'lines') + fld('pain', 'closing', 'Follow-up and closing approach', d.closing, 'area', { rows: 2 }) +
+      fld('pain', 'objections', 'Associated objections', d.objections, 'lines') + fld('pain', 'closing', 'Follow-up and closing approach', d.closing, 'area', { rows: 2 }) + secClose +
       '<div class="lab-bar"><span id="lab-dirty" class="lab-dirty">' + (S.ui.dirty ? 'Unsaved changes' : '') + '</span>' +
       '<button class="btn" data-act="pain-cancel">Cancel</button><button class="btn" data-act="pain-dup">Duplicate</button><button class="btn" data-act="pain-copy">Copy to another industry</button><button class="btn ghost lab-danger" data-act="pain-del">Delete</button><button class="btn orange" data-act="pain-save">Save</button></div>';
   }
@@ -400,17 +504,6 @@ const Lab = (function () {
     for (const p of PROV) {
       try { S.ai[p[0]] = (window.secrets ? await window.secrets.status(p[0]) : null) || { saved: false, last4: '' }; } catch (e) { S.ai[p[0]] = { saved: false, last4: '' }; }
     }
-  }
-  function vAi() {
-    if (!window.secrets) return '<p class="lab-empty">Key storage is only available inside the desktop app.</p>';
-    const cur = S.settings.provider, info = PROV.find((p) => p[0] === cur) || PROV[0], st = S.ai[cur] || {};
-    return '<div class="lab-detail" style="max-width:640px"><div class="lab-note">Your key is encrypted on this computer and stays inside the app\'s private process. It is never shown again, never written to backups, and never sent anywhere except the provider you pick. Nothing uses it until Phase 2 adds role-play.</div>' +
-      '<div class="field"><label>Provider for practice and scoring</label><select data-act="ai-provider">' + PROV.map((p) => '<option value="' + p[0] + '"' + (p[0] === cur ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></div>' +
-      '<p class="lab-count">' + E(info[2]) + ' Status: <b>' + (st.saved ? 'key saved (ends in ' + E(st.last4) + ')' : 'no key saved') + '</b></p>' +
-      '<div class="field"><label>Model name' + (cur === 'huggingface' ? ' (required; copy it from the model page on Hugging Face)' : '') + '</label><input data-act="ai-model" value="' + E((S.settings.models || {})[cur] || '') + '" placeholder="model id"></div>' +
-      (cur === 'gemini' ? '<div class="field"><label>Voice model name</label><input data-act="ai-live-model" value="' + E((S.settings.models || {}).live || '') + '"></div>' : '') +
-      '<div class="field"><label>' + (st.saved ? 'Replace key' : 'Paste key') + '</label><input id="lab-aikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste here, then press Save"></div>' +
-      '<div class="lab-bar" style="justify-content:flex-start"><button class="btn orange" data-act="ai-save">Save key</button><button class="btn"' + (st.saved ? '' : ' disabled') + ' data-act="ai-test">Test key</button><button class="btn ghost lab-danger"' + (st.saved ? '' : ' disabled') + ' data-act="ai-clear">Remove key</button><span id="lab-aimsg" class="lab-count"></span></div></div>';
   }
 
   /* ---- Practice (Phase 2): text role-play against a synthetic buyer, then transcript-cited scoring */
@@ -855,9 +948,9 @@ const Lab = (function () {
     const root = document.getElementById('lab-root'); if (!root) return;
     if (!bound) { bind(root); bound = true; }
     const y = root.scrollTop;
-    if (S.tab === 'ai' || S.tab === 'practice' || S.tab === 'panel' || S.tab === 'evidence') await refreshAi();
+    if (S.tab === 'home' || S.tab === 'ai' || S.tab === 'practice' || S.tab === 'panel' || S.tab === 'evidence') await refreshAi();
     if (S.tab === 'practice' && !S.practice.personaId && S.personas[0]) S.practice.personaId = S.personas[0].id;
-    root.innerHTML = navHtml() + '<div class="lab-body">' + (S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : S.tab === 'evidence' ? vEvidence() : S.tab === 'panel' ? vPanel() : S.tab === 'stats' ? vStats() : vScripts()) + '</div>';
+    root.innerHTML = shellHtml(S.tab === 'home' ? vHome() : S.tab === 'offers' ? vOffers() : S.tab === 'pains' ? vPains() : S.tab === 'personas' ? vPersonas() : S.tab === 'ai' ? vAi() : S.tab === 'practice' ? vPractice() : S.tab === 'evidence' ? vEvidence() : S.tab === 'panel' ? vPanel() : S.tab === 'stats' ? vStats() : vScripts());
     root.scrollTop = y;
     if (S.tab === 'practice') { const tx = document.getElementById('lab-tx'); if (tx) tx.scrollTop = tx.scrollHeight; const pin = document.getElementById('lab-pin'); if (pin && !S.practice.busy) pin.focus(); }
     if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { /* not a text input */ } } }
@@ -943,10 +1036,22 @@ const Lab = (function () {
           const inp = document.getElementById('lab-aikey'), val = inp ? inp.value : '';
           const r = await window.secrets.set(prov, val); if (inp) inp.value = '';
           if (!r.success) { say(r.error || 'Could not save.'); return; }
-          toast('Key saved securely.', 'success'); return render();
+          toast('Key saved securely. Now press Check my setup.', 'success'); return render();
         }
         if (act === 'ai-clear') { if (!confirm('Remove the saved key?')) return; await window.secrets.clear(prov); toast('Key removed.', 'success'); return render(); }
         say('Testing...'); const r = await window.secrets.test(prov); say(r.ok ? 'The provider accepted this key.' : r.error); return;
+      }
+
+      if (act === 'ai-check') {
+        const prov = S.settings.provider, m = S.settings.models || {};
+        S.ui.aiBusy = true; render();
+        let r; try { r = await window.ai.checkSetup({ provider: prov, model: m[prov] || '', live: m.live || '' }); } catch (err) { r = { ok: false, error: 'The check could not run.' }; }
+        S.ui.aiBusy = false; S.ui.aiCheck = Object.assign({ provider: prov }, r || { ok: false, error: 'No answer.' }); return render();
+      }
+      if (act === 'ai-use') {
+        S.settings.models = S.settings.models || {};
+        S.settings.models[el.dataset.k === 'live' ? 'live' : S.settings.provider] = id; await sset(K.settings, S.settings);
+        toast('Saved. Press Check my setup again to confirm it works.', 'success'); return render();
       }
 
       /* offers */

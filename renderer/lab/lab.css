@@ -90,3 +90,73 @@
 .lab-b.prospect{align-self:flex-start;background:var(--card);border:1px solid var(--border)}
 .lab-row textarea{flex:1}
 .lab-pre{white-space:pre-wrap;font-size:12px;background:var(--card-alt);border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:10px}
+
+/* ===================== Sales Lab v2: one calm frame ===================== */
+/* Spacing scale used here: 4 8 12 16 24 32. Type: 12 / 13.5 / 15 / 22. One accent (indigo), orange only for the single next action. */
+#lab-root{padding:8px 4px 48px}
+.lab-shell{display:grid;grid-template-columns:208px minmax(0,1fr);gap:32px;max-width:1240px;margin:0 auto;align-items:start}
+.lab-side{position:sticky;top:8px;display:flex;flex-direction:column;gap:20px;padding-top:4px}
+.lab-group{display:flex;flex-direction:column;gap:2px}
+.lab-gh{font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);margin:0 0 4px 12px}
+.lab-nl{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;border:0;background:none;padding:8px 12px;border-radius:10px;font:inherit;font-size:13.5px;font-weight:600;color:var(--text-soft);cursor:pointer;text-align:left}
+.lab-nl:hover{background:var(--card-alt);color:var(--text)}
+.lab-nl.on{background:var(--indigo-50);color:var(--indigo-600)}
+.lab-nl em{font-style:normal;font-size:11px;font-weight:600;color:var(--text-mute);min-width:16px;text-align:right}
+.lab-main{min-width:0}
+.lab-ph h2{margin:0 0 4px;font-size:22px;line-height:1.2;color:var(--text)}
+.lab-ph p{margin:0 0 24px;color:var(--text-soft);max-width:66ch;line-height:1.5;font-size:14px}
+@media (max-width:1000px){.lab-shell{grid-template-columns:1fr;gap:12px}.lab-side{position:static;flex-direction:row;overflow-x:auto;gap:16px}.lab-group{flex-direction:row;align-items:center;flex:0 0 auto}.lab-gh{display:none}.lab-nl{white-space:nowrap}}
+
+/* start here */
+.lab-hero{background:var(--indigo-50);border:1px solid color-mix(in srgb,var(--indigo-600) 25%,var(--border));border-radius:14px;padding:14px 18px;line-height:1.55;font-size:14px;color:var(--text);margin-bottom:24px;max-width:760px}
+.lab-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:760px}
+.lab-step{display:flex;gap:16px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.lab-step.next{border-color:var(--orange-500);box-shadow:0 0 0 3px color-mix(in srgb,var(--orange-500) 14%,transparent)}
+.lab-stepn{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--card-alt);border:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text-soft)}
+.lab-step.done .lab-stepn{background:color-mix(in srgb,#16A34A 18%,var(--card));border-color:#16A34A;color:#16A34A}
+.lab-step.next .lab-stepn{background:var(--orange-500);border-color:var(--orange-500);color:#fff}
+.lab-stepb{flex:1;min-width:0}
+.lab-stept{font-weight:700;font-size:15px;color:var(--text)}
+.lab-stepd{font-size:13.5px;color:var(--text-soft);line-height:1.5;margin-top:2px}
+.lab-steps-s{font-size:12px;color:var(--text-mute);margin-top:6px}
+.lab-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 9px;background:var(--orange-50);color:var(--orange-700);margin-left:6px;vertical-align:1px}
+.lab-tag.ok{background:color-mix(in srgb,#16A34A 16%,var(--card));color:#15803D}
+.lab-more{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;max-width:760px}
+.lab-morei{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font:inherit;color:var(--text);cursor:pointer}
+.lab-morei span{font-size:12.5px;color:var(--text-soft);line-height:1.4}
+.lab-morei:hover{border-color:var(--indigo-600)}
+
+/* collapsible form sections */
+.lab-sec{border:1px solid var(--border-soft);border-radius:12px;background:var(--card);margin:12px 0}
+.lab-sec>summary{cursor:pointer;padding:11px 14px;font-weight:700;font-size:13.5px;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px}
+.lab-sec>summary::-webkit-details-marker{display:none}
+.lab-sec>summary::before{content:"\25B8";font-size:11px;color:var(--text-mute);transition:transform .12s}
+.lab-sec[open]>summary::before{transform:rotate(90deg)}
+.lab-secbody{padding:2px 14px 14px}
+.lab-secbody p{margin:6px 0;font-size:13px;color:var(--text-soft);line-height:1.5}
+
+/* AI setup */
+.lab-ai{max-width:680px;display:flex;flex-direction:column;gap:14px}
+.lab-aistep{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.lab-aihd{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:15px}
+.lab-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.lab-chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13.5px;line-height:1.45;border-top:1px solid var(--border-soft)}
+.lab-chk span{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:var(--card-alt)}
+.lab-chk.ok span{background:color-mix(in srgb,#16A34A 18%,var(--card));color:#16A34A}
+.lab-chk.bad span{background:color-mix(in srgb,#EF4444 18%,var(--card));color:#DC2626}
+.lab-rec{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0;border-top:1px solid var(--border-soft)}
+.lab-rec b{flex:1 1 100%;font-size:12px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.06em}
+
+/* editors: roomier cards, save bar always reachable */
+.lab-detail{padding:20px 22px;border-radius:16px}
+.lab-detail .lab-bar{position:sticky;bottom:-1px;background:var(--card);z-index:2;margin-top:20px;padding:12px 0 6px}
+.lab-h{margin:24px 0 10px}
+.lab-note{border-radius:10px;line-height:1.5}
+.lab-split{grid-template-columns:240px minmax(0,1fr);gap:20px}
+
+[data-theme="dark"] .lab-warn{background:#2B2012;color:var(--text);border-color:#8A5A1F}
+[data-theme="dark"] .lab-pill.st-proposed{background:#2B2012}
+[data-theme="dark"] .lab-pill.st-testing{background:#14264A}
+[data-theme="dark"] .lab-pill.st-approved{background:#12301F}
+[data-theme="dark"] .lab-pill.st-rejected{background:#33181A}
+[data-theme="dark"] .lab-danger{color:#FCA5A5}

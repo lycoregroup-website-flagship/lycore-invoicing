@@ -273,6 +273,54 @@ ipcMain.handle('ai:liveToken', async () => {
   } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
 });
 
+// ---- Setup check: list the models this key can really use, try the text model, and suggest working ones ----
+function modelScore(id) {
+  const v = /gemini-(\d+(?:\.\d+)?)/.exec(id), ver = v ? parseFloat(v[1]) : 0;
+  return ver * 100 + (/flash/.test(id) ? 10 : 0) - (/lite/.test(id) ? 5 : 0) - (/preview|exp/.test(id) ? 1 : 0) + (/native-audio|live/.test(id) ? 3 : 0);
+}
+ipcMain.handle('ai:checkSetup', async (e, opts) => {
+  const o = opts || {}, provider = o.provider, key = getSecret(provider);
+  if (!key) return { ok: false, error: 'No key saved yet. Paste one in step 2 first.' };
+  try {
+    if (provider !== 'gemini') {
+      const r = await fetch('https://huggingface.co/api/whoami-v2', { headers: { Authorization: 'Bearer ' + key }, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) return { ok: false, error: 'The provider rejected the key (HTTP ' + r.status + ').' };
+      return { ok: true, models: { text: [], live: [] }, note: 'Hugging Face does not list models automatically. Copy the exact model name from its page into the advanced section below.' };
+    }
+    const H = { 'x-goog-api-key': key };
+    let all = [], tok = '';
+    for (let i = 0; i < 6; i++) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200' + (tok ? '&pageToken=' + encodeURIComponent(tok) : ''), { headers: H, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) return { ok: false, error: r.status === 400 || r.status === 403 ? 'Google rejected this key (HTTP ' + r.status + '). Check that it was copied in full and that the Gemini API is enabled for it.' : 'Google returned HTTP ' + r.status + '.' };
+      const j = await r.json(); all = all.concat(j.models || []); tok = j.nextPageToken; if (!tok) break;
+    }
+    const ms = all.map((m) => ({ id: String(m.name || '').replace(/^models\//, ''), methods: m.supportedGenerationMethods || [] }));
+    const text = ms.filter((m) => m.methods.includes('generateContent') && /^gemini-/.test(m.id) && !/(live|tts|image|embed|audio|robotics|computer-use|vision|aqa|learnlm|native)/.test(m.id)).map((m) => m.id).sort((a, b) => modelScore(b) - modelScore(a));
+    const live = ms.filter((m) => m.methods.includes('bidiGenerateContent')).map((m) => m.id).sort((a, b) => modelScore(b) - modelScore(a));
+    const out = { ok: true, models: { text: text.slice(0, 40), live: live.slice(0, 40) }, recommended: { text: text[0] || '', live: live[0] || '' } };
+    const tm = String(o.model || '').trim();
+    out.textTest = { model: tm, ok: false, error: '' };
+    if (!tm) out.textTest.error = 'no model name is set';
+    else if (!text.includes(tm)) out.textTest.error = 'your key is not offered that model';
+    else {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(tm) + ':generateContent', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word OK.' }] }] }), signal: AbortSignal.timeout(20000) });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && j.candidates && j.candidates[0]) out.textTest.ok = true;
+      else out.textTest.error = (j && j.error && j.error.message) || ('HTTP ' + r.status);
+    }
+    const lm = String(o.live || '').trim();
+    out.liveCheck = { model: lm, listed: !!lm && live.includes(lm), tokenOk: false, error: '' };
+    if (out.liveCheck.listed) {
+      const t = Date.now();
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/auth_tokens', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify({ uses: 1, expireTime: new Date(t + 15 * 60000).toISOString(), newSessionExpireTime: new Date(t + 60000).toISOString() }), signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => null);
+      out.liveCheck.tokenOk = r.ok && !!(j && j.name);
+      if (!out.liveCheck.tokenOk) out.liveCheck.error = (j && j.error && j.error.message) || ('HTTP ' + r.status);
+    }
+    return out;
+  } catch (err) { return { ok: false, error: 'Could not reach the provider: ' + (err && err.message || err) }; }
+});
+
 function buildMenu() {
   const template = [
     {
